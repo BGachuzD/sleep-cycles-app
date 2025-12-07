@@ -1,0 +1,411 @@
+// src/screens/SleepNowScreen.tsx
+
+import React, { FC, useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  Pressable,
+  Dimensions,
+} from 'react-native';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import type { RootStackParamList } from '../../App';
+
+import Animated, {
+  FadeInUp,
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withTiming,
+  withRepeat,
+  interpolate,
+  runOnJS,
+} from 'react-native-reanimated';
+
+import {
+  getWakeTimesFromNow,
+  formatTime,
+  formatDuration,
+} from '../utils/sleep';
+import { WakeTimeOptions as WakeTimeOption } from '../types/WakeTimeOptions';
+
+import { GradientBackground } from '../components/GradientBackground';
+
+type Props = NativeStackScreenProps<RootStackParamList, 'SleepNow'>;
+
+const { height } = Dimensions.get('window');
+
+export const SleepNowScreen: FC<Props> = ({ navigation }) => {
+  const [options, setOptions] = useState<WakeTimeOption[]>([]);
+  const [selectedOption, setSelectedOption] = useState<WakeTimeOption | null>(null);
+
+  // Escala del botón principal
+  const buttonScale = useSharedValue(1);
+  const animatedButtonStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: buttonScale.value }],
+  }));
+
+  // Luna con efecto de "respiración"
+  const breath = useSharedValue(1);
+  const breathingIconStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: breath.value }],
+  }));
+
+  useEffect(() => {
+    breath.value = withRepeat(
+      withTiming(1.08, {
+        duration: 3000,
+      }),
+      -1,
+      true
+    );
+  }, [breath]);
+
+  // Progreso del bottom sheet (0 = oculto, 1 = visible)
+  const sheetProgress = useSharedValue(0);
+
+  const sheetStyle = useAnimatedStyle(() => {
+    const translateY = interpolate(sheetProgress.value, [0, 1], [height, 0]);
+    return {
+      transform: [{ translateY }],
+    };
+  });
+
+  const backdropStyle = useAnimatedStyle(() => {
+    const opacity = interpolate(sheetProgress.value, [0, 1], [0, 0.55]);
+    return { opacity };
+  });
+
+  const openSheet = (option: WakeTimeOption) => {
+    setSelectedOption(option);
+    sheetProgress.value = withTiming(1, { duration: 260 });
+  };
+
+  const closeSheet = () => {
+    sheetProgress.value = withTiming(
+      0,
+      { duration: 220 },
+      (finished) => {
+        if (finished) {
+          runOnJS(setSelectedOption)(null);
+        }
+      }
+    );
+  };
+
+  const handleCalculate = () => {
+    const now = new Date();
+    const wakeOptions = getWakeTimesFromNow(now, [3, 4, 5, 6]);
+    setOptions(wakeOptions);
+  };
+
+  return (
+    <View style={styles.container}>
+      {/* Fondo animado */}
+      <GradientBackground />
+
+      {/* Contenido */}
+      <View style={styles.content}>
+        {/* Luna respirando */}
+        <View style={styles.header}>
+          <Animated.View style={[styles.breathingIcon, breathingIconStyle]}>
+            <Text style={styles.breathingIconEmoji}>🌙</Text>
+          </Animated.View>
+        </View>
+
+        <Text style={styles.title}>Dormir ahora</Text>
+        <Text style={styles.subtitle}>
+          Si te duermes en este momento, estas son las horas recomendadas para
+          despertar al final de un ciclo de sueño.
+        </Text>
+
+        {/* Botón principal animado */}
+        <Animated.View style={[styles.primaryButton, animatedButtonStyle]}>
+          <TouchableOpacity
+            activeOpacity={0.9}
+            style={styles.primaryButtonInner}
+            onPressIn={() => {
+              buttonScale.value = withSpring(0.94, { damping: 15, stiffness: 200 });
+            }}
+            onPressOut={() => {
+              buttonScale.value = withSpring(1, { damping: 15, stiffness: 200 });
+            }}
+            onPress={handleCalculate}
+          >
+            <Text style={styles.primaryButtonText}>Calcular horarios ideales</Text>
+          </TouchableOpacity>
+        </Animated.View>
+
+        {/* Botón secundario para ir a la otra pantalla */}
+        <TouchableOpacity
+          style={styles.secondaryButton}
+          activeOpacity={0.85}
+          onPress={() => navigation.navigate('WakeAt')}
+        >
+          <Text style={styles.secondaryButtonText}>
+            Quiero despertar a una hora específica
+          </Text>
+        </TouchableOpacity>
+
+        {/* Lista de horarios */}
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {options.length === 0 ? (
+            <Text style={styles.helperText}>
+              Toca “Calcular horarios ideales” para ver las horas sugeridas para
+              despertar.
+            </Text>
+          ) : (
+            options.map((opt, index) => (
+              <Animated.View
+                key={opt.cycles}
+                entering={FadeInUp.delay(index * 90).springify().damping(14)}
+              >
+                <TouchableOpacity
+                  activeOpacity={0.9}
+                  style={styles.card}
+                  onPress={() => openSheet(opt)}
+                >
+                  <Text style={styles.cardLabel}>
+                    {opt.cycles} {opt.cycles === 1 ? 'ciclo' : 'ciclos'}
+                  </Text>
+                  <Text style={styles.cardTime}>{formatTime(opt.wakeDate)}</Text>
+                  <Text style={styles.cardDuration}>
+                    Duración aprox: {formatDuration(opt.totalMinutes)} + 15 min para conciliar
+                  </Text>
+                  <Text style={styles.cardNote}>
+                    Toca para ver más detalles de este horario.
+                  </Text>
+                </TouchableOpacity>
+              </Animated.View>
+            ))
+          )}
+        </ScrollView>
+      </View>
+
+      {/* Bottom Sheet de detalle */}
+      {selectedOption && (
+        <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
+          {/* Backdrop */}
+          <Animated.View style={[styles.backdrop, backdropStyle]}>
+            <Pressable style={StyleSheet.absoluteFill} onPress={closeSheet} />
+          </Animated.View>
+
+          {/* Sheet */}
+          <Animated.View style={[styles.sheet, sheetStyle]}>
+            <View style={styles.sheetHandle} />
+            <Text style={styles.sheetLabel}>
+              {selectedOption.cycles}{' '}
+              {selectedOption.cycles === 1 ? 'ciclo de sueño' : 'ciclos de sueño'}
+            </Text>
+            <Text style={styles.sheetTime}>{formatTime(selectedOption.wakeDate)}</Text>
+            <Text style={styles.sheetDuration}>
+              Dormirías aprox. {formatDuration(selectedOption.totalMinutes)} +
+              {' 15 min '}para conciliar el sueño.
+            </Text>
+
+            <Text style={styles.sheetText}>
+              Esta hora está pensada para que despiertes al final de un ciclo de sueño
+              ligero. Despertar en esta fase suele sentirse más natural y menos pesado
+              que salir abruptamente de un sueño profundo.
+            </Text>
+
+            <Text style={styles.sheetText}>
+              Procura mantener el cuarto oscuro, fresco y silencioso. Evita pantallas
+              brillantes al menos 20–30 minutos antes de dormir para ayudar a tu cuerpo
+              a entrar en modo descanso.
+            </Text>
+
+            <TouchableOpacity
+              style={styles.sheetButton}
+              activeOpacity={0.9}
+              onPress={closeSheet}
+            >
+              <Text style={styles.sheetButtonText}>Cerrar</Text>
+            </TouchableOpacity>
+          </Animated.View>
+        </View>
+      )}
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#020617',
+  },
+  content: {
+    flex: 1,
+    paddingHorizontal: 24,
+    paddingTop: 80,
+  },
+  header: {
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  breathingIcon: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(79,70,229,0.25)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(129,140,248,0.5)',
+  },
+  breathingIconEmoji: {
+    fontSize: 36,
+  },
+  title: {
+    color: '#f9fafb',
+    fontSize: 34,
+    fontWeight: '800',
+    marginBottom: 8,
+  },
+  subtitle: {
+    color: '#9ca3af',
+    fontSize: 16,
+    marginBottom: 24,
+  },
+  primaryButton: {
+    borderRadius: 999,
+    overflow: 'hidden',
+    marginBottom: 24,
+  },
+  primaryButtonInner: {
+    backgroundColor: '#4f46e5',
+    paddingVertical: 16,
+    borderRadius: 999,
+    alignItems: 'center',
+  },
+  primaryButtonText: {
+    color: '#f9fafb',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  secondaryButton: {
+    borderWidth: 1,
+    borderColor: '#4f46e5',
+    paddingVertical: 14,
+    borderRadius: 999,
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  secondaryButtonText: {
+    color: '#e5e7eb',
+    fontSize: 15,
+    fontWeight: '500',
+  },
+  scroll: {
+    flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: 40,
+  },
+  helperText: {
+    color: '#6b7280',
+    fontSize: 14,
+    marginTop: 8,
+  },
+  card: {
+    backgroundColor: 'rgba(15,23,42,0.94)',
+    borderRadius: 24,
+    padding: 20,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(79,70,229,0.35)',
+  },
+  cardLabel: {
+    color: '#a5b4fc',
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 4,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  cardTime: {
+    color: '#e5e7eb',
+    fontSize: 28,
+    fontWeight: '800',
+    marginBottom: 4,
+  },
+  cardDuration: {
+    color: '#9ca3af',
+    fontSize: 14,
+    marginBottom: 8,
+  },
+  cardNote: {
+    color: '#6b7280',
+    fontSize: 12,
+  },
+  backdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#000000',
+  },
+  sheet: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    paddingHorizontal: 24,
+    paddingTop: 12,
+    paddingBottom: 32,
+    backgroundColor: '#020617',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    borderTopWidth: 1,
+    borderColor: 'rgba(148,163,184,0.3)',
+  },
+  sheetHandle: {
+    alignSelf: 'center',
+    width: 48,
+    height: 4,
+    borderRadius: 999,
+    backgroundColor: 'rgba(148,163,184,0.7)',
+    marginBottom: 16,
+  },
+  sheetLabel: {
+    color: '#a5b4fc',
+    fontSize: 14,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  sheetTime: {
+    color: '#e5e7eb',
+    fontSize: 32,
+    fontWeight: '800',
+    marginBottom: 6,
+  },
+  sheetDuration: {
+    color: '#9ca3af',
+    fontSize: 14,
+    marginBottom: 16,
+  },
+  sheetText: {
+    color: '#9ca3af',
+    fontSize: 14,
+    marginBottom: 12,
+    lineHeight: 20,
+  },
+  sheetButton: {
+    marginTop: 8,
+    alignSelf: 'stretch',
+    backgroundColor: '#4f46e5',
+    paddingVertical: 14,
+    borderRadius: 999,
+    alignItems: 'center',
+  },
+  sheetButtonText: {
+    color: '#f9fafb',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+});
