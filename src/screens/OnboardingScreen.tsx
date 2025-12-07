@@ -1,5 +1,3 @@
-// src/screens/OnboardingScreen.tsx
-
 import React, { FC } from 'react';
 import {
   View,
@@ -85,13 +83,13 @@ export const OnboardingScreen: FC<Props> = ({ navigation }) => {
               scrollX.value,
               inputRange,
               [40, 0, 40],
-              Extrapolation.CLAMP
+              Extrapolation.CLAMP,
             );
             const opacity = interpolate(
               scrollX.value,
               inputRange,
               [0.4, 1, 0.4],
-              Extrapolation.CLAMP
+              Extrapolation.CLAMP,
             );
 
             return {
@@ -103,7 +101,9 @@ export const OnboardingScreen: FC<Props> = ({ navigation }) => {
           return (
             <View key={slide.key} style={{ width }}>
               <View style={styles.slideInner}>
-                <Animated.View style={[styles.emojiWrapper, animatedSlideStyle]}>
+                <Animated.View
+                  style={[styles.emojiWrapper, animatedSlideStyle]}
+                >
                   <Text style={styles.emoji}>{slide.emoji}</Text>
                 </Animated.View>
 
@@ -141,14 +141,14 @@ export const OnboardingScreen: FC<Props> = ({ navigation }) => {
               scrollX.value,
               inputRange,
               [0.8, 1.4, 0.8],
-              Extrapolation.CLAMP
+              Extrapolation.CLAMP,
             );
 
             const opacity = interpolate(
               scrollX.value,
               inputRange,
               [0.3, 1, 0.3],
-              Extrapolation.CLAMP
+              Extrapolation.CLAMP,
             );
 
             return {

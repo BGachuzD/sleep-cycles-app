@@ -1,4 +1,3 @@
-// src/components/GradientBackground.tsx
 import React, { FC, useEffect } from 'react';
 import { StyleSheet, View, Dimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -16,11 +15,7 @@ export const GradientBackground: FC = () => {
   const glow = useSharedValue(0);
 
   useEffect(() => {
-    glow.value = withRepeat(
-      withTiming(1, { duration: 8000 }),
-      -1,
-      true
-    );
+    glow.value = withRepeat(withTiming(1, { duration: 8000 }), -1, true);
   }, [glow]);
 
   const glowStyle = useAnimatedStyle(() => {
@@ -45,10 +40,10 @@ export const GradientBackground: FC = () => {
       />
 
       <Animated.View style={[styles.glow, glowStyle]}>
-  <View style={styles.moonInner}>
-    <MoonIcon size={width * 0.5} color="#fff" opacity={0.3} />
-  </View>
-</Animated.View>
+        <View style={styles.moonInner}>
+          <MoonIcon size={width * 0.5} color="#fff" opacity={0.3} />
+        </View>
+      </Animated.View>
     </View>
   );
 };

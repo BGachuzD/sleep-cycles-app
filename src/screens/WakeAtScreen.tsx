@@ -46,11 +46,7 @@ export const WakeAtScreen: FC<Props> = ({ navigation }) => {
   }));
 
   useEffect(() => {
-    breath.value = withRepeat(
-      withTiming(1.08, { duration: 2800 }),
-      -1,
-      true
-    );
+    breath.value = withRepeat(withTiming(1.08, { duration: 2800 }), -1, true);
   }, [breath]);
 
   // Botón animado
@@ -160,14 +156,22 @@ export const WakeAtScreen: FC<Props> = ({ navigation }) => {
             activeOpacity={0.9}
             style={styles.primaryButtonInner}
             onPressIn={() => {
-              buttonScale.value = withSpring(0.94, { damping: 15, stiffness: 200 });
+              buttonScale.value = withSpring(0.94, {
+                damping: 15,
+                stiffness: 200,
+              });
             }}
             onPressOut={() => {
-              buttonScale.value = withSpring(1, { damping: 15, stiffness: 200 });
+              buttonScale.value = withSpring(1, {
+                damping: 15,
+                stiffness: 200,
+              });
             }}
             onPress={handleCalculate}
           >
-            <Text style={styles.primaryButtonText}>Calcular hora para dormir</Text>
+            <Text style={styles.primaryButtonText}>
+              Calcular hora para dormir
+            </Text>
           </TouchableOpacity>
         </Animated.View>
 
@@ -177,7 +181,9 @@ export const WakeAtScreen: FC<Props> = ({ navigation }) => {
           activeOpacity={0.85}
           onPress={() => navigation.goBack()}
         >
-          <Text style={styles.secondaryButtonText}>Volver a “Dormir ahora”</Text>
+          <Text style={styles.secondaryButtonText}>
+            Volver a “Dormir ahora”
+          </Text>
         </TouchableOpacity>
 
         {/* Resultados */}
@@ -194,25 +200,29 @@ export const WakeAtScreen: FC<Props> = ({ navigation }) => {
           ) : (
             options
               .slice()
-              .reverse() // para que se vea primero el más largo (más ciclos)
+              .reverse()
               .map((opt, index) => (
                 <Animated.View
                   key={opt.cycles}
-                  entering={FadeInUp.delay(index * 90).springify().damping(14)}
+                  entering={FadeInUp.delay(index * 90)
+                    .springify()
+                    .damping(14)}
                   style={styles.card}
                 >
                   <Text style={styles.cardLabel}>
-                    {opt.cycles}{' '}
-                    {opt.cycles === 1 ? 'ciclo' : 'ciclos'} de sueño
+                    {opt.cycles} {opt.cycles === 1 ? 'ciclo' : 'ciclos'} de
+                    sueño
                   </Text>
-                  <Text style={styles.cardTime}>{formatTime(opt.sleepDate)}</Text>
+                  <Text style={styles.cardTime}>
+                    {formatTime(opt.sleepDate)}
+                  </Text>
                   <Text style={styles.cardDuration}>
                     Deberías dormir aprox. a esta hora para completar{' '}
                     {formatDuration(opt.totalMinutes)} + 15 min para conciliar.
                   </Text>
                   <Text style={styles.cardNote}>
-                    Considera acostarte unos minutos antes para evitar retrasos y
-                    mantener una rutina constante.
+                    Considera acostarte unos minutos antes para evitar retrasos
+                    y mantener una rutina constante.
                   </Text>
                 </Animated.View>
               ))
