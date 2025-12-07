@@ -1,20 +1,27 @@
+// App.tsx
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView, Text, StyleSheet } from 'react-native';
 
 export default function App() {
   return (
-    <View style={styles.container}>
-      <Text>Open up App.tsx to start working on your app!</Text>
-      <StatusBar style="auto" />
-    </View>
+    <SafeAreaView style={styles.container}>
+      <Text style={styles.title}>Sleep Cycles</Text>
+      <StatusBar style="light" />
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#050816',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  title: {
+    color: '#f9fafb',
+    fontSize: 32,
+    fontWeight: '800',
+    letterSpacing: 2,
   },
 });
