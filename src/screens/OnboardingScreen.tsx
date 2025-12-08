@@ -18,6 +18,7 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { GradientBackground } from '../components/GradientBackground';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Onboarding'>;
 
@@ -61,115 +62,120 @@ export const OnboardingScreen: FC<Props> = ({ navigation }) => {
   };
 
   return (
-    <View style={styles.container}>
-      <GradientBackground />
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+      <View style={styles.container}>
+        <GradientBackground />
 
-      <Animated.ScrollView
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        onScroll={onScroll}
-        scrollEventThrottle={16}
-      >
-        {SLIDES.map((slide, index) => {
-          const inputRange = [
-            (index - 1) * width,
-            index * width,
-            (index + 1) * width,
-          ];
-
-          const animatedSlideStyle = useAnimatedStyle(() => {
-            const translateY = interpolate(
-              scrollX.value,
-              inputRange,
-              [40, 0, 40],
-              Extrapolation.CLAMP,
-            );
-            const opacity = interpolate(
-              scrollX.value,
-              inputRange,
-              [0.4, 1, 0.4],
-              Extrapolation.CLAMP,
-            );
-
-            return {
-              transform: [{ translateY }],
-              opacity,
-            };
-          });
-
-          return (
-            <View key={slide.key} style={{ width }}>
-              <View style={styles.slideInner}>
-                <Animated.View
-                  style={[styles.emojiWrapper, animatedSlideStyle]}
-                >
-                  <Text style={styles.emoji}>{slide.emoji}</Text>
-                </Animated.View>
-
-                <Animated.View style={animatedSlideStyle}>
-                  <Text style={styles.title}>{slide.title}</Text>
-                  <Text style={styles.description}>{slide.description}</Text>
-                </Animated.View>
-
-                {index === SLIDES.length - 1 && (
-                  <TouchableOpacity
-                    style={styles.startButton}
-                    activeOpacity={0.9}
-                    onPress={handleStart}
-                  >
-                    <Text style={styles.startButtonText}>Comenzar</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-            </View>
-          );
-        })}
-      </Animated.ScrollView>
-
-      {/* Indicadores (dots) */}
-      <View style={styles.dotsContainer}>
-        {SLIDES.map((_, index) => {
-          const animatedDotStyle = useAnimatedStyle(() => {
+        <Animated.ScrollView
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          onScroll={onScroll}
+          scrollEventThrottle={16}
+        >
+          {SLIDES.map((slide, index) => {
             const inputRange = [
               (index - 1) * width,
               index * width,
               (index + 1) * width,
             ];
 
-            const scale = interpolate(
-              scrollX.value,
-              inputRange,
-              [0.8, 1.4, 0.8],
-              Extrapolation.CLAMP,
+            const animatedSlideStyle = useAnimatedStyle(() => {
+              const translateY = interpolate(
+                scrollX.value,
+                inputRange,
+                [40, 0, 40],
+                Extrapolation.CLAMP,
+              );
+              const opacity = interpolate(
+                scrollX.value,
+                inputRange,
+                [0.4, 1, 0.4],
+                Extrapolation.CLAMP,
+              );
+
+              return {
+                transform: [{ translateY }],
+                opacity,
+              };
+            });
+
+            return (
+              <View key={slide.key} style={{ width }}>
+                <View style={styles.slideInner}>
+                  <Animated.View
+                    style={[styles.emojiWrapper, animatedSlideStyle]}
+                  >
+                    <Text style={styles.emoji}>{slide.emoji}</Text>
+                  </Animated.View>
+
+                  <Animated.View style={animatedSlideStyle}>
+                    <Text style={styles.title}>{slide.title}</Text>
+                    <Text style={styles.description}>{slide.description}</Text>
+                  </Animated.View>
+
+                  {index === SLIDES.length - 1 && (
+                    <TouchableOpacity
+                      style={styles.startButton}
+                      activeOpacity={0.9}
+                      onPress={handleStart}
+                    >
+                      <Text style={styles.startButtonText}>Comenzar</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              </View>
             );
+          })}
+        </Animated.ScrollView>
 
-            const opacity = interpolate(
-              scrollX.value,
-              inputRange,
-              [0.3, 1, 0.3],
-              Extrapolation.CLAMP,
+        {/* Indicadores (dots) */}
+        <View style={styles.dotsContainer}>
+          {SLIDES.map((_, index) => {
+            const animatedDotStyle = useAnimatedStyle(() => {
+              const inputRange = [
+                (index - 1) * width,
+                index * width,
+                (index + 1) * width,
+              ];
+
+              const scale = interpolate(
+                scrollX.value,
+                inputRange,
+                [0.8, 1.4, 0.8],
+                Extrapolation.CLAMP,
+              );
+
+              const opacity = interpolate(
+                scrollX.value,
+                inputRange,
+                [0.3, 1, 0.3],
+                Extrapolation.CLAMP,
+              );
+
+              return {
+                transform: [{ scale }],
+                opacity,
+              };
+            });
+
+            return (
+              <Animated.View
+                key={index}
+                style={[styles.dot, animatedDotStyle]}
+              />
             );
+          })}
+        </View>
 
-            return {
-              transform: [{ scale }],
-              opacity,
-            };
-          });
-
-          return (
-            <Animated.View key={index} style={[styles.dot, animatedDotStyle]} />
-          );
-        })}
+        {/* Botón skip por si quieres saltar directo */}
+        <View style={styles.skipContainer}>
+          <TouchableOpacity onPress={handleStart} hitSlop={10}>
+            <Text style={styles.skipText}>Saltar</Text>
+          </TouchableOpacity>
+        </View>
       </View>
-
-      {/* Botón skip por si quieres saltar directo */}
-      <View style={styles.skipContainer}>
-        <TouchableOpacity onPress={handleStart} hitSlop={10}>
-          <Text style={styles.skipText}>Saltar</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
+    </SafeAreaView>
   );
 };
 

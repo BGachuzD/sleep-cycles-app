@@ -1,4 +1,4 @@
-import React, { FC, useEffect } from 'react';
+import React, { FC, useEffect, useMemo } from 'react';
 import { StyleSheet, View, Dimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
@@ -32,14 +32,53 @@ export const GradientBackground: FC = () => {
     };
   });
 
+  const rainStarsStyle = useAnimatedStyle(() => {
+    const opacity = 0.15 + glow.value * 0.35;
+    return { opacity };
+  });
+
+  const stars = useMemo(
+    () =>
+      Array.from({ length: 100 }).map((_, index) => {
+        const size = Math.random() * 2 + 1;
+        const top = Math.random() * height;
+        const left = Math.random() * width;
+        return { id: index, size, top, left };
+      }),
+    [],
+  );
+
   return (
-    <View style={StyleSheet.absoluteFill}>
+    <View style={StyleSheet.absoluteFill} pointerEvents="none">
+      {/* 1) Fondo base */}
       <LinearGradient
         colors={['#020617', '#020617', '#020617']}
         style={StyleSheet.absoluteFill}
       />
 
-      <Animated.View style={[styles.glow, glowStyle]}>
+      {/* 2) Capa de estrellas por encima del gradiente */}
+      <Animated.View
+        style={[styles.stars, rainStarsStyle]}
+        pointerEvents="none"
+      >
+        {stars.map((star) => (
+          <View
+            key={star.id}
+            style={[
+              styles.star,
+              {
+                width: star.size,
+                height: star.size,
+                top: star.top,
+                left: star.left,
+              },
+            ]}
+          />
+        ))}
+      </Animated.View>
+
+      {/* 3) Glow + luna */}
+      <Animated.View style={[styles.glow, glowStyle]} pointerEvents="none">
         <View style={styles.moonInner}>
           <MoonIcon size={width * 0.5} color="#fff" opacity={0.3} />
         </View>
@@ -56,12 +95,22 @@ const styles = StyleSheet.create({
     width: width * 0.5,
     height: width * 0.5,
     borderRadius: width,
-    // backgroundColor: '#fff',
     opacity: 0.95,
   },
   moonInner: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  stars: {
+    position: 'absolute',
+    width: '100%',
+    height: '100%',
+    overflow: 'hidden',
+  },
+  star: {
+    position: 'absolute',
+    backgroundColor: '#fff',
+    borderRadius: 1,
   },
 });

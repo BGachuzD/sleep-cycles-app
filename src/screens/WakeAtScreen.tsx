@@ -19,17 +19,22 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import {
-  getSleepTimesForWakeDate,
+  getSleepTimesForWakeDateForProfile,
   formatTime,
   formatDuration,
+  type SleepTimeOption,
+  formatTimeRange,
 } from '../utils/sleep';
 import { GradientBackground } from '../components/GradientBackground';
-import { SleepTimeOption } from '../types/WakeTimeOptions';
+import { useSleepProfileContext } from '../context/SleepProfileContext';
+import { scheduleLocalNotificationAtDate } from '../notifications/scheduler';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'WakeAt'>;
 
 export const WakeAtScreen: FC<Props> = ({ navigation }) => {
-  // Hora objetivo de despertar (por defecto: dentro de 8 horas)
+  const { profile, loading } = useSleepProfileContext();
+
   const initialWake = (() => {
     const now = new Date();
     now.setMinutes(0);
@@ -39,7 +44,6 @@ export const WakeAtScreen: FC<Props> = ({ navigation }) => {
   const [wakeDate, setWakeDate] = useState<Date>(initialWake);
   const [options, setOptions] = useState<SleepTimeOption[]>([]);
 
-  // Icono respirando
   const breath = useSharedValue(1);
   const breathingIconStyle = useAnimatedStyle(() => ({
     transform: [{ scale: breath.value }],
@@ -49,14 +53,18 @@ export const WakeAtScreen: FC<Props> = ({ navigation }) => {
     breath.value = withRepeat(withTiming(1.08, { duration: 2800 }), -1, true);
   }, [breath]);
 
-  // Botón animado
   const buttonScale = useSharedValue(1);
   const animatedButtonStyle = useAnimatedStyle(() => ({
     transform: [{ scale: buttonScale.value }],
   }));
 
   const handleCalculate = () => {
-    const sleepOptions = getSleepTimesForWakeDate(wakeDate, [3, 4, 5, 6]);
+    if (!profile) return;
+    const sleepOptions = getSleepTimesForWakeDateForProfile(
+      profile,
+      wakeDate,
+      [3, 4, 5, 6],
+    );
     setOptions(sleepOptions);
   };
 
@@ -76,164 +84,223 @@ export const WakeAtScreen: FC<Props> = ({ navigation }) => {
     });
   };
 
+  const handleScheduleSleepNotification = async (opt: SleepTimeOption) => {
+    const centerTime = new Date(
+      (opt.windowStart.getTime() + opt.windowEnd.getTime()) / 2,
+    );
+
+    await scheduleLocalNotificationAtDate({
+      title: 'Hora ideal para dormir',
+      body: `Intenta acostarte entre ${formatTime(
+        opt.windowStart,
+      )} y ${formatTime(opt.windowEnd)} para respetar tus ciclos.`,
+      date: centerTime,
+    });
+  };
+
+  if (loading || !profile) {
+    return (
+      <View style={styles.container}>
+        <GradientBackground />
+        <View style={styles.loadingCenter}>
+          <Text style={{ color: '#e5e7eb' }}>Cargando perfil de sueño…</Text>
+        </View>
+      </View>
+    );
+  }
+
   return (
-    <View style={styles.container}>
-      <GradientBackground />
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+      <View style={styles.container}>
+        <GradientBackground />
 
-      <View style={styles.content}>
-        {/* Header con icono */}
-        <View style={styles.header}>
-          <Animated.View style={[styles.breathingIcon, breathingIconStyle]}>
-            <Text style={styles.breathingIconEmoji}>⏰</Text>
+        <View style={styles.content}>
+          <View style={styles.header}>
+            <Animated.View style={[styles.breathingIcon, breathingIconStyle]}>
+              <Text style={styles.breathingIconEmoji}>⏰</Text>
+            </Animated.View>
+          </View>
+
+          <Text style={styles.title}>Despertar a una hora</Text>
+          <Text style={styles.subtitle}>
+            Elige la hora a la que quieres despertar y te sugeriré a qué hora
+            deberías dormir para respetar tus ciclos de sueño.
+          </Text>
+
+          <View style={styles.pickerContainer}>
+            <View style={styles.pickerGroup}>
+              <Text style={styles.pickerLabel}>Hora</Text>
+              <View style={styles.pickerRow}>
+                <TouchableOpacity
+                  style={styles.pickerButton}
+                  onPress={() => adjustWakeHours(-1)}
+                >
+                  <Text style={styles.pickerButtonText}>−</Text>
+                </TouchableOpacity>
+                <Text style={styles.pickerValue}>
+                  {wakeDate.toLocaleTimeString('es-MX', {
+                    hour: '2-digit',
+                    hour12: false,
+                  })}
+                </Text>
+                <TouchableOpacity
+                  style={styles.pickerButton}
+                  onPress={() => adjustWakeHours(1)}
+                >
+                  <Text style={styles.pickerButtonText}>+</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <View style={styles.pickerGroup}>
+              <Text style={styles.pickerLabel}>Minutos</Text>
+              <View style={styles.pickerRow}>
+                <TouchableOpacity
+                  style={styles.pickerButton}
+                  onPress={() => adjustWakeMinutes(-15)}
+                >
+                  <Text style={styles.pickerButtonText}>−</Text>
+                </TouchableOpacity>
+                <Text style={styles.pickerValue}>
+                  {wakeDate.toLocaleTimeString('es-MX', {
+                    minute: '2-digit',
+                  })}
+                </Text>
+                <TouchableOpacity
+                  style={styles.pickerButton}
+                  onPress={() => adjustWakeMinutes(15)}
+                >
+                  <Text style={styles.pickerButtonText}>+</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+
+          <Text style={styles.currentWakeText}>
+            Despertarás a las{' '}
+            <Text style={styles.currentWakeTime}>{formatTime(wakeDate)}</Text>
+          </Text>
+
+          <Animated.View style={[styles.primaryButton, animatedButtonStyle]}>
+            <TouchableOpacity
+              activeOpacity={0.9}
+              style={styles.primaryButtonInner}
+              onPressIn={() => {
+                buttonScale.value = withSpring(0.94, {
+                  damping: 15,
+                  stiffness: 200,
+                });
+              }}
+              onPressOut={() => {
+                buttonScale.value = withSpring(1, {
+                  damping: 15,
+                  stiffness: 200,
+                });
+              }}
+              onPress={handleCalculate}
+            >
+              <Text style={styles.primaryButtonText}>
+                Calcular hora para dormir
+              </Text>
+            </TouchableOpacity>
           </Animated.View>
-        </View>
 
-        <Text style={styles.title}>Despertar a una hora</Text>
-        <Text style={styles.subtitle}>
-          Elige la hora a la que quieres despertar y te sugeriré a qué hora
-          deberías dormir para respetar tus ciclos de sueño.
-        </Text>
-
-        {/* Picker de hora simple */}
-        <View style={styles.pickerContainer}>
-          <View style={styles.pickerGroup}>
-            <Text style={styles.pickerLabel}>Hora</Text>
-            <View style={styles.pickerRow}>
-              <TouchableOpacity
-                style={styles.pickerButton}
-                onPress={() => adjustWakeHours(-1)}
-              >
-                <Text style={styles.pickerButtonText}>−</Text>
-              </TouchableOpacity>
-              <Text style={styles.pickerValue}>
-                {wakeDate.toLocaleTimeString('es-MX', {
-                  hour: '2-digit',
-                  hour12: false,
-                })}
-              </Text>
-              <TouchableOpacity
-                style={styles.pickerButton}
-                onPress={() => adjustWakeHours(1)}
-              >
-                <Text style={styles.pickerButtonText}>+</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          <View style={styles.pickerGroup}>
-            <Text style={styles.pickerLabel}>Minutos</Text>
-            <View style={styles.pickerRow}>
-              <TouchableOpacity
-                style={styles.pickerButton}
-                onPress={() => adjustWakeMinutes(-15)}
-              >
-                <Text style={styles.pickerButtonText}>−</Text>
-              </TouchableOpacity>
-              <Text style={styles.pickerValue}>
-                {wakeDate.toLocaleTimeString('es-MX', {
-                  minute: '2-digit',
-                })}
-              </Text>
-              <TouchableOpacity
-                style={styles.pickerButton}
-                onPress={() => adjustWakeMinutes(15)}
-              >
-                <Text style={styles.pickerButtonText}>+</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-
-        {/* Mostrar hora completa seleccionada */}
-        <Text style={styles.currentWakeText}>
-          Despertarás a las{' '}
-          <Text style={styles.currentWakeTime}>{formatTime(wakeDate)}</Text>
-        </Text>
-
-        {/* Botón calcular */}
-        <Animated.View style={[styles.primaryButton, animatedButtonStyle]}>
           <TouchableOpacity
-            activeOpacity={0.9}
-            style={styles.primaryButtonInner}
-            onPressIn={() => {
-              buttonScale.value = withSpring(0.94, {
-                damping: 15,
-                stiffness: 200,
-              });
-            }}
-            onPressOut={() => {
-              buttonScale.value = withSpring(1, {
-                damping: 15,
-                stiffness: 200,
-              });
-            }}
-            onPress={handleCalculate}
+            style={styles.secondaryButton}
+            activeOpacity={0.85}
+            onPress={() => navigation.goBack()}
           >
-            <Text style={styles.primaryButtonText}>
-              Calcular hora para dormir
+            <Text style={styles.secondaryButtonText}>
+              Volver a “Dormir ahora”
             </Text>
           </TouchableOpacity>
-        </Animated.View>
 
-        {/* Botón volver */}
-        <TouchableOpacity
-          style={styles.secondaryButton}
-          activeOpacity={0.85}
-          onPress={() => navigation.goBack()}
-        >
-          <Text style={styles.secondaryButtonText}>
-            Volver a “Dormir ahora”
-          </Text>
-        </TouchableOpacity>
+          <ScrollView
+            style={styles.scroll}
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+          >
+            {options.length === 0 ? (
+              <Text style={styles.helperText}>
+                Ajusta la hora y toca “Calcular hora para dormir” para ver las
+                recomendaciones.
+              </Text>
+            ) : (
+              options
+                .slice()
+                .reverse()
+                .map((opt, index) => (
+                  <Animated.View
+                    key={opt.cycles}
+                    entering={FadeInUp.delay(index * 90)
+                      .springify()
+                      .damping(14)}
+                    style={[
+                      styles.card,
+                      opt.isRecommended && styles.cardRecommended,
+                    ]}
+                  >
+                    <View style={styles.cardHeaderRow}>
+                      <Text style={styles.cardLabel}>
+                        {opt.cycles} {opt.cycles === 1 ? 'ciclo' : 'ciclos'} de
+                        sueño
+                      </Text>
 
-        {/* Resultados */}
-        <ScrollView
-          style={styles.scroll}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
-          {options.length === 0 ? (
-            <Text style={styles.helperText}>
-              Ajusta la hora y toca “Calcular hora para dormir” para ver las
-              recomendaciones.
-            </Text>
-          ) : (
-            options
-              .slice()
-              .reverse()
-              .map((opt, index) => (
-                <Animated.View
-                  key={opt.cycles}
-                  entering={FadeInUp.delay(index * 90)
-                    .springify()
-                    .damping(14)}
-                  style={styles.card}
-                >
-                  <Text style={styles.cardLabel}>
-                    {opt.cycles} {opt.cycles === 1 ? 'ciclo' : 'ciclos'} de
-                    sueño
-                  </Text>
-                  <Text style={styles.cardTime}>
-                    {formatTime(opt.sleepDate)}
-                  </Text>
-                  <Text style={styles.cardDuration}>
-                    Deberías dormir aprox. a esta hora para completar{' '}
-                    {formatDuration(opt.totalMinutes)} + 15 min para conciliar.
-                  </Text>
-                  <Text style={styles.cardNote}>
-                    Considera acostarte unos minutos antes para evitar retrasos
-                    y mantener una rutina constante.
-                  </Text>
-                </Animated.View>
-              ))
-          )}
-        </ScrollView>
+                      {opt.isRecommended && (
+                        <View style={styles.recommendedChip}>
+                          <Text style={styles.recommendedChipText}>
+                            Recomendado
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+
+                    <Text style={styles.cardDuration}>
+                      Sueño objetivo: {formatDuration(opt.totalMinutes)}
+                    </Text>
+                    <Text style={styles.cardDuration}>
+                      Tiempo total en cama:{' '}
+                      {formatDuration(Math.round(opt.tibMinutes))}
+                    </Text>
+                    <Text style={styles.cardDuration}>
+                      Eficiencia estimada: {(opt.efficiency * 100).toFixed(0)} %
+                    </Text>
+                    <Text style={styles.cardDuration}>
+                      Ventana ideal para acostarte:{' '}
+                      {formatTimeRange(opt.windowStart, opt.windowEnd)}
+                    </Text>
+
+                    <Text style={styles.cardNote}>
+                      Deberías intentar acostarte dentro de esta ventana para
+                      completar los ciclos propuestos. Mantén una rutina
+                      constante para que tu cuerpo se adapte.
+                    </Text>
+
+                    <TouchableOpacity
+                      style={styles.cardButton}
+                      activeOpacity={0.9}
+                      onPress={() => handleScheduleSleepNotification(opt)}
+                    >
+                      <Text style={styles.cardButtonText}>
+                        Programar recordatorio para dormir
+                      </Text>
+                    </TouchableOpacity>
+                  </Animated.View>
+                ))
+            )}
+          </ScrollView>
+        </View>
       </View>
-    </View>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
+  loadingCenter: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   container: {
     flex: 1,
     backgroundColor: '#020617',
@@ -366,14 +433,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginTop: 4,
   },
-  card: {
-    backgroundColor: 'rgba(15,23,42,0.95)',
-    borderRadius: 24,
-    padding: 20,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(22,163,74,0.4)',
-  },
   cardLabel: {
     color: '#bbf7d0',
     fontSize: 13,
@@ -396,5 +455,51 @@ const styles = StyleSheet.create({
   cardNote: {
     color: '#6b7280',
     fontSize: 12,
+  },
+  card: {
+    backgroundColor: 'rgba(15,23,42,0.95)',
+    borderRadius: 24,
+    padding: 20,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(22,163,74,0.4)',
+  },
+  cardRecommended: {
+    borderColor: '#22c55e',
+    shadowColor: '#22c55e',
+    shadowOpacity: 0.35,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 8 },
+  },
+  cardHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  recommendedChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+    backgroundColor: 'rgba(34,197,94,0.1)',
+  },
+  recommendedChipText: {
+    color: '#4ade80',
+    fontSize: 11,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+  },
+  cardButton: {
+    marginTop: 10,
+    backgroundColor: '#4f46e5',
+    paddingVertical: 10,
+    borderRadius: 999,
+    alignItems: 'center',
+  },
+  cardButtonText: {
+    color: '#f9fafb',
+    fontSize: 13,
+    fontWeight: '600',
   },
 });
