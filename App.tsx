@@ -50,11 +50,6 @@ function RootNavigator() {
   const { user, loading: authLoading } = useAuth();
   const { hasSeen } = useOnboardingFlag();
 
-  console.log('RootNavigator →', {
-    userEmail: user?.email,
-    hasSeen,
-  });
-
   useEffect(() => {
     (async () => {
       const { status: existingStatus } =
