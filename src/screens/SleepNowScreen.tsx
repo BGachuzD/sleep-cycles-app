@@ -143,15 +143,6 @@ export const SleepNowScreen: FC<Props> = ({ navigation }) => {
         <GradientBackground />
 
         <View style={styles.content}>
-          <View style={styles.topBar}>
-            <TouchableOpacity
-              onPress={() => navigation.navigate('SleepProfile')}
-              hitSlop={10}
-            >
-              <Text style={styles.topBarLink}>Perfil</Text>
-            </TouchableOpacity>
-          </View>
-
           <View style={styles.header}>
             <Animated.View style={[styles.breathingIcon, breathingIconStyle]}>
               <Text style={styles.breathingIconEmoji}>🌙</Text>
