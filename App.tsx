@@ -1,7 +1,11 @@
+// App.tsx
 import 'react-native-gesture-handler';
 import 'react-native-reanimated';
+import 'react-native-url-polyfill/auto';
+import 'react-native-get-random-values';
 
 import { useEffect } from 'react';
+import { ActivityIndicator, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -12,20 +16,22 @@ import { WakeAtScreen } from './src/screens/WakeAtScreen';
 import { OnboardingScreen } from './src/screens/OnboardingScreen';
 import { SleepProfileScreen } from './src/screens/SleepProfileScreen';
 import { SleepProfileProvider } from './src/context/SleepProfileContext';
-import { NotificationsManagerScreen } from './src/screens/NotificationsManagerScreen';
-import Constants from 'expo-constants';
+import { AuthProvider, useAuth } from './src/context/AuthContext';
+import { useOnboardingFlag } from './src/hooks/useOnboardingFlag';
+import { SignInScreen } from './src/screens/auth/SignInScreen';
+import { SignUpScreen } from './src/screens/auth/SignUpScreen';
 
 export type RootStackParamList = {
   Onboarding: undefined;
   SleepNow: undefined;
   WakeAt: undefined;
   SleepProfile: undefined;
-  Notifications: undefined;
+  SignIn: undefined;
+  SignUp: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
-// Configuración global: cómo se muestran las notificaciones cuando la app está en foreground
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldPlaySound: true,
@@ -35,10 +41,12 @@ Notifications.setNotificationHandler({
   }),
 });
 
-export default function App() {
+function RootNavigator() {
+  const { user, loading: authLoading } = useAuth();
+  const { hasSeen } = useOnboardingFlag();
+
   useEffect(() => {
     (async () => {
-      // Pedimos permisos al arrancar
       const { status: existingStatus } =
         await Notifications.getPermissionsAsync();
       let finalStatus = existingStatus;
@@ -54,26 +62,66 @@ export default function App() {
     })();
   }, []);
 
+  if (authLoading || hasSeen === null) {
+    return (
+      <View
+        style={{
+          flex: 1,
+          backgroundColor: '#020617',
+          justifyContent: 'center',
+          alignItems: 'center',
+        }}
+      >
+        <ActivityIndicator color="#e5e7eb" />
+      </View>
+    );
+  }
+
+  // 1) Si no hay usuario -> Auth stack
+  if (!user) {
+    return (
+      <Stack.Navigator screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="SignIn" component={SignInScreen} />
+        <Stack.Screen name="SignUp" component={SignUpScreen} />
+      </Stack.Navigator>
+    );
+  }
+
+  // 2) Si hay usuario pero no ha visto onboarding -> Onboarding
+  if (!hasSeen) {
+    return (
+      <Stack.Navigator screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="Onboarding" component={OnboardingScreen} />
+        <Stack.Screen name="SleepNow" component={SleepNowScreen} />
+        <Stack.Screen name="WakeAt" component={WakeAtScreen} />
+        <Stack.Screen name="SleepProfile" component={SleepProfileScreen} />
+      </Stack.Navigator>
+    );
+  }
+
+  // 3) Usuario autenticado + onboarding visto -> App normal
   return (
-    <SleepProfileProvider>
-      <NavigationContainer>
-        <StatusBar
-          style={Constants.manifest?.extra?.statusBarStyle || 'auto'}
-        />
-        <Stack.Navigator
-          initialRouteName="Onboarding"
-          screenOptions={{ headerShown: false }}
-        >
-          <Stack.Screen name="Onboarding" component={OnboardingScreen} />
-          <Stack.Screen name="SleepNow" component={SleepNowScreen} />
-          <Stack.Screen name="WakeAt" component={WakeAtScreen} />
-          <Stack.Screen name="SleepProfile" component={SleepProfileScreen} />
-          <Stack.Screen
-            name="Notifications"
-            component={NotificationsManagerScreen}
-          />
-        </Stack.Navigator>
-      </NavigationContainer>
-    </SleepProfileProvider>
+    <Stack.Navigator
+      initialRouteName="SleepNow"
+      screenOptions={{ headerShown: false }}
+    >
+      <Stack.Screen name="SleepNow" component={SleepNowScreen} />
+      <Stack.Screen name="WakeAt" component={WakeAtScreen} />
+      <Stack.Screen name="SleepProfile" component={SleepProfileScreen} />
+      <Stack.Screen name="Onboarding" component={OnboardingScreen} />
+    </Stack.Navigator>
+  );
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <SleepProfileProvider>
+        <NavigationContainer>
+          <StatusBar style="light" />
+          <RootNavigator />
+        </NavigationContainer>
+      </SleepProfileProvider>
+    </AuthProvider>
   );
 }
