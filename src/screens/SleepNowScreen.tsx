@@ -322,11 +322,6 @@ export const SleepNowScreen: FC<Props> = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  loadingCenter: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   container: {
     flex: 1,
     backgroundColor: '#020617',
@@ -335,6 +330,11 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+  },
+  loadingCenter: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   topBar: {
     flexDirection: 'row',

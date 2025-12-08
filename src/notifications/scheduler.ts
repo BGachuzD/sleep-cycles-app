@@ -60,3 +60,9 @@ export async function listScheduledNotifications() {
     return [];
   }
 }
+
+// import * as Notifications from 'expo-notifications';
+
+// export async function listScheduledNotifications() {
+//   return Notifications.getAllScheduledNotificationsAsync(); // Promise<NotificationRequest[]>
+// }
