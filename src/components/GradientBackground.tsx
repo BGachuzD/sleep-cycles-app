@@ -40,7 +40,7 @@ export const GradientBackground: FC = () => {
   const stars = useMemo(
     () =>
       Array.from({ length: 100 }).map((_, index) => {
-        const size = Math.random() * 2 + 1;
+        const size = Math.random() * 3 + 1;
         const top = Math.random() * height;
         const left = Math.random() * width;
         return { id: index, size, top, left };
@@ -71,6 +71,7 @@ export const GradientBackground: FC = () => {
                 height: star.size,
                 top: star.top,
                 left: star.left,
+                opacity: Math.random() * 0.8 + 0.2,
               },
             ]}
           />
@@ -104,13 +105,14 @@ const styles = StyleSheet.create({
   },
   stars: {
     position: 'absolute',
-    width: '100%',
-    height: '100%',
+    flex: 1,
+    width: width,
+    height: height,
     overflow: 'hidden',
   },
   star: {
     position: 'absolute',
     backgroundColor: '#fff',
-    borderRadius: 1,
+    borderRadius: 50,
   },
 });
