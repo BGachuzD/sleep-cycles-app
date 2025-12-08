@@ -1,10 +1,11 @@
-import React, { FC } from 'react';
+import React, { FC, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   Dimensions,
   TouchableOpacity,
+  Platform,
 } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../App';
@@ -15,6 +16,9 @@ import Animated, {
   useAnimatedStyle,
   interpolate,
   Extrapolation,
+  useDerivedValue,
+  withTiming,
+  withRepeat,
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -49,6 +53,79 @@ const SLIDES = [
   },
 ];
 
+const DOT_SIZE = 8;
+const PADDING_H = 28;
+
+// --- Componente auxiliar: Indicador de Dots ---
+const DotIndicator: FC<{
+  scrollX: any;
+  index: number;
+}> = ({ scrollX, index }) => {
+  const animatedDotStyle = useAnimatedStyle(() => {
+    const inputRange = [
+      (index - 1) * width,
+      index * width,
+      (index + 1) * width,
+    ];
+
+    const opacity = interpolate(
+      scrollX.value,
+      inputRange,
+      [0.4, 1, 0.4],
+      Extrapolation.CLAMP,
+    );
+
+    const dotWidth = interpolate(
+      scrollX.value,
+      inputRange,
+      [DOT_SIZE, DOT_SIZE * 3, DOT_SIZE],
+      Extrapolation.CLAMP,
+    );
+
+    return {
+      opacity,
+      width: dotWidth,
+      backgroundColor: '#818cf8',
+    };
+  });
+
+  return <Animated.View style={[styles.dot, animatedDotStyle]} />;
+};
+
+// --- Componente auxiliar: Flecha de Deslizamiento (Solo en la primera diapositiva) ---
+const SwipeIndicator: FC<{ scrollX: any }> = ({ scrollX }) => {
+  const arrowTranslateX = useSharedValue(0);
+
+  useEffect(() => {
+    arrowTranslateX.value = withRepeat(
+      withTiming(8, { duration: 800 }),
+      -1,
+      true,
+    );
+  }, [arrowTranslateX]);
+
+  const animatedStyle = useAnimatedStyle(() => {
+    const opacity = interpolate(
+      scrollX.value,
+      [0, width * 0.2],
+      [1, 0],
+      Extrapolation.CLAMP,
+    );
+
+    return {
+      opacity,
+      transform: [{ translateX: arrowTranslateX.value }],
+    };
+  });
+
+  return (
+    <Animated.View style={[styles.swipeIndicatorContainer, animatedStyle]}>
+      <Text style={styles.swipeIndicatorText}>Desliza</Text>
+      <Text style={styles.swipeIndicatorText}>→</Text>
+    </Animated.View>
+  );
+};
+
 export const OnboardingScreen: FC<Props> = ({ navigation }) => {
   const scrollX = useSharedValue(0);
   const { markAsSeen } = useOnboardingFlag();
@@ -60,13 +137,13 @@ export const OnboardingScreen: FC<Props> = ({ navigation }) => {
   });
 
   const handleStart = async () => {
-    await markAsSeen(); // Guardar AsyncStorage
+    await markAsSeen();
     navigation.replace('SleepNow');
   };
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-      <View style={styles.container}>
+      <View style={styles.flex}>
         <GradientBackground />
 
         <Animated.ScrollView
@@ -75,6 +152,7 @@ export const OnboardingScreen: FC<Props> = ({ navigation }) => {
           showsHorizontalScrollIndicator={false}
           onScroll={onScroll}
           scrollEventThrottle={16}
+          contentContainerStyle={styles.scrollContent}
         >
           {SLIDES.map((slide, index) => {
             const inputRange = [
@@ -119,6 +197,10 @@ export const OnboardingScreen: FC<Props> = ({ navigation }) => {
                     <Text style={styles.description}>{slide.description}</Text>
                   </Animated.View>
 
+                  {/* Indicador de flecha solo en la primera slide */}
+                  {index === 0 && <SwipeIndicator scrollX={scrollX} />}
+
+                  {/* Botón de Comenzar: MOVIDO DENTRO DE LA ÚLTIMA SLIDE */}
                   {isLast && (
                     <TouchableOpacity
                       style={styles.startButton}
@@ -133,24 +215,55 @@ export const OnboardingScreen: FC<Props> = ({ navigation }) => {
             );
           })}
         </Animated.ScrollView>
+
+        {/* Footer Fijo para los Dots (siempre visible, sin animación de opacidad/translate) */}
+        <View style={styles.dotsFooter}>
+          {/* Indicadores de Dots */}
+          <View style={styles.dotsContainer}>
+            {SLIDES.map((_, index) => (
+              <DotIndicator key={index} scrollX={scrollX} index={index} />
+            ))}
+          </View>
+        </View>
       </View>
     </SafeAreaView>
   );
 };
 
-const PADDING_H = 28;
-
 const styles = StyleSheet.create({
+  flex: { flex: 1 },
   container: {
     flex: 1,
     backgroundColor: '#020617',
+  },
+  scrollContent: {
+    // Aseguramos que haya espacio para el footer de puntos en la parte inferior
+    paddingBottom: DOT_SIZE * 8,
+    flexGrow: 1,
   },
   slideInner: {
     flex: 1,
     paddingTop: height * 0.12,
     paddingHorizontal: PADDING_H,
-    justifyContent: 'flex-start',
+    alignItems: 'center',
   },
+  // --- Swipe Indicator ---
+  swipeIndicatorContainer: {
+    position: 'absolute',
+    bottom: height * 0.1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 10,
+    borderRadius: 8,
+    backgroundColor: 'rgba(99,102,241,0.1)',
+  },
+  swipeIndicatorText: {
+    color: '#a5b4fc',
+    fontSize: 16,
+    fontWeight: '600',
+    marginHorizontal: 4,
+  },
+  // --- Elementos de la Slide ---
   emojiWrapper: {
     width: 120,
     height: 120,
@@ -162,28 +275,39 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignSelf: 'center',
     marginBottom: 32,
+    ...Platform.select({
+      ios: {
+        shadowColor: 'rgba(129,140,248,0.7)',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.5,
+        shadowRadius: 6,
+      },
+    }),
   },
   emoji: {
     fontSize: 56,
   },
   title: {
     color: '#f9fafb',
-    fontSize: 28,
+    fontSize: 30,
     fontWeight: '800',
     textAlign: 'center',
     marginBottom: 12,
   },
   description: {
     color: '#cbd5f5',
-    fontSize: 15,
-    lineHeight: 22,
+    fontSize: 16,
+    lineHeight: 24,
     textAlign: 'center',
     opacity: 0.9,
+    paddingHorizontal: 10,
   },
+  // --- Botón de Comenzar (Se renderiza dentro de la slide) ---
   startButton: {
     marginTop: 40,
+    width: width - PADDING_H * 2, // Ancho de la diapositiva menos padding
     backgroundColor: '#4f46e5',
-    paddingVertical: 14,
+    paddingVertical: 16,
     borderRadius: 999,
     alignItems: 'center',
   },
@@ -191,5 +315,25 @@ const styles = StyleSheet.create({
     color: '#f9fafb',
     fontSize: 16,
     fontWeight: '700',
+  },
+  // --- Footer Fijo SÓLO para los Dots ---
+  dotsFooter: {
+    position: 'absolute',
+    bottom: Platform.OS === 'ios' ? 20 : 10, // Ajuste para SafeArea
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    paddingHorizontal: PADDING_H,
+    // No necesita fondo, solo los dots
+  },
+  dotsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dot: {
+    height: DOT_SIZE,
+    borderRadius: DOT_SIZE / 2,
+    marginHorizontal: 4,
   },
 });
