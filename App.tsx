@@ -13,6 +13,7 @@ import { OnboardingScreen } from './src/screens/OnboardingScreen';
 import { SleepProfileScreen } from './src/screens/SleepProfileScreen';
 import { SleepProfileProvider } from './src/context/SleepProfileContext';
 import { NotificationsManagerScreen } from './src/screens/NotificationsManagerScreen';
+import Constants from 'expo-constants';
 
 export type RootStackParamList = {
   Onboarding: undefined;
@@ -56,7 +57,9 @@ export default function App() {
   return (
     <SleepProfileProvider>
       <NavigationContainer>
-        <StatusBar style="light" />
+        <StatusBar
+          style={Constants.manifest?.extra?.statusBarStyle || 'auto'}
+        />
         <Stack.Navigator
           initialRouteName="Onboarding"
           screenOptions={{ headerShown: false }}
