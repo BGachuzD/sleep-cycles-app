@@ -29,69 +29,73 @@ export const NotificationsManagerScreen = () => {
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-      <ScrollView style={styles.container}>
-        <Text style={styles.title}>Notificaciones Programadas</Text>
+      <View style={styles.container}>
+        <ScrollView style={styles.container}>
+          <Text style={styles.title}>Notificaciones Programadas</Text>
 
-        {items.length === 0 && (
-          <Text style={styles.noText}>No hay notificaciones pendientes.</Text>
-        )}
+          {items.length === 0 && (
+            <Text style={styles.noText}>No hay notificaciones pendientes.</Text>
+          )}
 
-        {items.map((n) => {
-          const id = n.identifier;
-          const triggerDate = n.trigger?.date ? new Date(n.trigger.date) : null;
+          {items.map((n) => {
+            const id = n.identifier;
+            const triggerDate = n.trigger?.date
+              ? new Date(n.trigger.date)
+              : null;
 
-          return (
-            <View key={id} style={styles.itemContainer}>
-              <Text style={styles.itemTitle}>
-                {n.content?.title || 'Notificación'}
-              </Text>
-
-              <Text style={{ color: '#cbd5e1', marginTop: 4 }}>
-                {n.content?.body}
-              </Text>
-
-              {triggerDate && (
-                <Text style={styles.itemBody}>
-                  Se disparará: {formatTime(triggerDate)} (
-                  {triggerDate.toLocaleDateString()})
+            return (
+              <View key={id} style={styles.itemContainer}>
+                <Text style={styles.itemTitle}>
+                  {n.content?.title || 'Notificación'}
                 </Text>
-              )}
 
-              <TouchableOpacity
-                onPress={async () => {
-                  await cancelNotification(id);
-                  load();
-                }}
-                style={styles.itemButton}
-              >
-                <Text style={styles.itemButtonText}>Cancelar</Text>
-              </TouchableOpacity>
-            </View>
-          );
-        })}
+                <Text style={{ color: '#cbd5e1', marginTop: 4 }}>
+                  {n.content?.body}
+                </Text>
 
-        {items.length > 0 && (
-          <TouchableOpacity
-            onPress={async () => {
-              await cancelAllNotifications();
-              load();
-            }}
-            style={{
-              marginTop: 20,
-              backgroundColor: '#334155',
-              paddingVertical: 14,
-              borderRadius: 999,
-              alignItems: 'center',
-            }}
-          >
-            <Text style={{ color: '#fff', fontWeight: '700' }}>
-              Cancelar todas las notificaciones
-            </Text>
-          </TouchableOpacity>
-        )}
-      </ScrollView>
+                {triggerDate && (
+                  <Text style={styles.itemBody}>
+                    Se disparará: {formatTime(triggerDate)} (
+                    {triggerDate.toLocaleDateString()})
+                  </Text>
+                )}
 
-      <FloatingDrawerButton />
+                <TouchableOpacity
+                  onPress={async () => {
+                    await cancelNotification(id);
+                    load();
+                  }}
+                  style={styles.itemButton}
+                >
+                  <Text style={styles.itemButtonText}>Cancelar</Text>
+                </TouchableOpacity>
+              </View>
+            );
+          })}
+
+          {items.length > 0 && (
+            <TouchableOpacity
+              onPress={async () => {
+                await cancelAllNotifications();
+                load();
+              }}
+              style={{
+                marginTop: 20,
+                backgroundColor: '#334155',
+                paddingVertical: 14,
+                borderRadius: 999,
+                alignItems: 'center',
+              }}
+            >
+              <Text style={{ color: '#fff', fontWeight: '700' }}>
+                Cancelar todas las notificaciones
+              </Text>
+            </TouchableOpacity>
+          )}
+        </ScrollView>
+
+        <FloatingDrawerButton />
+      </View>
     </SafeAreaView>
   );
 };
@@ -99,8 +103,9 @@ export const NotificationsManagerScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 20,
     backgroundColor: '#0f172a',
+    paddingHorizontal: 10,
+    paddingTop: 10,
   },
   title: {
     color: '#fff',

@@ -13,6 +13,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { SleepNowScreen } from '../screens/SleepNowScreen';
 import { WakeAtScreen } from '../screens/WakeAtScreen';
 import { SleepProfileScreen } from '../screens/SleepProfileScreen';
+import { NotificationsManagerScreen } from '../screens/NotificationsManagerScreen';
+
 import { useAuth } from '../context/AuthContext';
 import { useNavigation } from '@react-navigation/native';
 
@@ -20,6 +22,7 @@ export type AppDrawerParamList = {
   SleepNow: undefined;
   WakeAt: undefined;
   SleepProfile: undefined;
+  Notifications: undefined;
 };
 
 const Drawer = createDrawerNavigator<AppDrawerParamList>();
@@ -121,6 +124,14 @@ export const AppDrawerNavigator: React.FC = () => {
         component={SleepProfileScreen}
         options={{
           title: 'Perfil de sueño',
+        }}
+      />
+      <Drawer.Screen
+        name="Notifications"
+        component={NotificationsManagerScreen}
+        options={{
+          title: 'Notificaciones',
+          drawerItemStyle: { display: 'none' },
         }}
       />
     </Drawer.Navigator>
