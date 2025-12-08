@@ -9,9 +9,13 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Dimensions,
 } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../App';
+
+import { Ionicons } from '@expo/vector-icons';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { GradientBackground } from '../components/GradientBackground';
 import { useSleepProfile } from '../hooks/useSleepProfile';
@@ -21,20 +25,67 @@ import {
   categorizeBMI,
   buildDerivedProfile,
 } from '../domain/sleepProfile';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../context/AuthContext';
-import { FloatingDrawerButton } from '../components/FloatingDrawerButton';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'SleepProfile'>;
+
+const { height } = Dimensions.get('window');
+
+// Componente auxiliar para filas de datos derivados
+const DataRow: FC<{
+  label: string;
+  value: string;
+  icon: keyof typeof Ionicons.glyphMap;
+}> = ({ label, value, icon }) => (
+  // El texto está correctamente envuelto. Esto debería eliminar los errores.
+  <View style={dataRowStyles.row}>
+    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+      <Ionicons
+        name={icon}
+        size={16}
+        color="#9ca3af"
+        style={dataRowStyles.icon}
+      />
+      <Text style={dataRowStyles.label}>{label}</Text>
+    </View>
+    <Text style={dataRowStyles.value}>{value}</Text>
+  </View>
+);
+
+const dataRowStyles = StyleSheet.create({
+  row: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(55,65,81,0.5)',
+  },
+  icon: {
+    marginRight: 8,
+    opacity: 0.8,
+  },
+  label: {
+    color: '#9ca3af',
+    fontSize: 14,
+  },
+  value: {
+    color: '#c7d2fe',
+    fontWeight: '700',
+    fontSize: 14,
+  },
+});
 
 export const SleepProfileScreen: FC<Props> = ({ navigation }) => {
   const { profile, loading, saveProfile } = useSleepProfile();
   const { signOut } = useAuth();
+
   const [age, setAge] = useState('');
   const [weight, setWeight] = useState('');
   const [height, setHeight] = useState('');
   const [gender, setGender] = useState<Gender>('male');
   const [saving, setSaving] = useState(false);
+  const [validationError, setValidationError] = useState<string | null>(null);
 
   useEffect(() => {
     if (profile) {
@@ -49,8 +100,21 @@ export const SleepProfileScreen: FC<Props> = ({ navigation }) => {
     const ageNum = Number(age);
     const weightNum = Number(weight);
     const heightNum = Number(height);
+    let error: string | null = null;
 
-    if (!ageNum || !weightNum || !heightNum) return null;
+    if (!age || !weight || !height) {
+      error = 'Por favor, completa todos los campos.';
+    } else if (isNaN(ageNum) || ageNum < 1 || ageNum > 120) {
+      error = 'La edad debe ser un número válido.';
+    } else if (isNaN(weightNum) || weightNum <= 0) {
+      error = 'El peso debe ser mayor a 0.';
+    } else if (isNaN(heightNum) || heightNum <= 0) {
+      error = 'La altura debe ser mayor a 0.';
+    }
+
+    setValidationError(error);
+
+    if (error) return null;
 
     return {
       age: ageNum,
@@ -73,320 +137,463 @@ export const SleepProfileScreen: FC<Props> = ({ navigation }) => {
   }, [parsedProfile]);
 
   const handleSave = async () => {
-    if (!parsedProfile) return;
+    if (!parsedProfile || validationError) return;
     setSaving(true);
     await saveProfile(parsedProfile);
     setSaving(false);
-    navigation.goBack();
   };
 
-  const isValid = Boolean(parsedProfile);
+  const isValid = Boolean(parsedProfile) && !validationError;
 
   const handleLogout = () => {
     signOut();
   };
 
+  const getGenderIcon = (g: Gender) => {
+    switch (g) {
+      case 'male':
+        return 'man';
+      case 'female':
+        return 'woman';
+      default:
+        return 'happy';
+    }
+  };
+
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <GradientBackground />
+        <View style={styles.loadingCenter}>
+          <ActivityIndicator color="#6366f1" size="large" />
+          <Text style={styles.loadingText}>Cargando perfil...</Text>
+        </View>
+      </View>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-      <View style={styles.container}>
+      <View style={styles.flex}>
         <GradientBackground />
 
         <KeyboardAvoidingView
           style={styles.flex}
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : -height * 0.15}
         >
+          {/* --- SCROLLVIEW DE CONTENIDO --- */}
           <ScrollView
-            style={styles.flex}
             contentContainerStyle={styles.content}
-            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
           >
             <View style={styles.headerRow}>
-              <Text style={styles.headerTitle}>Perfil de sueño</Text>
-              <View style={{ width: 52 }} />
+              <Text style={styles.headerTitle}>Tu Perfil</Text>
+              <TouchableOpacity
+                onPress={handleLogout}
+                style={styles.logoutButton}
+                activeOpacity={0.7}
+              >
+                <Ionicons
+                  name="log-out-outline"
+                  size={18}
+                  color="#9ca3af"
+                  style={{ marginRight: 6 }}
+                />
+                <Text style={styles.logoutText}>Cerrar Sesión</Text>
+              </TouchableOpacity>
             </View>
-
-            {loading ? (
-              <View style={styles.loadingBox}>
-                <ActivityIndicator color="#e5e7eb" />
+            {/* --- SECCIÓN DATOS BÁSICOS --- */}
+            <View style={styles.sectionHeader}>
+              <Ionicons
+                name="person-circle-outline"
+                size={20}
+                color="#e5e7eb"
+              />
+              <Text style={styles.sectionTitle}>Datos Personales</Text>
+            </View>
+            {/* Edad y Género */}
+            <View style={styles.row}>
+              {/* Edad */}
+              <View style={styles.inputCard}>
+                <Text style={styles.label}>Edad (años)</Text>
+                <TextInput
+                  value={age}
+                  onChangeText={setAge}
+                  keyboardType="number-pad"
+                  placeholder="Ej. 30"
+                  placeholderTextColor="#6b7280"
+                  style={styles.input}
+                />
               </View>
-            ) : (
-              <>
-                <Text style={styles.sectionTitle}>Datos básicos</Text>
-
-                <View style={styles.row}>
-                  <View style={styles.field}>
-                    <Text style={styles.label}>Edad</Text>
-                    <TextInput
-                      value={age}
-                      onChangeText={setAge}
-                      keyboardType="number-pad"
-                      placeholder="Años"
-                      placeholderTextColor="#6b7280"
-                      style={styles.input}
-                    />
-                  </View>
-
-                  <View style={styles.field}>
-                    <Text style={styles.label}>Género</Text>
-                    <View style={styles.genderRow}>
-                      {(['male', 'female', 'other'] as Gender[]).map((g) => (
-                        <TouchableOpacity
-                          key={g}
-                          style={[
-                            styles.genderChip,
-                            gender === g && styles.genderChipActive,
-                          ]}
-                          onPress={() => setGender(g)}
-                        >
-                          <Text
-                            style={[
-                              styles.genderChipText,
-                              gender === g && styles.genderChipTextActive,
-                            ]}
-                          >
-                            {g === 'male'
-                              ? 'Masculino'
-                              : g === 'female'
-                                ? 'Femenino'
-                                : 'Otro'}
-                          </Text>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                  </View>
-                </View>
-
-                <Text style={styles.sectionTitle}>Medidas</Text>
-
-                <View style={styles.row}>
-                  <View style={styles.field}>
-                    <Text style={styles.label}>Peso (kg)</Text>
-                    <TextInput
-                      value={weight}
-                      onChangeText={setWeight}
-                      keyboardType="numeric"
-                      placeholder="70"
-                      placeholderTextColor="#6b7280"
-                      style={styles.input}
-                    />
-                  </View>
-
-                  <View style={styles.field}>
-                    <Text style={styles.label}>Altura (cm)</Text>
-                    <TextInput
-                      value={height}
-                      onChangeText={setHeight}
-                      keyboardType="numeric"
-                      placeholder="170"
-                      placeholderTextColor="#6b7280"
-                      style={styles.input}
-                    />
-                  </View>
-                </View>
-
-                {bmiInfo && (
-                  <View style={styles.card}>
-                    <Text style={styles.cardTitle}>Resumen corporal</Text>
-                    <Text style={styles.cardLine}>
-                      IMC estimado:{' '}
-                      <Text style={styles.cardHighlight}>
-                        {bmiInfo.bmi.toFixed(1)}
-                      </Text>{' '}
-                      ({bmiInfo.cat})
-                    </Text>
-                  </View>
-                )}
-
-                {derived && (
-                  <View style={styles.card}>
-                    <Text style={styles.cardTitle}>Parámetros de sueño</Text>
-                    <Text style={styles.cardLine}>
-                      Longitud de ciclo:{' '}
-                      <Text style={styles.cardHighlight}>
-                        {derived.adjustedCycleMinutes} min
-                      </Text>
-                    </Text>
-                    <Text style={styles.cardLine}>
-                      Eficiencia estimada:{' '}
-                      <Text style={styles.cardHighlight}>
-                        {(derived.sleepEfficiency * 100).toFixed(0)} %
-                      </Text>
-                    </Text>
-                    <Text style={styles.cardLine}>
-                      Latencia para dormir:{' '}
-                      <Text style={styles.cardHighlight}>
-                        {derived.latencyMinutes} min
-                      </Text>
-                    </Text>
-                  </View>
-                )}
-
+              {/* Medidas */}
+              <View style={styles.inputCard}>
+                <Text style={styles.label}>Peso (kg)</Text>
+                <TextInput
+                  value={weight}
+                  onChangeText={setWeight}
+                  keyboardType="numeric"
+                  placeholder="Ej. 70.5"
+                  placeholderTextColor="#6b7280"
+                  style={styles.input}
+                />
+              </View>
+            </View>
+            <View style={styles.row}>
+              <View style={styles.inputCard}>
+                <Text style={styles.label}>Altura (cm)</Text>
+                <TextInput
+                  value={height}
+                  onChangeText={setHeight}
+                  keyboardType="numeric"
+                  placeholder="Ej. 175"
+                  placeholderTextColor="#6b7280"
+                  style={styles.input}
+                />
+              </View>
+            </View>
+            {/* Chips de Género (Segmented Control) */}
+            <Text style={styles.label}>Género biológico</Text>
+            <View style={styles.genderRowContainer}>
+              {(['male', 'female', 'other'] as Gender[]).map((g) => (
                 <TouchableOpacity
-                  disabled={!isValid || saving}
-                  onPress={handleSave}
-                  activeOpacity={0.9}
+                  key={g}
                   style={[
-                    styles.saveButton,
-                    (!isValid || saving) && styles.saveButtonDisabled,
+                    styles.genderChip,
+                    gender === g && styles.genderChipActive,
                   ]}
+                  onPress={() => setGender(g)}
                 >
-                  {saving ? (
-                    <ActivityIndicator color="#0f172a" />
-                  ) : (
-                    <Text style={styles.saveButtonText}>Guardar perfil</Text>
-                  )}
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  onPress={() => navigation.navigate('Notifications')}
-                  style={{
-                    padding: 16,
-                    backgroundColor: '#4f46e5',
-                    borderRadius: 12,
-                  }}
-                >
-                  <Text style={{ color: 'white', fontWeight: '600' }}>
-                    Ver mis notificaciones programadas
+                  <Ionicons
+                    name={getGenderIcon(g)}
+                    size={18}
+                    color={gender === g ? '#0f172a' : '#9ca3af'}
+                  />
+                  <Text
+                    style={[
+                      styles.genderChipText,
+                      gender === g && styles.genderChipTextActive,
+                    ]}
+                  >
+                    {g === 'male'
+                      ? 'Masculino'
+                      : g === 'female'
+                        ? 'Femenino'
+                        : 'Otro'}
                   </Text>
                 </TouchableOpacity>
-              </>
+              ))}
+            </View>
+            {/* --- MENSAJE DE ERROR --- */}
+            {validationError && (
+              <View style={styles.errorBox}>
+                <Ionicons
+                  name="warning-outline"
+                  size={18}
+                  color="#fca5a5"
+                  style={{ marginRight: 8 }}
+                />
+                <Text style={styles.errorText}>{validationError}</Text>
+              </View>
             )}
-
+            {/* --- DATOS CALCULADOS: IMC --- */}
+            {bmiInfo && (
+              <View style={styles.card}>
+                <View style={styles.cardHeader}>
+                  <Ionicons name="scale-outline" size={20} color="#e5e7eb" />
+                  <Text style={styles.cardTitle}>Índice de Masa Corporal</Text>
+                </View>
+                <Text style={styles.cardHighlightBig}>
+                  {bmiInfo.bmi.toFixed(1)}
+                </Text>
+                <Text style={styles.cardLine}>
+                  Clasificación:
+                  <Text style={styles.cardCategory}>{bmiInfo.cat}</Text>
+                </Text>
+              </View>
+            )}
+            {/* --- DATOS CALCULADOS: PARÁMETROS DE SUEÑO --- */}
+            {derived && (
+              <View style={styles.card}>
+                <View style={styles.cardHeader}>
+                  <Ionicons name="moon-outline" size={20} color="#e5e7eb" />
+                  <Text style={styles.cardTitle}>
+                    Parámetros de Sueño Derivados
+                  </Text>
+                </View>
+                <DataRow
+                  label="Longitud de Ciclo"
+                  value={`${derived.adjustedCycleMinutes} min`}
+                  icon="sync-outline"
+                />
+                <DataRow
+                  label="Eficiencia Estimada"
+                  value={`${(derived.sleepEfficiency * 100).toFixed(0)} %`}
+                  icon="analytics-outline"
+                />
+                <DataRow
+                  label="Latencia para Dormir"
+                  value={`${derived.latencyMinutes} min`}
+                  icon="time-outline"
+                />
+              </View>
+            )}
             <TouchableOpacity
-              onPress={handleLogout}
-              style={{ marginTop: 24, alignSelf: 'center' }}
+              onPress={() => navigation.navigate('Notifications')}
+              style={styles.notificationsButton}
             >
-              <Text style={{ color: '#9ca3af' }}>Cerrar Sesión</Text>
+              <Ionicons
+                name="notifications-outline"
+                size={18}
+                color="#e5e7eb"
+                style={{ marginRight: 8 }}
+              />
+              <Text style={styles.notificationsButtonText}>
+                Ver mis Recordatorios
+              </Text>
             </TouchableOpacity>
           </ScrollView>
 
-          <FloatingDrawerButton />
+          {/* --- FOOTER FIJO (Botón de Guardar) --- */}
+          <View style={styles.footer}>
+            <TouchableOpacity
+              disabled={!isValid || saving}
+              onPress={handleSave}
+              activeOpacity={0.8}
+              style={[
+                styles.saveButton,
+                (!isValid || saving) && styles.saveButtonDisabled,
+              ]}
+            >
+              {saving ? (
+                <ActivityIndicator color="#0f172a" />
+              ) : (
+                <>
+                  <Ionicons
+                    name="cloud-upload-outline"
+                    size={20}
+                    color="#0f172a"
+                    style={{ marginRight: 8 }}
+                  />
+                  <Text style={styles.saveButtonText}>Guardar Perfil</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
         </KeyboardAvoidingView>
       </View>
     </SafeAreaView>
   );
 };
 
+const PADDING_H = 24;
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   container: {
     flex: 1,
     backgroundColor: '#020617',
   },
+  loadingCenter: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    color: '#9ca3af',
+    marginTop: 10,
+    fontSize: 15,
+  },
   content: {
-    paddingHorizontal: 24,
-    paddingTop: 60,
-    paddingBottom: 40,
+    paddingHorizontal: PADDING_H,
+    paddingTop: 20,
+    paddingBottom: 90,
   },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 24,
     justifyContent: 'space-between',
-  },
-  backText: {
-    color: '#9ca3af',
-    fontSize: 14,
+    marginBottom: 30,
   },
   headerTitle: {
+    color: '#e5e7eb',
+    fontSize: 28,
+    fontWeight: '900',
+  },
+  logoutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 999,
+  },
+  logoutText: {
+    color: '#9ca3af',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+    marginTop: 25,
+  },
+  sectionTitle: {
+    color: '#e5e7eb',
+    fontSize: 17,
+    fontWeight: '700',
+    marginLeft: 8,
+  },
+  row: {
+    flexDirection: 'row',
+    gap: 16,
+    marginBottom: 0,
+  },
+  inputCard: {
+    flex: 1,
+    backgroundColor: '#1f2937',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#374151',
+  },
+  label: {
+    color: '#9ca3af',
+    fontSize: 13,
+    marginBottom: 6,
+    fontWeight: '600',
+  },
+  input: {
+    paddingVertical: 4,
+    paddingHorizontal: 0,
     color: '#f9fafb',
     fontSize: 18,
     fontWeight: '700',
   },
-  loadingBox: {
-    marginTop: 40,
-    alignItems: 'center',
-  },
-  sectionTitle: {
-    color: '#e5e7eb',
-    fontSize: 15,
-    fontWeight: '700',
-    marginBottom: 8,
-    marginTop: 8,
-  },
-  row: {
+  genderRowContainer: {
     flexDirection: 'row',
-    gap: 12,
-    marginBottom: 12,
-  },
-  field: {
-    flex: 1,
-  },
-  label: {
-    color: '#9ca3af',
-    fontSize: 12,
-    marginBottom: 4,
-  },
-  input: {
-    backgroundColor: 'rgba(15,23,42,0.95)',
-    borderRadius: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    color: '#f9fafb',
+    backgroundColor: '#1f2937',
+    borderRadius: 999,
+    padding: 4,
+    marginBottom: 20,
     borderWidth: 1,
-    borderColor: 'rgba(55,65,81,0.9)',
-    fontSize: 14,
-  },
-  genderRow: {
-    flexDirection: 'row',
-    gap: 8,
+    borderColor: '#374151',
   },
   genderChip: {
-    paddingVertical: 6,
-    paddingHorizontal: 10,
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
     borderRadius: 999,
-    borderWidth: 1,
-    borderColor: 'rgba(75,85,99,0.9)',
   },
   genderChipActive: {
-    backgroundColor: '#4f46e5',
-    borderColor: '#4f46e5',
+    backgroundColor: '#6366f1',
   },
   genderChipText: {
     color: '#9ca3af',
-    fontSize: 12,
+    fontSize: 13,
+    marginLeft: 4,
   },
   genderChipTextActive: {
-    color: '#f9fafb',
-    fontWeight: '600',
+    color: '#0f172a',
+    fontWeight: '700',
   },
   card: {
-    backgroundColor: 'rgba(15,23,42,0.95)',
-    borderRadius: 16,
-    padding: 14,
-    marginTop: 4,
-    marginBottom: 8,
+    backgroundColor: '#1f2937',
+    borderRadius: 12,
+    padding: 18,
+    marginTop: 8,
+    marginBottom: 16,
     borderWidth: 1,
-    borderColor: 'rgba(51,65,85,0.9)',
+    borderColor: '#374151',
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+    paddingBottom: 8,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(55,65,81,0.7)',
   },
   cardTitle: {
     color: '#e5e7eb',
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '700',
+    marginLeft: 8,
+  },
+  cardHighlightBig: {
+    color: '#a5b4fc',
+    fontSize: 24,
+    fontWeight: '900',
+    marginTop: 8,
     marginBottom: 4,
   },
   cardLine: {
     color: '#9ca3af',
-    fontSize: 13,
+    fontSize: 14,
     marginBottom: 2,
   },
-  cardHighlight: {
-    color: '#c7d2fe',
-    fontWeight: '600',
+  cardCategory: {
+    fontWeight: '700',
+    color: '#4ade80',
   },
-  saveButton: {
-    marginTop: 16,
-    backgroundColor: '#22c55e',
+  errorBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 10,
+    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+    borderWidth: 1,
+    borderColor: '#fca5a5',
+    marginBottom: 16,
+    marginTop: 8,
+  },
+  errorText: {
+    color: '#fca5a5',
+    fontSize: 14,
+    flex: 1,
+  },
+  notificationsButton: {
     paddingVertical: 14,
     borderRadius: 999,
     alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginTop: 12,
+    backgroundColor: '#374151',
+  },
+  notificationsButtonText: {
+    color: '#e5e7eb',
+    fontWeight: '600',
+    fontSize: 15,
+  },
+  footer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: PADDING_H,
+    paddingTop: 10,
+    paddingBottom: Platform.OS === 'ios' ? 10 : 20,
+    backgroundColor: 'rgba(2, 6, 23, 0.95)',
+    borderTopWidth: 1,
+    borderColor: 'rgba(55,65,81,0.5)',
+  },
+  saveButton: {
+    backgroundColor: '#10b981',
+    paddingVertical: 16,
+    borderRadius: 999,
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
   },
   saveButtonDisabled: {
     opacity: 0.4,
   },
   saveButtonText: {
-    color: '#022c22',
-    fontSize: 15,
-    fontWeight: '700',
+    color: '#0f172a',
+    fontSize: 16,
+    fontWeight: '800',
   },
 });

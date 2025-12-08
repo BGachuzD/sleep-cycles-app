@@ -1,10 +1,11 @@
-import React, { FC, useState, useEffect } from 'react';
+import React, { FC, useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   ScrollView,
+  Platform,
 } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../App';
@@ -16,7 +17,10 @@ import Animated, {
   withSpring,
   withTiming,
   withRepeat,
+  interpolateColor,
+  Extrapolation,
 } from 'react-native-reanimated';
+import { Ionicons } from '@expo/vector-icons'; // Usamos Ionicons
 
 import {
   getSleepTimesForWakeDateForProfile,
@@ -33,14 +37,131 @@ import { FloatingDrawerButton } from '../components/FloatingDrawerButton';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'WakeAt'>;
 
+// --- Componente para las columnas del Picker (Botones Laterales) ---
+const TimePickerColumn: FC<{
+  label: string;
+  value: string;
+  onIncrement: () => void;
+  onDecrement: () => void;
+}> = ({ label, value, onIncrement, onDecrement }) => (
+  <View style={pickerStyles.column}>
+    <Text style={pickerStyles.label}>{label}</Text>
+    <View style={pickerStyles.pickerRow}>
+      <TouchableOpacity style={pickerStyles.pickerButton} onPress={onDecrement}>
+        <Ionicons name="remove" size={24} color="#60a5fa" />
+      </TouchableOpacity>
+      <Text style={pickerStyles.pickerValue}>{value}</Text>
+      <TouchableOpacity style={pickerStyles.pickerButton} onPress={onIncrement}>
+        <Ionicons name="add" size={24} color="#60a5fa" />
+      </TouchableOpacity>
+    </View>
+  </View>
+);
+
+const pickerStyles = StyleSheet.create({
+  column: {
+    flex: 1,
+    borderRadius: 16,
+    paddingVertical: 15,
+    paddingHorizontal: 10,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#374151',
+    backgroundColor: '#1f2937',
+  },
+  label: {
+    color: '#9ca3af',
+    fontSize: 14,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: 8,
+    fontWeight: '600',
+  },
+  pickerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+    paddingHorizontal: 5,
+  },
+  pickerButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 50,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(96,165,250,0.1)', // Fondo sutil para el botón
+  },
+  pickerValue: {
+    color: '#f9fafb',
+    fontSize: 32,
+    fontWeight: '900',
+  },
+});
+
+// --- Componente para cada Card de Opción ---
+const CardOption: FC<{
+  opt: SleepTimeOption;
+  onSchedule: (opt: SleepTimeOption) => void;
+}> = ({ opt, onSchedule }) => (
+  <View style={[styles.card, opt.isRecommended && styles.cardRecommended]}>
+    <View style={styles.cardHeaderRow}>
+      <Text style={styles.cardCycles}>
+        {opt.cycles} {opt.cycles === 1 ? 'CICLO' : 'CICLOS'}
+      </Text>
+
+      {opt.isRecommended && (
+        <View style={styles.recommendedChip}>
+          <Text style={styles.recommendedChipText}>⭐ Mejor Opción</Text>
+        </View>
+      )}
+    </View>
+
+    {/* Hora Clave: Hora de Dormir */}
+    <Text style={styles.cardTime}>
+      {formatTime(opt.windowStart)} - {formatTime(opt.windowEnd)}
+    </Text>
+
+    <View style={styles.cardDetailBox}>
+      <Text style={styles.cardDuration}>
+        <Ionicons name="timer-outline" size={14} color="#a5b4fc" /> Sueño
+        objetivo:{' '}
+        <Text style={styles.cardHighlight}>
+          {formatDuration(opt.totalMinutes)}
+        </Text>
+      </Text>
+      <Text style={styles.cardDuration}>
+        <Ionicons name="bed-outline" size={14} color="#a5b4fc" /> Tiempo en
+        cama: {formatDuration(Math.round(opt.tibMinutes))}
+      </Text>
+    </View>
+
+    <TouchableOpacity
+      style={styles.cardButton}
+      activeOpacity={0.8}
+      onPress={() => onSchedule(opt)}
+    >
+      <Ionicons
+        name="alarm-outline"
+        size={16}
+        color="#f9fafb"
+        style={{ marginRight: 6 }}
+      />
+      <Text style={styles.cardButtonText}>Programar recordatorio</Text>
+    </TouchableOpacity>
+  </View>
+);
+
+// --- Componente Principal ---
 export const WakeAtScreen: FC<Props> = ({ navigation }) => {
   const { profile, loading } = useSleepProfileContext();
 
-  const initialWake = (() => {
+  const initialWake = useMemo(() => {
     const now = new Date();
     now.setMinutes(0);
-    return new Date(now.getTime() + 8 * 60 * 60 * 1000);
-  })();
+    now.setHours(now.getHours() + 1);
+    return new Date(now.getTime() + 7 * 60 * 60 * 1000);
+  }, []);
 
   const [wakeDate, setWakeDate] = useState<Date>(initialWake);
   const [options, setOptions] = useState<SleepTimeOption[]>([]);
@@ -51,12 +172,17 @@ export const WakeAtScreen: FC<Props> = ({ navigation }) => {
   }));
 
   useEffect(() => {
-    breath.value = withRepeat(withTiming(1.08, { duration: 2800 }), -1, true);
+    breath.value = withRepeat(withTiming(1.1, { duration: 3000 }), -1, true);
   }, [breath]);
 
   const buttonScale = useSharedValue(1);
   const animatedButtonStyle = useAnimatedStyle(() => ({
     transform: [{ scale: buttonScale.value }],
+    backgroundColor: interpolateColor(
+      buttonScale.value,
+      [0.96, 1],
+      ['#1e9e4f', '#22c55e'],
+    ),
   }));
 
   const handleCalculate = () => {
@@ -64,9 +190,10 @@ export const WakeAtScreen: FC<Props> = ({ navigation }) => {
     const sleepOptions = getSleepTimesForWakeDateForProfile(
       profile,
       wakeDate,
-      [3, 4, 5, 6],
+      [3, 4, 5, 6, 7],
     );
-    setOptions(sleepOptions);
+    // Invertir para mostrar de menos ciclos a más ciclos (más temprano a más tarde)
+    setOptions(sleepOptions.reverse());
   };
 
   const adjustWakeHours = (delta: number) => {
@@ -80,7 +207,9 @@ export const WakeAtScreen: FC<Props> = ({ navigation }) => {
   const adjustWakeMinutes = (delta: number) => {
     setWakeDate((prev) => {
       const next = new Date(prev);
-      next.setMinutes(next.getMinutes() + delta);
+      // Asegurar que los minutos se mantienen en incrementos de 15
+      const newMinutes = Math.round((next.getMinutes() + delta) / 15) * 15;
+      next.setMinutes(newMinutes);
       return next;
     });
   };
@@ -91,10 +220,11 @@ export const WakeAtScreen: FC<Props> = ({ navigation }) => {
     );
 
     await scheduleLocalNotificationAtDate({
-      title: 'Hora ideal para dormir',
-      body: `Intenta acostarte entre ${formatTime(
+      title: '¡Es hora de dormir!',
+      body: `Ventana ideal para acostarte: ${formatTimeRange(
         opt.windowStart,
-      )} y ${formatTime(opt.windowEnd)} para respetar tus ciclos.`,
+        opt.windowEnd,
+      )}`,
       date: centerTime,
     });
   };
@@ -112,8 +242,14 @@ export const WakeAtScreen: FC<Props> = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-      <ScrollView style={styles.container}>
+      <ScrollView
+        style={styles.flex}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         <GradientBackground />
+
+        <FloatingDrawerButton />
 
         <View style={styles.content}>
           <View style={styles.header}>
@@ -122,72 +258,48 @@ export const WakeAtScreen: FC<Props> = ({ navigation }) => {
             </Animated.View>
           </View>
 
-          <Text style={styles.title}>Despertar a una hora</Text>
+          <Text style={styles.title}>Definir Despertar</Text>
           <Text style={styles.subtitle}>
-            Elige la hora a la que quieres despertar y te sugeriré a qué hora
-            deberías dormir para respetar tus ciclos de sueño.
+            Ajusta la hora a la que *debes* despertar. Te diremos cuándo
+            acostarte.
           </Text>
 
-          <View style={styles.pickerContainer}>
-            <View style={styles.pickerGroup}>
-              <Text style={styles.pickerLabel}>Hora</Text>
-              <View style={styles.pickerRow}>
-                <TouchableOpacity
-                  style={styles.pickerButton}
-                  onPress={() => adjustWakeHours(-1)}
-                >
-                  <Text style={styles.pickerButtonText}>−</Text>
-                </TouchableOpacity>
-                <Text style={styles.pickerValue}>
-                  {wakeDate.toLocaleTimeString('es-MX', {
-                    hour: '2-digit',
-                    hour12: false,
-                  })}
-                </Text>
-                <TouchableOpacity
-                  style={styles.pickerButton}
-                  onPress={() => adjustWakeHours(1)}
-                >
-                  <Text style={styles.pickerButtonText}>+</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            <View style={styles.pickerGroup}>
-              <Text style={styles.pickerLabel}>Minutos</Text>
-              <View style={styles.pickerRow}>
-                <TouchableOpacity
-                  style={styles.pickerButton}
-                  onPress={() => adjustWakeMinutes(-15)}
-                >
-                  <Text style={styles.pickerButtonText}>−</Text>
-                </TouchableOpacity>
-                <Text style={styles.pickerValue}>
-                  {wakeDate.toLocaleTimeString('es-MX', {
-                    minute: '2-digit',
-                  })}
-                </Text>
-                <TouchableOpacity
-                  style={styles.pickerButton}
-                  onPress={() => adjustWakeMinutes(15)}
-                >
-                  <Text style={styles.pickerButtonText}>+</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
+          {/* --- Time Picker con Botones Laterales --- */}
+          <View style={styles.pickerWrapper}>
+            <TimePickerColumn
+              label="Hora"
+              value={wakeDate.toLocaleTimeString('es-MX', {
+                hour: '2-digit',
+                hour12: false,
+              })}
+              onIncrement={() => adjustWakeHours(1)}
+              onDecrement={() => adjustWakeHours(-1)}
+            />
+            <Text style={styles.pickerSeparator}>:</Text>
+            <TimePickerColumn
+              label="Minutos"
+              value={wakeDate.toLocaleTimeString('es-MX', {
+                minute: '2-digit',
+              })}
+              onIncrement={() => adjustWakeMinutes(15)}
+              onDecrement={() => adjustWakeMinutes(-15)}
+            />
           </View>
 
           <Text style={styles.currentWakeText}>
-            Despertarás a las{' '}
+            Hora de Despertar Seleccionada:{' '}
             <Text style={styles.currentWakeTime}>{formatTime(wakeDate)}</Text>
           </Text>
 
-          <Animated.View style={[styles.primaryButton, animatedButtonStyle]}>
+          {/* --- Botón de Cálculo --- */}
+          <Animated.View
+            style={[styles.primaryButtonWrapper, animatedButtonStyle]}
+          >
             <TouchableOpacity
-              activeOpacity={0.9}
+              activeOpacity={1}
               style={styles.primaryButtonInner}
               onPressIn={() => {
-                buttonScale.value = withSpring(0.94, {
+                buttonScale.value = withSpring(0.96, {
                   damping: 15,
                   stiffness: 200,
                 });
@@ -200,105 +312,76 @@ export const WakeAtScreen: FC<Props> = ({ navigation }) => {
               }}
               onPress={handleCalculate}
             >
+              <Ionicons
+                name="calculator-outline"
+                size={20}
+                color="#022c22"
+                style={{ marginRight: 8 }}
+              />
               <Text style={styles.primaryButtonText}>
-                Calcular hora para dormir
+                Calcular Hora para Dormir
               </Text>
             </TouchableOpacity>
           </Animated.View>
 
-          <TouchableOpacity
+          {/* --- Botón Secundario (Regreso) --- */}
+          {/* <TouchableOpacity
             style={styles.secondaryButton}
-            activeOpacity={0.85}
+            activeOpacity={0.8}
             onPress={() => navigation.goBack()}
           >
+            <Ionicons
+              name="arrow-back"
+              size={16}
+              color="#a5b4fc"
+              style={{ marginRight: 6 }}
+            />
             <Text style={styles.secondaryButtonText}>
               Volver a “Dormir ahora”
             </Text>
-          </TouchableOpacity>
+          </TouchableOpacity> */}
 
-          <ScrollView
-            style={styles.scroll}
-            contentContainerStyle={styles.scrollContent}
-            showsVerticalScrollIndicator={false}
-          >
+          {/* --- Lista de Opciones --- */}
+          <View style={{ marginTop: 20 }}>
             {options.length === 0 ? (
-              <Text style={styles.helperText}>
-                Ajusta la hora y toca “Calcular hora para dormir” para ver las
-                recomendaciones.
-              </Text>
+              <View style={styles.helperBox}>
+                <Ionicons name="moon-outline" size={24} color="#6b7280" />
+                <Text style={styles.helperText}>
+                  Ajusta la hora y toca "Calcular" para ver cuándo acostarte.
+                </Text>
+              </View>
             ) : (
-              options
-                .slice()
-                .reverse()
-                .map((opt, index) => (
-                  <Animated.View
-                    key={opt.cycles}
-                    entering={FadeInUp.delay(index * 90)
-                      .springify()
-                      .damping(14)}
-                    style={[
-                      styles.card,
-                      opt.isRecommended && styles.cardRecommended,
-                    ]}
-                  >
-                    <View style={styles.cardHeaderRow}>
-                      <Text style={styles.cardLabel}>
-                        {opt.cycles} {opt.cycles === 1 ? 'ciclo' : 'ciclos'} de
-                        sueño
-                      </Text>
-
-                      {opt.isRecommended && (
-                        <View style={styles.recommendedChip}>
-                          <Text style={styles.recommendedChipText}>
-                            Recomendado
-                          </Text>
-                        </View>
-                      )}
-                    </View>
-
-                    <Text style={styles.cardDuration}>
-                      Sueño objetivo: {formatDuration(opt.totalMinutes)}
-                    </Text>
-                    <Text style={styles.cardDuration}>
-                      Tiempo total en cama:{' '}
-                      {formatDuration(Math.round(opt.tibMinutes))}
-                    </Text>
-                    <Text style={styles.cardDuration}>
-                      Eficiencia estimada: {(opt.efficiency * 100).toFixed(0)} %
-                    </Text>
-                    <Text style={styles.cardDuration}>
-                      Ventana ideal para acostarte:{' '}
-                      {formatTimeRange(opt.windowStart, opt.windowEnd)}
-                    </Text>
-
-                    <Text style={styles.cardNote}>
-                      Deberías intentar acostarte dentro de esta ventana para
-                      completar los ciclos propuestos. Mantén una rutina
-                      constante para que tu cuerpo se adapte.
-                    </Text>
-
-                    <TouchableOpacity
-                      style={styles.cardButton}
-                      activeOpacity={0.9}
-                      onPress={() => handleScheduleSleepNotification(opt)}
-                    >
-                      <Text style={styles.cardButtonText}>
-                        Programar recordatorio para dormir
-                      </Text>
-                    </TouchableOpacity>
-                  </Animated.View>
-                ))
+              options.map((opt, index) => (
+                <Animated.View
+                  key={opt.cycles}
+                  entering={FadeInUp.delay(index * 90)
+                    .springify()
+                    .damping(14)}
+                >
+                  <CardOption
+                    opt={opt}
+                    onSchedule={handleScheduleSleepNotification}
+                  />
+                </Animated.View>
+              ))
             )}
-          </ScrollView>
+          </View>
 
-          <FloatingDrawerButton />
+          {/* Espacio para que el FloatingButton no oculte el contenido */}
+          <View style={{ height: 80 }} />
         </View>
       </ScrollView>
+
+      {/* Botón flotante al final del SafeAreaView */}
     </SafeAreaView>
   );
 };
 
+// --- Estilos Globales ---
+const PADDING_H = 20;
+
 const styles = StyleSheet.create({
+  flex: { flex: 1 },
   loadingCenter: {
     flex: 1,
     justifyContent: 'center',
@@ -307,202 +390,214 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#020617',
-    paddingHorizontal: 10,
-    paddingTop: 10,
   },
   content: {
     flex: 1,
+    paddingHorizontal: PADDING_H,
+    paddingTop: 20,
+  },
+  scrollContent: {
+    paddingBottom: 40,
+    paddingTop: 10,
   },
   header: {
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 20,
   },
   breathingIcon: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: 'rgba(59,130,246,0.25)',
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    backgroundColor: 'rgba(59,130,246,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(96,165,250,0.6)',
+    borderColor: 'rgba(96,165,250,0.5)',
+    marginBottom: 10,
   },
   breathingIconEmoji: {
-    fontSize: 36,
+    fontSize: 32,
   },
   title: {
-    color: '#f9fafb',
-    fontSize: 28,
-    fontWeight: '800',
-    marginBottom: 8,
+    color: '#e0e7ff',
+    fontSize: 30,
+    fontWeight: '900',
+    marginBottom: 4,
+    textAlign: 'center',
   },
   subtitle: {
-    color: '#9ca3af',
+    color: '#a5b4fc',
     fontSize: 15,
     marginBottom: 24,
+    textAlign: 'center',
   },
-  pickerContainer: {
+  // --- Picker Wrapper ---
+  pickerWrapper: {
     flexDirection: 'row',
-    gap: 16,
-    marginBottom: 12,
-  },
-  pickerGroup: {
-    flex: 1,
-    backgroundColor: 'rgba(15,23,42,0.9)',
-    borderRadius: 20,
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(55,65,81,0.8)',
-  },
-  pickerLabel: {
-    color: '#9ca3af',
-    fontSize: 12,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginBottom: 4,
-  },
-  pickerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  pickerButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(148,163,184,0.8)',
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: 20,
+    backgroundColor: '#0f172a',
+    borderRadius: 20,
+    paddingVertical: 10,
+    paddingHorizontal: 5,
+    borderWidth: 1,
+    borderColor: '#374151',
   },
-  pickerButtonText: {
-    color: '#e5e7eb',
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  pickerValue: {
+  pickerSeparator: {
     color: '#f9fafb',
-    fontSize: 20,
-    fontWeight: '700',
+    fontSize: 36, // Tamaño ajustado al valor central del picker
+    fontWeight: '900',
+    marginHorizontal: 10,
+    paddingTop: 15, // Ajuste manual para centrar con el valor
   },
   currentWakeText: {
     color: '#9ca3af',
-    fontSize: 14,
-    marginBottom: 16,
+    fontSize: 15,
+    marginBottom: 20,
+    textAlign: 'center',
   },
   currentWakeTime: {
     color: '#e5e7eb',
     fontSize: 16,
     fontWeight: '700',
   },
-  primaryButton: {
+  // --- Botón Primario ---
+  primaryButtonWrapper: {
     borderRadius: 999,
     overflow: 'hidden',
     marginBottom: 12,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#22c55e',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.4,
+        shadowRadius: 8,
+      },
+    }),
   },
   primaryButtonInner: {
-    backgroundColor: '#22c55e',
-    paddingVertical: 14,
+    paddingVertical: 16,
     borderRadius: 999,
     alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
   },
   primaryButtonText: {
     color: '#022c22',
-    fontSize: 15,
+    fontSize: 17,
     fontWeight: '700',
   },
+  // --- Botón Secundario ---
   secondaryButton: {
     borderWidth: 1,
-    borderColor: '#4f46e5',
-    paddingVertical: 12,
+    borderColor: '#374151',
+    paddingVertical: 14,
     borderRadius: 999,
     alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
     marginBottom: 20,
+    backgroundColor: '#1f2937',
   },
   secondaryButtonText: {
-    color: '#e5e7eb',
-    fontSize: 14,
-    fontWeight: '500',
+    color: '#a5b4fc',
+    fontSize: 15,
+    fontWeight: '600',
   },
-  scroll: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingBottom: 40,
+  // --- Helper y Lista ---
+  helperBox: {
+    alignItems: 'center',
+    padding: 30,
+    backgroundColor: '#1f2937',
+    borderRadius: 16,
+    marginTop: 20,
+    borderWidth: 1,
+    borderColor: '#374151',
   },
   helperText: {
-    color: '#6b7280',
-    fontSize: 14,
-    marginTop: 4,
-  },
-  cardLabel: {
-    color: '#bbf7d0',
-    fontSize: 13,
-    fontWeight: '600',
-    marginBottom: 4,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-  },
-  cardTime: {
-    color: '#f9fafb',
-    fontSize: 26,
-    fontWeight: '800',
-    marginBottom: 4,
-  },
-  cardDuration: {
     color: '#9ca3af',
-    fontSize: 14,
-    marginBottom: 8,
+    fontSize: 15,
+    marginTop: 15,
+    textAlign: 'center',
   },
-  cardNote: {
-    color: '#6b7280',
-    fontSize: 12,
-  },
+  // --- Cards de Opción ---
   card: {
-    backgroundColor: 'rgba(15,23,42,0.95)',
-    borderRadius: 24,
+    backgroundColor: '#1f2937',
+    borderRadius: 20,
     padding: 20,
     marginBottom: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(22,163,74,0.4)',
+    borderLeftWidth: 5,
+    borderLeftColor: '#10b981', // Barra verde
   },
   cardRecommended: {
-    borderColor: '#22c55e',
-    shadowColor: '#22c55e',
-    shadowOpacity: 0.35,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 8 },
+    borderLeftColor: '#f97316', // Naranja/Dorado para Mejor Opción
   },
   cardHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 4,
+    marginBottom: 8,
+  },
+  cardCycles: {
+    color: '#a5b4fc',
+    fontSize: 14,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  cardTime: {
+    color: '#f9fafb',
+    fontSize: 26, // Un poco más pequeño para acomodar la ventana
+    fontWeight: '900',
+    marginBottom: 10,
+  },
+  cardDetailBox: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: '#374151',
+    paddingTop: 10,
+    marginBottom: 10,
+  },
+  cardDuration: {
+    color: '#cbd5e1',
+    fontSize: 14,
+    marginBottom: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  cardHighlight: {
+    color: '#f9fafb',
+    fontWeight: '700',
   },
   recommendedChip: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
     borderRadius: 999,
-    backgroundColor: 'rgba(34,197,94,0.1)',
+    backgroundColor: 'rgba(249,115,22,0.15)',
   },
   recommendedChipText: {
-    color: '#4ade80',
+    color: '#fb923c',
     fontSize: 11,
-    fontWeight: '600',
+    fontWeight: '700',
     textTransform: 'uppercase',
-    letterSpacing: 0.6,
   },
   cardButton: {
-    marginTop: 10,
+    marginTop: 15,
     backgroundColor: '#4f46e5',
-    paddingVertical: 10,
+    paddingVertical: 12,
     borderRadius: 999,
     alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
   },
   cardButtonText: {
     color: '#f9fafb',
-    fontSize: 13,
-    fontWeight: '600',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  floatingButton: {
+    position: 'absolute',
+    bottom: 20,
+    right: PADDING_H,
   },
 });

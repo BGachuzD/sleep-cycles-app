@@ -7,6 +7,8 @@ import {
   ScrollView,
   Pressable,
   Dimensions,
+  Platform,
+  ActivityIndicator,
 } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../App';
@@ -20,7 +22,10 @@ import Animated, {
   withRepeat,
   interpolate,
   runOnJS,
+  Extrapolation,
+  interpolateColor,
 } from 'react-native-reanimated';
+import { Ionicons } from '@expo/vector-icons'; // Usamos Ionicons
 
 import {
   getWakeTimesFromNowForProfile,
@@ -35,10 +40,11 @@ import { useSleepProfileContext } from '../context/SleepProfileContext';
 import { scheduleLocalNotificationAtDate } from '../notifications/scheduler';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FloatingDrawerButton } from '../components/FloatingDrawerButton';
+// Se eliminó FloatingDrawerButton ya que es redundante si hay Header
 
 type Props = NativeStackScreenProps<RootStackParamList, 'SleepNow'>;
 
-const { height } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
 
 export const SleepNowScreen: FC<Props> = ({ navigation }) => {
   const { profile, loading } = useSleepProfileContext();
@@ -50,6 +56,13 @@ export const SleepNowScreen: FC<Props> = ({ navigation }) => {
   const buttonScale = useSharedValue(1);
   const animatedButtonStyle = useAnimatedStyle(() => ({
     transform: [{ scale: buttonScale.value }],
+    // Animación de gradiente para el botón principal (simulado con color)
+    backgroundColor: interpolateColor(
+      // <-- USAMOS interpolateColor AQUÍ
+      buttonScale.value,
+      [0.96, 1], // Usé 0.96 en el código anterior, asegurémonos de que coincida con el rango de onPressIn/Out
+      ['#5e54d8', '#6366f1'], // Color base al presionar vs color normal
+    ),
   }));
 
   const breath = useSharedValue(1);
@@ -58,9 +71,10 @@ export const SleepNowScreen: FC<Props> = ({ navigation }) => {
   }));
 
   useEffect(() => {
+    // Animación de respiración con duración ligeramente más lenta
     breath.value = withRepeat(
-      withTiming(1.08, {
-        duration: 3000,
+      withTiming(1.1, {
+        duration: 4000,
       }),
       -1,
       true,
@@ -77,17 +91,17 @@ export const SleepNowScreen: FC<Props> = ({ navigation }) => {
   });
 
   const backdropStyle = useAnimatedStyle(() => {
-    const opacity = interpolate(sheetProgress.value, [0, 1], [0, 0.55]);
+    const opacity = interpolate(sheetProgress.value, [0, 1], [0, 0.65]);
     return { opacity };
   });
 
   const openSheet = (option: WakeTimeOption) => {
     setSelectedOption(option);
-    sheetProgress.value = withTiming(1, { duration: 260 });
+    sheetProgress.value = withTiming(1, { duration: 300 });
   };
 
   const closeSheet = () => {
-    sheetProgress.value = withTiming(0, { duration: 220 }, (finished) => {
+    sheetProgress.value = withTiming(0, { duration: 250 }, (finished) => {
       if (finished) {
         runOnJS(setSelectedOption)(null);
       }
@@ -97,10 +111,11 @@ export const SleepNowScreen: FC<Props> = ({ navigation }) => {
   const handleCalculate = () => {
     if (!profile) return;
     const now = new Date();
+    // Usamos más ciclos para dar más opciones al usuario [3, 4, 5, 6, 7]
     const wakeOptions = getWakeTimesFromNowForProfile(
       profile,
       now,
-      [3, 4, 5, 6],
+      [3, 4, 5, 6, 7],
     );
     setOptions(wakeOptions);
   };
@@ -115,7 +130,7 @@ export const SleepNowScreen: FC<Props> = ({ navigation }) => {
     );
 
     await scheduleLocalNotificationAtDate({
-      title: 'Hora ideal para despertar',
+      title: '¡Es hora de despertar!',
       body: `Ventana ideal: ${formatTimeRange(
         selectedOption.windowStart,
         selectedOption.windowEnd,
@@ -131,7 +146,10 @@ export const SleepNowScreen: FC<Props> = ({ navigation }) => {
       <View style={styles.container}>
         <GradientBackground />
         <View style={styles.loadingCenter}>
-          <Text style={{ color: '#e5e7eb' }}>Cargando perfil de sueño…</Text>
+          <ActivityIndicator color="#6366f1" size="large" />
+          <Text style={{ color: '#e5e7eb', marginTop: 15 }}>
+            Cargando perfil de sueño…
+          </Text>
         </View>
       </View>
     );
@@ -139,269 +157,365 @@ export const SleepNowScreen: FC<Props> = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-      <View style={styles.container}>
+      <View style={styles.buttonContainer}>
+        <FloatingDrawerButton />
+      </View>
+      <View style={styles.content}>
         <GradientBackground />
 
-        <View style={styles.content}>
-          <View style={styles.header}>
-            <Animated.View style={[styles.breathingIcon, breathingIconStyle]}>
-              <Text style={styles.breathingIconEmoji}>🌙</Text>
-            </Animated.View>
-          </View>
-
+        {/* --- Header con Icono Animado --- */}
+        <View style={styles.header}>
+          <Animated.View style={[styles.breathingIcon, breathingIconStyle]}>
+            <Text style={styles.breathingIconEmoji}>🌙</Text>
+          </Animated.View>
           <Text style={styles.title}>Dormir ahora</Text>
           <Text style={styles.subtitle}>
-            Si te duermes en este momento, estas son las horas recomendadas para
-            despertar al final de un ciclo de sueño.
+            Calcula las horas recomendadas para despertar al final de un ciclo
+            de sueño, basado en tus preferencias.
           </Text>
+        </View>
 
-          <Animated.View style={[styles.primaryButton, animatedButtonStyle]}>
-            <TouchableOpacity
-              activeOpacity={0.9}
-              style={styles.primaryButtonInner}
-              onPressIn={() => {
-                buttonScale.value = withSpring(0.94, {
-                  damping: 15,
-                  stiffness: 200,
-                });
-              }}
-              onPressOut={() => {
-                buttonScale.value = withSpring(1, {
-                  damping: 15,
-                  stiffness: 200,
-                });
-              }}
-              onPress={handleCalculate}
-            >
-              <Text style={styles.primaryButtonText}>
-                Calcular horarios ideales
-              </Text>
-            </TouchableOpacity>
-          </Animated.View>
-
+        {/* --- Botón Principal de Cálculo --- */}
+        <Animated.View
+          style={[styles.primaryButtonWrapper, animatedButtonStyle]}
+        >
           <TouchableOpacity
-            style={styles.secondaryButton}
-            activeOpacity={0.85}
-            onPress={() => navigation.navigate('WakeAt')}
+            activeOpacity={1} // La animación ya maneja la presión
+            style={styles.primaryButtonInner}
+            onPressIn={() => {
+              buttonScale.value = withSpring(0.96, {
+                damping: 15,
+                stiffness: 200,
+              });
+            }}
+            onPressOut={() => {
+              buttonScale.value = withSpring(1, {
+                damping: 15,
+                stiffness: 200,
+              });
+            }}
+            onPress={handleCalculate}
           >
-            <Text style={styles.secondaryButtonText}>
-              Quiero despertar a una hora específica
+            <Ionicons
+              name="bulb-outline"
+              size={20}
+              color="#f9fafb"
+              style={{ marginRight: 8 }}
+            />
+            <Text style={styles.primaryButtonText}>
+              Calcular horarios ideales
             </Text>
           </TouchableOpacity>
+        </Animated.View>
 
-          <ScrollView
-            style={styles.scroll}
-            contentContainerStyle={styles.scrollContent}
-            showsVerticalScrollIndicator={false}
-          >
-            {options.length === 0 ? (
+        {/* --- Botón Secundario --- */}
+        {/* <TouchableOpacity
+          style={styles.secondaryButton}
+          activeOpacity={0.8}
+          onPress={() => navigation.navigate('WakeAt')}
+        >
+          <Text style={styles.secondaryButtonText}>
+            Cambiar: Quiero despertar a una hora específica
+          </Text>
+          <Ionicons
+            name="arrow-forward"
+            size={16}
+            color="#a5b4fc"
+            style={{ marginLeft: 6 }}
+          />
+        </TouchableOpacity> */}
+
+        {/* --- Lista de Opciones --- */}
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {options.length === 0 ? (
+            <View style={styles.helperBox}>
+              <Ionicons name="time-outline" size={24} color="#6b7280" />
               <Text style={styles.helperText}>
-                Toca “Calcular horarios ideales” para ver las horas sugeridas
-                para despertar.
+                Toca el botón de arriba para ver las horas sugeridas para
+                despertar.
               </Text>
-            ) : (
-              options.map((opt, index) => (
-                <Animated.View
-                  key={opt.cycles}
-                  entering={FadeInUp.delay(index * 90)
-                    .springify()
-                    .damping(14)}
+            </View>
+          ) : (
+            options.map((opt, index) => (
+              <Animated.View
+                key={opt.cycles}
+                entering={FadeInUp.delay(index * 90)
+                  .springify()
+                  .damping(14)}
+              >
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  style={[
+                    styles.card,
+                    opt.isRecommended && styles.cardRecommended,
+                  ]}
+                  onPress={() => openSheet(opt)}
                 >
-                  <TouchableOpacity
-                    activeOpacity={0.9}
-                    style={[
-                      styles.card,
-                      opt.isRecommended && styles.cardRecommended,
-                    ]}
-                    onPress={() => openSheet(opt)}
-                  >
-                    <View style={styles.cardHeaderRow}>
-                      <Text style={styles.cardLabel}>
-                        {opt.cycles} {opt.cycles === 1 ? 'ciclo' : 'ciclos'}
+                  <View style={styles.cardContentWrapper}>
+                    {/* Columna Izquierda: Hora y Ciclos */}
+                    <View>
+                      <Text style={styles.cardTime}>
+                        {formatTime(opt.wakeDate)}
                       </Text>
+                      <Text style={styles.cardCycles}>
+                        {opt.cycles} {opt.cycles === 1 ? 'CICLO' : 'CICLOS'}
+                      </Text>
+                    </View>
 
+                    {/* Columna Derecha: Duración y Chip */}
+                    <View style={styles.cardDetails}>
+                      <Text style={styles.cardDuration}>
+                        {formatDuration(opt.totalMinutes)} de sueño
+                      </Text>
                       {opt.isRecommended && (
                         <View style={styles.recommendedChip}>
                           <Text style={styles.recommendedChipText}>
-                            Recomendado
+                            ⭐ Mejor Opción
                           </Text>
                         </View>
                       )}
+                      <Text style={styles.cardActionNote}>
+                        Ventana:{' '}
+                        {formatTimeRange(opt.windowStart, opt.windowEnd)}
+                      </Text>
                     </View>
+                  </View>
+                </TouchableOpacity>
+              </Animated.View>
+            ))
+          )}
+          <View style={{ height: 40 }} />
+        </ScrollView>
+      </View>
 
-                    <Text style={styles.cardTime}>
-                      {formatTime(opt.wakeDate)}
-                    </Text>
+      {/* --- Reanimated Sheet --- */}
+      {selectedOption && (
+        <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
+          {/* Backdrop con mayor opacidad */}
+          <Animated.View style={[styles.backdrop, backdropStyle]}>
+            <Pressable style={StyleSheet.absoluteFill} onPress={closeSheet} />
+          </Animated.View>
 
-                    <Text style={styles.cardDuration}>
-                      Sueño objetivo: {formatDuration(opt.totalMinutes)}
-                    </Text>
-                    <Text style={styles.cardDuration}>
-                      Tiempo total en cama:{' '}
-                      {formatDuration(Math.round(opt.tibMinutes))}
-                    </Text>
-                    <Text style={styles.cardDuration}>
-                      Eficiencia estimada: {(opt.efficiency * 100).toFixed(0)} %
-                    </Text>
-                    <Text style={styles.cardDuration}>
-                      Ventana ideal para despertar:{' '}
-                      {formatTimeRange(opt.windowStart, opt.windowEnd)}
-                    </Text>
-                    <Text style={styles.cardNote}>
-                      Toca para ver más detalles de este horario.
-                    </Text>
-                  </TouchableOpacity>
-                </Animated.View>
-              ))
-            )}
-          </ScrollView>
-        </View>
+          <Animated.View style={[styles.sheet, sheetStyle]}>
+            <View style={styles.sheetHandle} />
 
-        {selectedOption && (
-          <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
-            <Animated.View style={[styles.backdrop, backdropStyle]}>
-              <Pressable style={StyleSheet.absoluteFill} onPress={closeSheet} />
-            </Animated.View>
-
-            <Animated.View style={[styles.sheet, sheetStyle]}>
-              <View style={styles.sheetHandle} />
-              <Text style={styles.sheetLabel}>
-                {selectedOption.cycles}{' '}
-                {selectedOption.cycles === 1
-                  ? 'ciclo de sueño'
-                  : 'ciclos de sueño'}
-              </Text>
+            <View style={styles.sheetHeader}>
               <Text style={styles.sheetTime}>
                 {formatTime(selectedOption.wakeDate)}
               </Text>
-              <Text style={styles.sheetDuration}>
-                Dormirías aprox. {formatDuration(selectedOption.totalMinutes)} +
-                {' 15 min '}para conciliar el sueño.
+              <Text style={styles.sheetLabel}>
+                {selectedOption.cycles}{' '}
+                {selectedOption.cycles === 1 ? 'CICLO' : 'CICLOS'}
               </Text>
+            </View>
 
-              <Text style={styles.sheetDuration}>
-                Ventana ideal para despertar:{' '}
-                {formatTimeRange(
+            <View style={styles.sheetDetails}>
+              <DetailRow
+                icon="timer-outline"
+                label="Duración total de sueño:"
+                value={formatDuration(selectedOption.totalMinutes)}
+              />
+              <DetailRow
+                icon="bed-outline"
+                label="Tiempo total en cama (TIB):"
+                value={formatDuration(Math.round(selectedOption.tibMinutes))}
+              />
+              <DetailRow
+                icon="sync-outline"
+                label="Eficiencia estimada:"
+                value={`${(selectedOption.efficiency * 100).toFixed(0)} %`}
+              />
+              <DetailRow
+                icon="sunny-outline"
+                label="Ventana ideal para despertar:"
+                value={formatTimeRange(
                   selectedOption.windowStart,
                   selectedOption.windowEnd,
                 )}
+              />
+            </View>
+
+            <Text style={styles.sheetText}>
+              Esta hora te permite despertar al final de un **ciclo de sueño
+              ligero**. Evitar despertar en sueño profundo te ayudará a sentirte
+              menos aturdido y más energizado.
+            </Text>
+
+            <TouchableOpacity
+              style={styles.sheetButtonPrimary}
+              activeOpacity={0.9}
+              onPress={handleScheduleWakeNotification}
+            >
+              <Ionicons
+                name="notifications-outline"
+                size={18}
+                color="#022c22"
+                style={{ marginRight: 8 }}
+              />
+              <Text style={styles.sheetButtonPrimaryText}>
+                Programar Alerta de Despertar
               </Text>
+            </TouchableOpacity>
 
-              <Text style={styles.sheetText}>
-                Esta hora está pensada para que despiertes al final de un ciclo
-                de sueño ligero. Despertar en esta fase suele sentirse más
-                natural y menos pesado que salir abruptamente de un sueño
-                profundo.
-              </Text>
+            <TouchableOpacity
+              style={styles.sheetButton}
+              activeOpacity={0.9}
+              onPress={closeSheet}
+            >
+              <Text style={styles.sheetButtonText}>Cerrar</Text>
+            </TouchableOpacity>
+          </Animated.View>
+        </View>
+      )}
 
-              <TouchableOpacity
-                style={styles.sheetButtonPrimary}
-                activeOpacity={0.9}
-                onPress={handleScheduleWakeNotification}
-              >
-                <Text style={styles.sheetButtonPrimaryText}>
-                  Programar recordatorio para despertar
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.sheetButton}
-                activeOpacity={0.9}
-                onPress={closeSheet}
-              >
-                <Text style={styles.sheetButtonText}>Cerrar</Text>
-              </TouchableOpacity>
-            </Animated.View>
-          </View>
-        )}
-
-        <FloatingDrawerButton />
-      </View>
+      {/* Se eliminó FloatingDrawerButton */}
     </SafeAreaView>
   );
 };
 
+// Componente para filas de detalles en el Sheet
+const DetailRow: FC<{
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  value: string;
+}> = ({ icon, label, value }) => (
+  <View style={detailRowStyles.row}>
+    <Ionicons
+      name={icon}
+      size={18}
+      color="#9ca3af"
+      style={detailRowStyles.icon}
+    />
+    <Text style={detailRowStyles.label}>{label}</Text>
+    <Text style={detailRowStyles.value}>{value}</Text>
+  </View>
+);
+
+const detailRowStyles = StyleSheet.create({
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  icon: {
+    width: 25,
+  },
+  label: {
+    color: '#9ca3af',
+    fontSize: 14,
+    marginRight: 8,
+  },
+  value: {
+    color: '#e5e7eb',
+    fontSize: 14,
+    fontWeight: '600',
+    flexShrink: 1, // Permite que el valor se comprima si es muy largo
+  },
+});
+
+const PADDING_H = 20;
+
 const styles = StyleSheet.create({
+  buttonContainer: {
+    position: 'relative',
+    top: 5,
+    left: 5,
+    zIndex: 10,
+  },
   container: {
     flex: 1,
     backgroundColor: '#020617',
-    paddingHorizontal: 10,
-    paddingTop: 10,
   },
   content: {
     flex: 1,
+    paddingHorizontal: PADDING_H,
+    paddingTop: 20,
   },
   loadingCenter: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  topBar: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  topBarLink: {
-    color: '#9ca3af',
-    fontSize: 13,
-  },
   header: {
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 20,
+    paddingTop: 10,
   },
   breathingIcon: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: 'rgba(79,70,229,0.25)',
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    backgroundColor: 'rgba(99,102,241,0.2)', // Azul más sutil
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(129,140,248,0.5)',
+    borderColor: 'rgba(99,102,241,0.5)',
+    marginBottom: 10,
   },
   breathingIconEmoji: {
-    fontSize: 36,
+    fontSize: 32,
   },
   title: {
-    color: '#f9fafb',
-    fontSize: 34,
-    fontWeight: '800',
-    marginBottom: 8,
+    color: '#e0e7ff',
+    fontSize: 30,
+    fontWeight: '900',
+    marginBottom: 4,
+    textAlign: 'center',
   },
   subtitle: {
-    color: '#9ca3af',
-    fontSize: 16,
+    color: '#a5b4fc',
+    fontSize: 15,
     marginBottom: 24,
+    textAlign: 'center',
   },
-  primaryButton: {
+  primaryButtonWrapper: {
     borderRadius: 999,
     overflow: 'hidden',
-    marginBottom: 12,
+    marginBottom: 16,
+    // Eliminamos el backgroundColor de aquí, ahora lo maneja AnimatedStyle
+    ...Platform.select({
+      ios: {
+        shadowColor: '#4f46e5',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.5,
+        shadowRadius: 10,
+      },
+      android: {
+        elevation: 8,
+      },
+    }),
   },
   primaryButtonInner: {
-    backgroundColor: '#4f46e5',
     paddingVertical: 16,
     borderRadius: 999,
     alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
   },
   primaryButtonText: {
     color: '#f9fafb',
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 17,
+    fontWeight: '700',
   },
   secondaryButton: {
     borderWidth: 1,
-    borderColor: '#4f46e5',
+    borderColor: '#374151', // Borde más oscuro
     paddingVertical: 14,
     borderRadius: 999,
     alignItems: 'center',
     marginBottom: 24,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    backgroundColor: '#1f2937', // Fondo sutil
   },
   secondaryButtonText: {
-    color: '#e5e7eb',
+    color: '#a5b4fc', // Color de acento
     fontSize: 15,
-    fontWeight: '500',
+    fontWeight: '600',
   },
   scroll: {
     flex: 1,
@@ -409,34 +523,89 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingBottom: 40,
   },
-  helperText: {
-    color: '#6b7280',
-    fontSize: 14,
-    marginTop: 8,
+  // Box para el helper (cuando no hay resultados)
+  helperBox: {
+    alignItems: 'center',
+    padding: 30,
+    backgroundColor: '#1f2937',
+    borderRadius: 16,
+    marginTop: 20,
+    borderWidth: 1,
+    borderColor: '#374151',
   },
-  cardLabel: {
-    color: '#a5b4fc',
-    fontSize: 14,
-    fontWeight: '600',
+  helperText: {
+    color: '#9ca3af',
+    fontSize: 15,
+    marginTop: 15,
+    textAlign: 'center',
+  },
+  // --- CARD: Opciones de despertar ---
+  card: {
+    backgroundColor: '#1f2937',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 14,
+    borderLeftWidth: 5,
+    borderLeftColor: '#4f46e5', // Barra lateral
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+    }),
+  },
+  cardRecommended: {
+    borderLeftColor: '#10b981', // Verde
+    backgroundColor: 'rgba(30,58,40,0.8)', // Fondo verde oscuro sutil
+  },
+  cardContentWrapper: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  cardTime: {
+    color: '#fff',
+    fontSize: 36, // Hora muy grande
+    fontWeight: '900',
     marginBottom: 4,
+  },
+  cardCycles: {
+    color: '#a5b4fc',
+    fontSize: 13,
+    fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
-  cardTime: {
-    color: '#e5e7eb',
-    fontSize: 28,
-    fontWeight: '800',
-    marginBottom: 4,
+  cardDetails: {
+    alignItems: 'flex-end',
   },
   cardDuration: {
     color: '#9ca3af',
     fontSize: 14,
-    marginBottom: 8,
+    fontWeight: '500',
+    marginBottom: 2,
   },
-  cardNote: {
+  cardActionNote: {
     color: '#6b7280',
     fontSize: 12,
+    marginTop: 6,
   },
+  recommendedChip: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 999,
+    backgroundColor: 'rgba(16,185,129,0.15)',
+    marginBottom: 4,
+  },
+  recommendedChipText: {
+    color: '#34d399',
+    fontSize: 11,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+  },
+  // --- SHEET (Modal) ---
   backdrop: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: '#000000',
@@ -447,104 +616,78 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     paddingHorizontal: 24,
-    paddingTop: 12,
-    paddingBottom: 32,
-    backgroundColor: '#020617',
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    borderTopWidth: 1,
-    borderColor: 'rgba(148,163,184,0.3)',
+    paddingTop: 16,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 28, // Más espacio en iOS
+    backgroundColor: '#0f172a',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    borderWidth: 1,
+    borderColor: '#374151',
   },
   sheetHandle: {
     alignSelf: 'center',
-    width: 48,
-    height: 4,
+    width: 40,
+    height: 5,
     borderRadius: 999,
     backgroundColor: 'rgba(148,163,184,0.7)',
     marginBottom: 16,
+  },
+  sheetHeader: {
+    marginBottom: 18,
+    alignItems: 'center',
   },
   sheetLabel: {
     color: '#a5b4fc',
     fontSize: 14,
     textTransform: 'uppercase',
     letterSpacing: 1,
-    fontWeight: '600',
-    marginBottom: 4,
+    fontWeight: '700',
   },
   sheetTime: {
     color: '#e5e7eb',
-    fontSize: 32,
-    fontWeight: '800',
-    marginBottom: 6,
-  },
-  sheetDuration: {
-    color: '#9ca3af',
-    fontSize: 14,
-    marginBottom: 16,
-  },
-  sheetText: {
-    color: '#9ca3af',
-    fontSize: 14,
-    marginBottom: 12,
-    lineHeight: 20,
-  },
-  card: {
-    backgroundColor: 'rgba(15,23,42,0.94)',
-    borderRadius: 24,
-    padding: 20,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(79,70,229,0.35)',
-  },
-  cardRecommended: {
-    borderColor: '#22c55e',
-    shadowColor: '#22c55e',
-    shadowOpacity: 0.35,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 8 },
-  },
-  cardHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    fontSize: 40, // Hora aún más grande
+    fontWeight: '900',
     marginBottom: 4,
   },
-  recommendedChip: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 999,
-    backgroundColor: 'rgba(34,197,94,0.1)',
+  sheetDetails: {
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: '#374151',
+    paddingVertical: 15,
+    marginBottom: 20,
   },
-  recommendedChipText: {
-    color: '#4ade80',
-    fontSize: 11,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 0.6,
+  sheetText: {
+    color: '#cbd5e1',
+    fontSize: 15,
+    marginBottom: 20,
+    lineHeight: 22,
+    textAlign: 'center',
   },
   sheetButtonPrimary: {
     marginTop: 16,
-    marginBottom: 8,
-    backgroundColor: '#22c55e',
-    paddingVertical: 14,
+    marginBottom: 10,
+    backgroundColor: '#10b981', // Verde brillante
+    paddingVertical: 16,
     borderRadius: 999,
     alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
   },
   sheetButtonPrimaryText: {
     color: '#022c22',
-    fontSize: 15,
-    fontWeight: '700',
+    fontSize: 16,
+    fontWeight: '800',
   },
   sheetButton: {
     marginTop: 4,
     alignSelf: 'stretch',
-    backgroundColor: '#4f46e5',
+    backgroundColor: '#374151', // Gris oscuro para Cerrar
     paddingVertical: 14,
     borderRadius: 999,
     alignItems: 'center',
   },
   sheetButtonText: {
-    color: '#f9fafb',
+    color: '#e5e7eb',
     fontSize: 15,
     fontWeight: '600',
   },
