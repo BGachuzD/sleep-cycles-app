@@ -111,7 +111,7 @@ export const WakeAtScreen: FC<Props> = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-      <View style={styles.container}>
+      <ScrollView style={styles.container}>
         <GradientBackground />
 
         <View style={styles.content}>
@@ -290,7 +290,7 @@ export const WakeAtScreen: FC<Props> = ({ navigation }) => {
             )}
           </ScrollView>
         </View>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 };
@@ -304,11 +304,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#020617',
+    padding: 20,
   },
   content: {
     flex: 1,
-    paddingHorizontal: 24,
-    paddingTop: 80,
   },
   header: {
     alignItems: 'center',

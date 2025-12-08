@@ -145,7 +145,7 @@ export const SleepNowScreen: FC<Props> = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-      <View style={styles.container}>
+      <ScrollView style={styles.container}>
         <GradientBackground />
 
         <View style={styles.content}>
@@ -329,7 +329,7 @@ export const SleepNowScreen: FC<Props> = ({ navigation }) => {
             </Animated.View>
           </View>
         )}
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 };
@@ -347,8 +347,6 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    paddingHorizontal: 24,
-    paddingTop: 60,
   },
   topBar: {
     flexDirection: 'row',
