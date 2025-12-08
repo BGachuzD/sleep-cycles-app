@@ -122,7 +122,7 @@ const CardOption: FC<{
     <View style={styles.cardDetailBox}>
       <Text style={styles.cardDuration}>
         <Ionicons name="timer-outline" size={14} color="#a5b4fc" /> Sueño
-        objetivo:{' '}
+        objetivo:
         <Text style={styles.cardHighlight}>
           {formatDuration(opt.totalMinutes)}
         </Text>
@@ -281,7 +281,7 @@ export const WakeAtScreen: FC<Props> = ({ navigation }) => {
           </View>
 
           <Text style={styles.currentWakeText}>
-            Hora de Despertar Seleccionada:{' '}
+            Hora de Despertar Seleccionada:
             <Text style={styles.currentWakeTime}>{formatTime(wakeDate)}</Text>
           </Text>
 

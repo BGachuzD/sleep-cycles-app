@@ -257,7 +257,7 @@ export const SleepNowScreen: FC<Props> = ({ navigation }) => {
                         </View>
                       )}
                       <Text style={styles.cardActionNote}>
-                        Ventana:{' '}
+                        Ventana:
                         {formatTimeRange(opt.windowStart, opt.windowEnd)}
                       </Text>
                     </View>
@@ -286,7 +286,7 @@ export const SleepNowScreen: FC<Props> = ({ navigation }) => {
                 {formatTime(selectedOption.wakeDate)}
               </Text>
               <Text style={styles.sheetLabel}>
-                {selectedOption.cycles}{' '}
+                {selectedOption.cycles}
                 {selectedOption.cycles === 1 ? 'CICLO' : 'CICLOS'}
               </Text>
             </View>

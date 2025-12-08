@@ -112,6 +112,7 @@ function RootNavigator() {
   return <AppDrawerNavigator />;
 }
 
+// App.tsx (solo quita <AuthOnboardingBridge />)
 export default function App() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>

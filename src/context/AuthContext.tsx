@@ -87,6 +87,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (error) {
       console.warn('signOut error', error);
     }
+
     setSession(null);
   };
 

@@ -112,7 +112,7 @@ export const SignInScreen: React.FC<Props> = ({ navigation }) => {
           disabled={loading}
         >
           <Text style={styles.linkText}>
-            ¿Aún no tienes cuenta?{' '}
+            ¿Aún no tienes cuenta?
             <Text style={styles.linkTextHighlight}>Regístrate</Text>
           </Text>
         </TouchableOpacity>
