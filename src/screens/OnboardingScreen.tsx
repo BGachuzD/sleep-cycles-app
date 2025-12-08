@@ -16,9 +16,10 @@ import Animated, {
   interpolate,
   Extrapolation,
 } from 'react-native-reanimated';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { GradientBackground } from '../components/GradientBackground';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useOnboardingFlag } from '../hooks/useOnboardingFlag';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Onboarding'>;
 
@@ -50,6 +51,7 @@ const SLIDES = [
 
 export const OnboardingScreen: FC<Props> = ({ navigation }) => {
   const scrollX = useSharedValue(0);
+  const { markAsSeen } = useOnboardingFlag();
 
   const onScroll = useAnimatedScrollHandler({
     onScroll: (event) => {
@@ -57,7 +59,9 @@ export const OnboardingScreen: FC<Props> = ({ navigation }) => {
     },
   });
 
-  const handleStart = () => {
+  const handleStart = async () => {
+    console.log('Onboarding → markAsSeen');
+    await markAsSeen(); // Guardar AsyncStorage
     navigation.replace('SleepNow');
   };
 
@@ -100,6 +104,8 @@ export const OnboardingScreen: FC<Props> = ({ navigation }) => {
               };
             });
 
+            const isLast = index === SLIDES.length - 1;
+
             return (
               <View key={slide.key} style={{ width }}>
                 <View style={styles.slideInner}>
@@ -114,7 +120,7 @@ export const OnboardingScreen: FC<Props> = ({ navigation }) => {
                     <Text style={styles.description}>{slide.description}</Text>
                   </Animated.View>
 
-                  {index === SLIDES.length - 1 && (
+                  {isLast && (
                     <TouchableOpacity
                       style={styles.startButton}
                       activeOpacity={0.9}
@@ -128,52 +134,6 @@ export const OnboardingScreen: FC<Props> = ({ navigation }) => {
             );
           })}
         </Animated.ScrollView>
-
-        {/* Indicadores (dots) */}
-        <View style={styles.dotsContainer}>
-          {SLIDES.map((_, index) => {
-            const animatedDotStyle = useAnimatedStyle(() => {
-              const inputRange = [
-                (index - 1) * width,
-                index * width,
-                (index + 1) * width,
-              ];
-
-              const scale = interpolate(
-                scrollX.value,
-                inputRange,
-                [0.8, 1.4, 0.8],
-                Extrapolation.CLAMP,
-              );
-
-              const opacity = interpolate(
-                scrollX.value,
-                inputRange,
-                [0.3, 1, 0.3],
-                Extrapolation.CLAMP,
-              );
-
-              return {
-                transform: [{ scale }],
-                opacity,
-              };
-            });
-
-            return (
-              <Animated.View
-                key={index}
-                style={[styles.dot, animatedDotStyle]}
-              />
-            );
-          })}
-        </View>
-
-        {/* Botón skip por si quieres saltar directo */}
-        <View style={styles.skipContainer}>
-          <TouchableOpacity onPress={handleStart} hitSlop={10}>
-            <Text style={styles.skipText}>Saltar</Text>
-          </TouchableOpacity>
-        </View>
       </View>
     </SafeAreaView>
   );
@@ -232,29 +192,5 @@ const styles = StyleSheet.create({
     color: '#f9fafb',
     fontSize: 16,
     fontWeight: '700',
-  },
-  dotsContainer: {
-    position: 'absolute',
-    bottom: 80,
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#e5e7eb',
-  },
-  skipContainer: {
-    position: 'absolute',
-    top: 50,
-    right: PADDING_H,
-  },
-  skipText: {
-    color: '#9ca3af',
-    fontSize: 13,
   },
 });

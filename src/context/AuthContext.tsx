@@ -1,4 +1,3 @@
-// src/context/AuthContext.tsx
 import React, {
   createContext,
   useContext,
@@ -79,7 +78,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       return { error: error.message };
     }
 
-    // Dependiendo de tu config puede requerir email de confirmación:
     setSession(data.session ?? null);
     return {};
   };

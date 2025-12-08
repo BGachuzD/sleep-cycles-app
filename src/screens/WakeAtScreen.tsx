@@ -29,6 +29,7 @@ import { GradientBackground } from '../components/GradientBackground';
 import { useSleepProfileContext } from '../context/SleepProfileContext';
 import { scheduleLocalNotificationAtDate } from '../notifications/scheduler';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { FloatingDrawerButton } from '../components/FloatingDrawerButton';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'WakeAt'>;
 
@@ -289,6 +290,8 @@ export const WakeAtScreen: FC<Props> = ({ navigation }) => {
                 ))
             )}
           </ScrollView>
+
+          <FloatingDrawerButton />
         </View>
       </ScrollView>
     </SafeAreaView>

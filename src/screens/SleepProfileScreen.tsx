@@ -22,12 +22,14 @@ import {
   buildDerivedProfile,
 } from '../domain/sleepProfile';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useAuth } from '../context/AuthContext';
+import { FloatingDrawerButton } from '../components/FloatingDrawerButton';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'SleepProfile'>;
 
 export const SleepProfileScreen: FC<Props> = ({ navigation }) => {
   const { profile, loading, saveProfile } = useSleepProfile();
-
+  const { signOut } = useAuth();
   const [age, setAge] = useState('');
   const [weight, setWeight] = useState('');
   const [height, setHeight] = useState('');
@@ -80,6 +82,10 @@ export const SleepProfileScreen: FC<Props> = ({ navigation }) => {
 
   const isValid = Boolean(parsedProfile);
 
+  const handleLogout = () => {
+    signOut();
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <View style={styles.container}>
@@ -95,9 +101,6 @@ export const SleepProfileScreen: FC<Props> = ({ navigation }) => {
             keyboardShouldPersistTaps="handled"
           >
             <View style={styles.headerRow}>
-              <TouchableOpacity onPress={() => navigation.goBack()}>
-                <Text style={styles.backText}>Volver</Text>
-              </TouchableOpacity>
               <Text style={styles.headerTitle}>Perfil de sueño</Text>
               <View style={{ width: 52 }} />
             </View>
@@ -248,7 +251,16 @@ export const SleepProfileScreen: FC<Props> = ({ navigation }) => {
                 </TouchableOpacity>
               </>
             )}
+
+            <TouchableOpacity
+              onPress={handleLogout}
+              style={{ marginTop: 24, alignSelf: 'center' }}
+            >
+              <Text style={{ color: '#9ca3af' }}>Cerrar Sesión</Text>
+            </TouchableOpacity>
           </ScrollView>
+
+          <FloatingDrawerButton />
         </KeyboardAvoidingView>
       </View>
     </SafeAreaView>

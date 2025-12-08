@@ -1,4 +1,3 @@
-// src/screens/SleepNowScreen.tsx
 import React, { FC, useState, useEffect } from 'react';
 import {
   View,
@@ -35,6 +34,7 @@ import { GradientBackground } from '../components/GradientBackground';
 import { useSleepProfileContext } from '../context/SleepProfileContext';
 import { scheduleLocalNotificationAtDate } from '../notifications/scheduler';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { FloatingDrawerButton } from '../components/FloatingDrawerButton';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'SleepNow'>;
 
@@ -47,13 +47,11 @@ export const SleepNowScreen: FC<Props> = ({ navigation }) => {
     null,
   );
 
-  // Escala del botón principal
   const buttonScale = useSharedValue(1);
   const animatedButtonStyle = useAnimatedStyle(() => ({
     transform: [{ scale: buttonScale.value }],
   }));
 
-  // Luna con efecto de "respiración"
   const breath = useSharedValue(1);
   const breathingIconStyle = useAnimatedStyle(() => ({
     transform: [{ scale: breath.value }],
@@ -69,7 +67,6 @@ export const SleepNowScreen: FC<Props> = ({ navigation }) => {
     );
   }, [breath]);
 
-  // Bottom sheet
   const sheetProgress = useSharedValue(0);
 
   const sheetStyle = useAnimatedStyle(() => {
@@ -111,8 +108,6 @@ export const SleepNowScreen: FC<Props> = ({ navigation }) => {
   const handleScheduleWakeNotification = async () => {
     if (!selectedOption) return;
 
-    // Podemos elegir centro de ventana, inicio o fin.
-    // Aquí uso el centro de la ventana ideal para despertar:
     const centerTime = new Date(
       (selectedOption.windowStart.getTime() +
         selectedOption.windowEnd.getTime()) /
@@ -128,7 +123,6 @@ export const SleepNowScreen: FC<Props> = ({ navigation }) => {
       date: centerTime,
     });
 
-    // Cerramos el sheet después de programar
     closeSheet();
   };
 
@@ -145,7 +139,7 @@ export const SleepNowScreen: FC<Props> = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-      <ScrollView style={styles.container}>
+      <View style={styles.container}>
         <GradientBackground />
 
         <View style={styles.content}>
@@ -329,7 +323,9 @@ export const SleepNowScreen: FC<Props> = ({ navigation }) => {
             </Animated.View>
           </View>
         )}
-      </ScrollView>
+
+        <FloatingDrawerButton />
+      </View>
     </SafeAreaView>
   );
 };

@@ -13,6 +13,7 @@ import {
 } from '../notifications/scheduler';
 import { formatTime } from '../utils/sleep';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { FloatingDrawerButton } from '../components/FloatingDrawerButton';
 
 export const NotificationsManagerScreen = () => {
   const [items, setItems] = useState<any[]>([]);
@@ -89,6 +90,8 @@ export const NotificationsManagerScreen = () => {
           </TouchableOpacity>
         )}
       </ScrollView>
+
+      <FloatingDrawerButton />
     </SafeAreaView>
   );
 };
