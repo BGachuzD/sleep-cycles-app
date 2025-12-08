@@ -60,7 +60,6 @@ export const OnboardingScreen: FC<Props> = ({ navigation }) => {
   });
 
   const handleStart = async () => {
-    console.log('Onboarding → markAsSeen');
     await markAsSeen(); // Guardar AsyncStorage
     navigation.replace('SleepNow');
   };
