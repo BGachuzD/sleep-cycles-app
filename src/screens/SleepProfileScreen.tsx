@@ -31,13 +31,11 @@ type Props = NativeStackScreenProps<RootStackParamList, 'SleepProfile'>;
 
 const { height } = Dimensions.get('window');
 
-// Componente auxiliar para filas de datos derivados
 const DataRow: FC<{
   label: string;
   value: string;
   icon: keyof typeof Ionicons.glyphMap;
 }> = ({ label, value, icon }) => (
-  // El texto está correctamente envuelto. Esto debería eliminar los errores.
   <View style={dataRowStyles.row}>
     <View style={{ flexDirection: 'row', alignItems: 'center' }}>
       <Ionicons

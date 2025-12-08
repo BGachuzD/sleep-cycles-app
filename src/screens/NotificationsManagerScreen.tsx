@@ -19,7 +19,6 @@ import {
 import { formatTime } from '../utils/sleep';
 import { FloatingDrawerButton } from '../components/FloatingDrawerButton';
 
-// Usamos el tipo oficial de Expo
 type NotificationRequest = Notifications.NotificationRequest;
 
 export const NotificationsManagerScreen = () => {
@@ -28,7 +27,7 @@ export const NotificationsManagerScreen = () => {
 
   const load = async () => {
     setIsLoading(true);
-    const scheduled = await listScheduledNotifications(); // NotificationRequest[]
+    const scheduled = await listScheduledNotifications();
     setItems(scheduled);
     setIsLoading(false);
   };
@@ -77,18 +76,16 @@ export const NotificationsManagerScreen = () => {
           {items.map((n) => {
             const id = n.identifier;
 
-            // ---- Resolver el trigger como fecha (si aplica) ----
             let triggerDate: Date | null = null;
 
             const trigger = n.trigger;
 
-            // Para triggers tipo "date"
             if (
               trigger &&
               trigger.type ===
                 Notifications.ScheduledNotificationTriggerType.DATE
             ) {
-              const dateValue = trigger.date; // puede ser Date | string
+              const dateValue = trigger.date;
               triggerDate =
                 dateValue instanceof Date ? dateValue : new Date(dateValue);
             }
@@ -158,8 +155,6 @@ export const NotificationsManagerScreen = () => {
     </SafeAreaView>
   );
 };
-
-// ---
 
 const styles = StyleSheet.create({
   container: {

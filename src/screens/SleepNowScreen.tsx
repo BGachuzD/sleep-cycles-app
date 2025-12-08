@@ -25,7 +25,7 @@ import Animated, {
   Extrapolation,
   interpolateColor,
 } from 'react-native-reanimated';
-import { Ionicons } from '@expo/vector-icons'; // Usamos Ionicons
+import { Ionicons } from '@expo/vector-icons';
 
 import {
   getWakeTimesFromNowForProfile,
@@ -40,7 +40,6 @@ import { useSleepProfileContext } from '../context/SleepProfileContext';
 import { scheduleLocalNotificationAtDate } from '../notifications/scheduler';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FloatingDrawerButton } from '../components/FloatingDrawerButton';
-// Se eliminó FloatingDrawerButton ya que es redundante si hay Header
 
 type Props = NativeStackScreenProps<RootStackParamList, 'SleepNow'>;
 
@@ -56,12 +55,10 @@ export const SleepNowScreen: FC<Props> = ({ navigation }) => {
   const buttonScale = useSharedValue(1);
   const animatedButtonStyle = useAnimatedStyle(() => ({
     transform: [{ scale: buttonScale.value }],
-    // Animación de gradiente para el botón principal (simulado con color)
     backgroundColor: interpolateColor(
-      // <-- USAMOS interpolateColor AQUÍ
       buttonScale.value,
-      [0.96, 1], // Usé 0.96 en el código anterior, asegurémonos de que coincida con el rango de onPressIn/Out
-      ['#5e54d8', '#6366f1'], // Color base al presionar vs color normal
+      [0.96, 1],
+      ['#5e54d8', '#6366f1'],
     ),
   }));
 
@@ -71,7 +68,6 @@ export const SleepNowScreen: FC<Props> = ({ navigation }) => {
   }));
 
   useEffect(() => {
-    // Animación de respiración con duración ligeramente más lenta
     breath.value = withRepeat(
       withTiming(1.1, {
         duration: 4000,
@@ -111,7 +107,6 @@ export const SleepNowScreen: FC<Props> = ({ navigation }) => {
   const handleCalculate = () => {
     if (!profile) return;
     const now = new Date();
-    // Usamos más ciclos para dar más opciones al usuario [3, 4, 5, 6, 7]
     const wakeOptions = getWakeTimesFromNowForProfile(
       profile,
       now,
@@ -180,7 +175,7 @@ export const SleepNowScreen: FC<Props> = ({ navigation }) => {
           style={[styles.primaryButtonWrapper, animatedButtonStyle]}
         >
           <TouchableOpacity
-            activeOpacity={1} // La animación ya maneja la presión
+            activeOpacity={1}
             style={styles.primaryButtonInner}
             onPressIn={() => {
               buttonScale.value = withSpring(0.96, {
@@ -207,23 +202,6 @@ export const SleepNowScreen: FC<Props> = ({ navigation }) => {
             </Text>
           </TouchableOpacity>
         </Animated.View>
-
-        {/* --- Botón Secundario --- */}
-        {/* <TouchableOpacity
-          style={styles.secondaryButton}
-          activeOpacity={0.8}
-          onPress={() => navigation.navigate('WakeAt')}
-        >
-          <Text style={styles.secondaryButtonText}>
-            Cambiar: Quiero despertar a una hora específica
-          </Text>
-          <Ionicons
-            name="arrow-forward"
-            size={16}
-            color="#a5b4fc"
-            style={{ marginLeft: 6 }}
-          />
-        </TouchableOpacity> */}
 
         {/* --- Lista de Opciones --- */}
         <ScrollView
@@ -371,13 +349,10 @@ export const SleepNowScreen: FC<Props> = ({ navigation }) => {
           </Animated.View>
         </View>
       )}
-
-      {/* Se eliminó FloatingDrawerButton */}
     </SafeAreaView>
   );
 };
 
-// Componente para filas de detalles en el Sheet
 const DetailRow: FC<{
   icon: keyof typeof Ionicons.glyphMap;
   label: string;
@@ -413,7 +388,7 @@ const detailRowStyles = StyleSheet.create({
     color: '#e5e7eb',
     fontSize: 14,
     fontWeight: '600',
-    flexShrink: 1, // Permite que el valor se comprima si es muy largo
+    flexShrink: 1,
   },
 });
 
@@ -449,7 +424,7 @@ const styles = StyleSheet.create({
     width: 70,
     height: 70,
     borderRadius: 35,
-    backgroundColor: 'rgba(99,102,241,0.2)', // Azul más sutil
+    backgroundColor: 'rgba(99,102,241,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
@@ -476,7 +451,6 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     overflow: 'hidden',
     marginBottom: 16,
-    // Eliminamos el backgroundColor de aquí, ahora lo maneja AnimatedStyle
     ...Platform.select({
       ios: {
         shadowColor: '#4f46e5',
@@ -503,17 +477,17 @@ const styles = StyleSheet.create({
   },
   secondaryButton: {
     borderWidth: 1,
-    borderColor: '#374151', // Borde más oscuro
+    borderColor: '#374151',
     paddingVertical: 14,
     borderRadius: 999,
     alignItems: 'center',
     marginBottom: 24,
     flexDirection: 'row',
     justifyContent: 'center',
-    backgroundColor: '#1f2937', // Fondo sutil
+    backgroundColor: '#1f2937',
   },
   secondaryButtonText: {
-    color: '#a5b4fc', // Color de acento
+    color: '#a5b4fc',
     fontSize: 15,
     fontWeight: '600',
   },
@@ -523,7 +497,6 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingBottom: 40,
   },
-  // Box para el helper (cuando no hay resultados)
   helperBox: {
     alignItems: 'center',
     padding: 30,
@@ -539,14 +512,13 @@ const styles = StyleSheet.create({
     marginTop: 15,
     textAlign: 'center',
   },
-  // --- CARD: Opciones de despertar ---
   card: {
     backgroundColor: '#1f2937',
     borderRadius: 16,
     padding: 20,
     marginBottom: 14,
     borderLeftWidth: 5,
-    borderLeftColor: '#4f46e5', // Barra lateral
+    borderLeftColor: '#4f46e5',
     ...Platform.select({
       ios: {
         shadowColor: '#000',
@@ -557,8 +529,8 @@ const styles = StyleSheet.create({
     }),
   },
   cardRecommended: {
-    borderLeftColor: '#10b981', // Verde
-    backgroundColor: 'rgba(30,58,40,0.8)', // Fondo verde oscuro sutil
+    borderLeftColor: '#10b981',
+    backgroundColor: 'rgba(30,58,40,0.8)',
   },
   cardContentWrapper: {
     flexDirection: 'row',
@@ -567,7 +539,7 @@ const styles = StyleSheet.create({
   },
   cardTime: {
     color: '#fff',
-    fontSize: 36, // Hora muy grande
+    fontSize: 36,
     fontWeight: '900',
     marginBottom: 4,
   },
@@ -605,7 +577,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     textTransform: 'uppercase',
   },
-  // --- SHEET (Modal) ---
   backdrop: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: '#000000',
@@ -617,7 +588,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     paddingHorizontal: 24,
     paddingTop: 16,
-    paddingBottom: Platform.OS === 'ios' ? 40 : 28, // Más espacio en iOS
+    paddingBottom: Platform.OS === 'ios' ? 40 : 28,
     backgroundColor: '#0f172a',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
@@ -645,7 +616,7 @@ const styles = StyleSheet.create({
   },
   sheetTime: {
     color: '#e5e7eb',
-    fontSize: 40, // Hora aún más grande
+    fontSize: 40,
     fontWeight: '900',
     marginBottom: 4,
   },
@@ -666,7 +637,7 @@ const styles = StyleSheet.create({
   sheetButtonPrimary: {
     marginTop: 16,
     marginBottom: 10,
-    backgroundColor: '#10b981', // Verde brillante
+    backgroundColor: '#10b981',
     paddingVertical: 16,
     borderRadius: 999,
     alignItems: 'center',
@@ -681,7 +652,7 @@ const styles = StyleSheet.create({
   sheetButton: {
     marginTop: 4,
     alignSelf: 'stretch',
-    backgroundColor: '#374151', // Gris oscuro para Cerrar
+    backgroundColor: '#374151',
     paddingVertical: 14,
     borderRadius: 999,
     alignItems: 'center',

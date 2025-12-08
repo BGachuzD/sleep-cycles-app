@@ -20,7 +20,7 @@ import Animated, {
   interpolateColor,
   Extrapolation,
 } from 'react-native-reanimated';
-import { Ionicons } from '@expo/vector-icons'; // Usamos Ionicons
+import { Ionicons } from '@expo/vector-icons';
 
 import {
   getSleepTimesForWakeDateForProfile,
@@ -37,7 +37,6 @@ import { FloatingDrawerButton } from '../components/FloatingDrawerButton';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'WakeAt'>;
 
-// --- Componente para las columnas del Picker (Botones Laterales) ---
 const TimePickerColumn: FC<{
   label: string;
   value: string;
@@ -90,7 +89,7 @@ const pickerStyles = StyleSheet.create({
     borderRadius: 50,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(96,165,250,0.1)', // Fondo sutil para el botón
+    backgroundColor: 'rgba(96,165,250,0.1)',
   },
   pickerValue: {
     color: '#f9fafb',
@@ -99,7 +98,6 @@ const pickerStyles = StyleSheet.create({
   },
 });
 
-// --- Componente para cada Card de Opción ---
 const CardOption: FC<{
   opt: SleepTimeOption;
   onSchedule: (opt: SleepTimeOption) => void;
@@ -117,7 +115,6 @@ const CardOption: FC<{
       )}
     </View>
 
-    {/* Hora Clave: Hora de Dormir */}
     <Text style={styles.cardTime}>
       {formatTime(opt.windowStart)} - {formatTime(opt.windowEnd)}
     </Text>
@@ -152,7 +149,6 @@ const CardOption: FC<{
   </View>
 );
 
-// --- Componente Principal ---
 export const WakeAtScreen: FC<Props> = ({ navigation }) => {
   const { profile, loading } = useSleepProfileContext();
 
@@ -192,7 +188,6 @@ export const WakeAtScreen: FC<Props> = ({ navigation }) => {
       wakeDate,
       [3, 4, 5, 6, 7],
     );
-    // Invertir para mostrar de menos ciclos a más ciclos (más temprano a más tarde)
     setOptions(sleepOptions.reverse());
   };
 
@@ -207,7 +202,6 @@ export const WakeAtScreen: FC<Props> = ({ navigation }) => {
   const adjustWakeMinutes = (delta: number) => {
     setWakeDate((prev) => {
       const next = new Date(prev);
-      // Asegurar que los minutos se mantienen en incrementos de 15
       const newMinutes = Math.round((next.getMinutes() + delta) / 15) * 15;
       next.setMinutes(newMinutes);
       return next;
@@ -264,7 +258,7 @@ export const WakeAtScreen: FC<Props> = ({ navigation }) => {
             acostarte.
           </Text>
 
-          {/* --- Time Picker con Botones Laterales --- */}
+          {/* --- Time Picker --- */}
           <View style={styles.pickerWrapper}>
             <TimePickerColumn
               label="Hora"
@@ -324,23 +318,6 @@ export const WakeAtScreen: FC<Props> = ({ navigation }) => {
             </TouchableOpacity>
           </Animated.View>
 
-          {/* --- Botón Secundario (Regreso) --- */}
-          {/* <TouchableOpacity
-            style={styles.secondaryButton}
-            activeOpacity={0.8}
-            onPress={() => navigation.goBack()}
-          >
-            <Ionicons
-              name="arrow-back"
-              size={16}
-              color="#a5b4fc"
-              style={{ marginRight: 6 }}
-            />
-            <Text style={styles.secondaryButtonText}>
-              Volver a “Dormir ahora”
-            </Text>
-          </TouchableOpacity> */}
-
           {/* --- Lista de Opciones --- */}
           <View style={{ marginTop: 20 }}>
             {options.length === 0 ? (
@@ -366,18 +343,12 @@ export const WakeAtScreen: FC<Props> = ({ navigation }) => {
               ))
             )}
           </View>
-
-          {/* Espacio para que el FloatingButton no oculte el contenido */}
-          <View style={{ height: 80 }} />
         </View>
       </ScrollView>
-
-      {/* Botón flotante al final del SafeAreaView */}
     </SafeAreaView>
   );
 };
 
-// --- Estilos Globales ---
 const PADDING_H = 20;
 
 const styles = StyleSheet.create({
@@ -431,7 +402,6 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     textAlign: 'center',
   },
-  // --- Picker Wrapper ---
   pickerWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -446,10 +416,10 @@ const styles = StyleSheet.create({
   },
   pickerSeparator: {
     color: '#f9fafb',
-    fontSize: 36, // Tamaño ajustado al valor central del picker
+    fontSize: 36,
     fontWeight: '900',
     marginHorizontal: 10,
-    paddingTop: 15, // Ajuste manual para centrar con el valor
+    paddingTop: 15,
   },
   currentWakeText: {
     color: '#9ca3af',
@@ -462,7 +432,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
   },
-  // --- Botón Primario ---
   primaryButtonWrapper: {
     borderRadius: 999,
     overflow: 'hidden',
@@ -488,7 +457,6 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '700',
   },
-  // --- Botón Secundario ---
   secondaryButton: {
     borderWidth: 1,
     borderColor: '#374151',
@@ -505,7 +473,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
   },
-  // --- Helper y Lista ---
   helperBox: {
     alignItems: 'center',
     padding: 30,
@@ -521,17 +488,16 @@ const styles = StyleSheet.create({
     marginTop: 15,
     textAlign: 'center',
   },
-  // --- Cards de Opción ---
   card: {
     backgroundColor: '#1f2937',
     borderRadius: 20,
     padding: 20,
     marginBottom: 16,
     borderLeftWidth: 5,
-    borderLeftColor: '#10b981', // Barra verde
+    borderLeftColor: '#10b981',
   },
   cardRecommended: {
-    borderLeftColor: '#f97316', // Naranja/Dorado para Mejor Opción
+    borderLeftColor: '#f97316',
   },
   cardHeaderRow: {
     flexDirection: 'row',
@@ -548,7 +514,7 @@ const styles = StyleSheet.create({
   },
   cardTime: {
     color: '#f9fafb',
-    fontSize: 26, // Un poco más pequeño para acomodar la ventana
+    fontSize: 26,
     fontWeight: '900',
     marginBottom: 10,
   },
