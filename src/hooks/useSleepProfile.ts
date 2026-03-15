@@ -4,7 +4,6 @@ import type { SleepProfile } from '../domain/sleepProfile';
 import { supabase } from '../lib/supabaseClient';
 
 const STORAGE_KEY_PREFIX = 'sleepProfile/v1';
-const LEGACY_STORAGE_KEY = 'sleepProfile/v1';
 
 const defaultProfile: SleepProfile = {
   age: 30,
@@ -19,6 +18,7 @@ type SleepProfileRow = {
   weight_kg: number;
   height_cm: number;
   gender: 'male' | 'female' | 'other';
+  chronotype?: 'morning' | 'intermediate' | 'night';
   updated_at?: string;
 };
 
@@ -57,6 +57,7 @@ function rowToProfile(row: SleepProfileRow): SleepProfile {
     weightKg: row.weight_kg,
     heightCm: row.height_cm,
     gender: row.gender,
+    chronotype: row.chronotype,
   };
 }
 
@@ -85,6 +86,7 @@ function profileToRow(userId: string, profile: SleepProfile): SleepProfileRow {
     weight_kg: profile.weightKg,
     height_cm: profile.heightCm,
     gender: profile.gender,
+    chronotype: profile.chronotype,
   };
 }
 
@@ -97,7 +99,7 @@ function isTableNotFoundError(error: unknown): error is ErrorLike {
 async function loadFromProfilesTable(userId: string): Promise<SleepProfile | null> {
   const { data, error } = await supabase
     .from('sleep_profiles')
-    .select('user_id,age,weight_kg,height_cm,gender,updated_at')
+    .select('user_id,age,weight_kg,height_cm,gender,chronotype,updated_at')
     .eq('user_id', userId)
     .maybeSingle();
 
@@ -165,14 +167,7 @@ export function useSleepProfile(userId: string | null) {
       const storageKey = makeStorageKey(userId);
 
       try {
-        let raw = await AsyncStorage.getItem(storageKey);
-        if (!raw) {
-          // Compat: perfiles guardados antes de usar llave por usuario.
-          raw = await AsyncStorage.getItem(LEGACY_STORAGE_KEY);
-          if (raw) {
-            await AsyncStorage.setItem(storageKey, raw);
-          }
-        }
+        const raw = await AsyncStorage.getItem(storageKey);
         if (raw) {
           const parsed = JSON.parse(raw);
           if (isValidSleepProfile(parsed) && !cancelled) {

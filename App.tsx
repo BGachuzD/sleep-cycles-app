@@ -25,6 +25,7 @@ import { SignUpScreen } from './src/screens/auth/SignUpScreen';
 import { NotificationsManagerScreen } from './src/screens/NotificationsManagerScreen';
 import { OnboardingProvider } from './src/context/OnboardingContext';
 import { useSleepProfileContext } from './src/context/SleepProfileContext';
+import { SleepLogProvider } from './src/context/SleepLogContext';
 
 export type RootStackParamList = {
   Onboarding: undefined;
@@ -141,10 +142,12 @@ export default function App() {
       <AuthProvider>
         <OnboardingProvider>
           <SleepProfileProvider>
-            <NavigationContainer>
-              <StatusBar style="light" />
-              <RootNavigator />
-            </NavigationContainer>
+            <SleepLogProvider>
+              <NavigationContainer>
+                <StatusBar style="light" />
+                <RootNavigator />
+              </NavigationContainer>
+            </SleepLogProvider>
           </SleepProfileProvider>
         </OnboardingProvider>
       </AuthProvider>

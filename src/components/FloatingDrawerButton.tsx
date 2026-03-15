@@ -1,53 +1,57 @@
 import React from 'react';
-import { TouchableOpacity, Text, StyleSheet, View } from 'react-native';
+import { TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { useNavigation, DrawerActions } from '@react-navigation/native';
 import type { DrawerNavigationProp } from '@react-navigation/drawer';
 import type { AppDrawerParamList } from '../navigation/AppDrawerNavigator';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-export const FloatingDrawerButton: React.FC = () => {
+interface Props {
+  /** true cuando el componente ya está dentro de un SafeAreaView con edge top */
+  insideSafeArea?: boolean;
+}
+
+export const FloatingDrawerButton: React.FC<Props> = ({
+  insideSafeArea = false,
+}) => {
   const navigation = useNavigation<DrawerNavigationProp<AppDrawerParamList>>();
+  const insets = useSafeAreaInsets();
 
-  const openDrawer = () => {
-    navigation.dispatch(DrawerActions.openDrawer());
-  };
+  // Si ya estamos dentro de SafeAreaView no necesitamos sumar el inset.
+  const topOffset = insideSafeArea ? 8 : insets.top + 8;
 
   return (
-    <View pointerEvents="box-none" style={styles.wrapper}>
-      <TouchableOpacity
-        onPress={openDrawer}
-        activeOpacity={0.9}
-        style={styles.button}
-      >
-        <Ionicons name="menu" size={24} color="#e5e7eb" />
-      </TouchableOpacity>
-    </View>
+    <TouchableOpacity
+      onPress={() => navigation.dispatch(DrawerActions.openDrawer())}
+      activeOpacity={0.85}
+      style={[styles.button, { top: topOffset }]}
+    >
+      <Ionicons name="menu" size={22} color="#e5e7eb" />
+    </TouchableOpacity>
   );
 };
 
 const styles = StyleSheet.create({
-  wrapper: {
-    position: 'absolute',
-    top: 5,
-    left: 5,
-    pointerEvents: 'box-none',
-  },
   button: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#4f46e5',
+    position: 'relative',
+    left: 16,
+    zIndex: 100,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(31,41,55,0.92)',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOpacity: 0.35,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 6,
-  },
-  icon: {
-    color: '#f9fafb',
-    fontSize: 24,
-    fontWeight: '700',
+    borderWidth: 1,
+    borderColor: '#374151',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.3,
+        shadowRadius: 6,
+      },
+      android: { elevation: 6 },
+    }),
   },
 });

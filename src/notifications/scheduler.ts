@@ -51,7 +51,7 @@ export async function scheduleLocalNotificationAtDate(params: {
 
   try {
     const trigger: Notifications.DateTriggerInput = {
-      type: 'date',
+      type: Notifications.SchedulableTriggerInputTypes.DATE,
       date,
     };
 
@@ -98,6 +98,45 @@ export async function scheduleUniqueNotificationAtDate(params: {
   scheduledMap[key] = id;
   await setScheduledMap(scheduledMap);
   return id;
+}
+
+/**
+ * Alarma inteligente: programa 3 notificaciones escalonadas dentro de la ventana de despertar.
+ * - Start: inicio de la ventana (sueño más ligero posible)
+ * - Center: punto medio de la ventana (la hora ideal)
+ * - End: final de la ventana (backup)
+ */
+export async function scheduleSmartWakeAlarm(params: {
+  keyBase: string;
+  windowStart: Date;
+  windowEnd: Date;
+}): Promise<{ startId: string | null; centerId: string | null; endId: string | null }> {
+  const { keyBase, windowStart, windowEnd } = params;
+  const centerMs = (windowStart.getTime() + windowEnd.getTime()) / 2;
+  const center = new Date(centerMs);
+
+  const [startId, centerId, endId] = await Promise.all([
+    scheduleUniqueNotificationAtDate({
+      key: `${keyBase}:start`,
+      title: 'Ventana de despertar',
+      body: 'Inicio de tu ventana de sueño ligero 😴',
+      date: windowStart,
+    }),
+    scheduleUniqueNotificationAtDate({
+      key: `${keyBase}:center`,
+      title: '¡Es hora de despertar!',
+      body: 'Hora ideal según tus ciclos de sueño ⏰',
+      date: center,
+    }),
+    scheduleUniqueNotificationAtDate({
+      key: `${keyBase}:end`,
+      title: 'Último aviso de despertar',
+      body: 'Fin de tu ventana óptima. ¡Buen día! ☀️',
+      date: windowEnd,
+    }),
+  ]);
+
+  return { startId, centerId, endId };
 }
 
 /**

@@ -6,6 +6,7 @@ import React, {
   ReactNode,
 } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '../lib/supabaseClient';
 
 type AuthContextValue = {
@@ -99,6 +100,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const signOut: AuthContextValue['signOut'] = async () => {
+    // Limpiar la legacy key sin userId para evitar que una cuenta nueva
+    // herede el perfil de la sesión anterior.
+    await AsyncStorage.removeItem('sleepProfile/v1').catch(() => {});
+
     const { error } = await supabase.auth.signOut();
     if (error) {
       console.warn('signOut error', error);

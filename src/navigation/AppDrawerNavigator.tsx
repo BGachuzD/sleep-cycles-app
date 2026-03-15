@@ -10,35 +10,32 @@ import {
 } from '@react-navigation/drawer';
 import { Ionicons } from '@expo/vector-icons';
 
+import { HomeScreen } from '../screens/HomeScreen';
 import { SleepNowScreen } from '../screens/SleepNowScreen';
 import { WakeAtScreen } from '../screens/WakeAtScreen';
 import { SleepProfileScreen } from '../screens/SleepProfileScreen';
 import { NotificationsManagerScreen } from '../screens/NotificationsManagerScreen';
+import { SleepLogScreen } from '../screens/SleepLogScreen';
+import { StatsScreen } from '../screens/StatsScreen';
+import { NapScreen } from '../screens/NapScreen';
+import { SleepRoutineScreen } from '../screens/SleepRoutineScreen';
 
 import { useAuth } from '../context/AuthContext';
 import { useNavigation } from '@react-navigation/native';
 
 export type AppDrawerParamList = {
+  Home: undefined;
   SleepNow: undefined;
   WakeAt: undefined;
+  Nap: undefined;
+  SleepLog: undefined;
+  Stats: undefined;
+  SleepRoutine: undefined;
   SleepProfile: undefined;
   Notifications: undefined;
 };
 
 const Drawer = createDrawerNavigator<AppDrawerParamList>();
-
-const HeaderMenuButton = () => {
-  const navigation = useNavigation<DrawerNavigationProp<AppDrawerParamList>>();
-
-  return (
-    <TouchableOpacity
-      style={{ marginLeft: 16 }}
-      onPress={() => navigation.openDrawer()}
-    >
-      <Ionicons name="moon" size={32} color="#f9fafb" />
-    </TouchableOpacity>
-  );
-};
 
 function CustomDrawerContent(props: DrawerContentComponentProps) {
   const { user, signOut } = useAuth();
@@ -49,7 +46,9 @@ function CustomDrawerContent(props: DrawerContentComponentProps) {
       : null;
   const identityLabel = displayName || user?.email || 'Usuario';
   const initials =
-    identityLabel?.[0]?.toUpperCase?.() ?? user?.id?.[0]?.toUpperCase?.() ?? '?';
+    identityLabel?.[0]?.toUpperCase?.() ??
+    user?.id?.[0]?.toUpperCase?.() ??
+    '?';
 
   return (
     <DrawerContentScrollView
@@ -94,29 +93,35 @@ export const AppDrawerNavigator: React.FC = () => {
       drawerContent={(props) => <CustomDrawerContent {...props} />}
       screenOptions={{
         headerShown: false,
-        headerStyle: {
-          backgroundColor: '#020617',
-        },
-        headerTintColor: '#e5e7eb',
-        headerLeft: () => <HeaderMenuButton />,
-        headerTitleStyle: {
-          fontWeight: '700',
-          fontSize: 16,
-        },
         drawerType: 'slide',
         drawerActiveTintColor: '#e5e7eb',
         drawerInactiveTintColor: '#9ca3af',
         drawerStyle: {
           backgroundColor: '#020617',
-          width: 260,
+          width: 270,
         },
+        drawerActiveBackgroundColor: 'rgba(99,102,241,0.15)',
+        drawerItemStyle: { borderRadius: 10 },
       }}
     >
+      <Drawer.Screen
+        name="Home"
+        component={HomeScreen}
+        options={{
+          title: 'Inicio',
+          drawerIcon: ({ color, size }) => (
+            <Ionicons name="home-outline" size={size} color={color} />
+          ),
+        }}
+      />
       <Drawer.Screen
         name="SleepNow"
         component={SleepNowScreen}
         options={{
           title: 'Dormir ahora',
+          drawerIcon: ({ color, size }) => (
+            <Ionicons name="moon-outline" size={size} color={color} />
+          ),
         }}
       />
       <Drawer.Screen
@@ -124,6 +129,49 @@ export const AppDrawerNavigator: React.FC = () => {
         component={WakeAtScreen}
         options={{
           title: 'Despertar a una hora',
+          drawerIcon: ({ color, size }) => (
+            <Ionicons name="alarm-outline" size={size} color={color} />
+          ),
+        }}
+      />
+      <Drawer.Screen
+        name="Nap"
+        component={NapScreen}
+        options={{
+          title: 'Siesta',
+          drawerIcon: ({ color, size }) => (
+            <Ionicons name="bed-outline" size={size} color={color} />
+          ),
+        }}
+      />
+      <Drawer.Screen
+        name="SleepLog"
+        component={SleepLogScreen}
+        options={{
+          title: 'Diario de sueño',
+          drawerIcon: ({ color, size }) => (
+            <Ionicons name="journal-outline" size={size} color={color} />
+          ),
+        }}
+      />
+      <Drawer.Screen
+        name="Stats"
+        component={StatsScreen}
+        options={{
+          title: 'Estadísticas',
+          drawerIcon: ({ color, size }) => (
+            <Ionicons name="bar-chart-outline" size={size} color={color} />
+          ),
+        }}
+      />
+      <Drawer.Screen
+        name="SleepRoutine"
+        component={SleepRoutineScreen}
+        options={{
+          title: 'Rutina pre-sueño',
+          drawerIcon: ({ color, size }) => (
+            <Ionicons name="list-outline" size={size} color={color} />
+          ),
         }}
       />
       <Drawer.Screen
@@ -131,6 +179,9 @@ export const AppDrawerNavigator: React.FC = () => {
         component={SleepProfileScreen}
         options={{
           title: 'Perfil de sueño',
+          drawerIcon: ({ color, size }) => (
+            <Ionicons name="person-circle-outline" size={size} color={color} />
+          ),
         }}
       />
       <Drawer.Screen
@@ -138,6 +189,9 @@ export const AppDrawerNavigator: React.FC = () => {
         component={NotificationsManagerScreen}
         options={{
           title: 'Notificaciones',
+          drawerIcon: ({ color, size }) => (
+            <Ionicons name="notifications-outline" size={size} color={color} />
+          ),
         }}
       />
     </Drawer.Navigator>
@@ -163,26 +217,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarText: {
-    color: '#f9fafb',
-    fontWeight: '700',
-    fontSize: 18,
-  },
-  userEmail: {
-    color: '#e5e7eb',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  userEmailSecondary: {
-    color: '#94a3b8',
-    fontSize: 12,
-    marginTop: 2,
-  },
-  userSubtitle: {
-    color: '#9ca3af',
-    fontSize: 12,
-    marginTop: 2,
-  },
+  avatarText: { color: '#f9fafb', fontWeight: '700', fontSize: 18 },
+  userEmail: { color: '#e5e7eb', fontSize: 14, fontWeight: '600' },
+  userEmailSecondary: { color: '#94a3b8', fontSize: 12, marginTop: 2 },
+  userSubtitle: { color: '#9ca3af', fontSize: 12, marginTop: 2 },
   footer: {
     borderTopWidth: 1,
     borderTopColor: 'rgba(148,163,184,0.2)',

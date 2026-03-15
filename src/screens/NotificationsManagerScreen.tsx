@@ -65,6 +65,7 @@ export const NotificationsManagerScreen = () => {
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+      <FloatingDrawerButton />
       <View style={styles.container}>
         <Text style={styles.title}>Gestión de Alertas</Text>
 
@@ -153,8 +154,6 @@ export const NotificationsManagerScreen = () => {
 
           <View style={{ height: 100 }} />
         </ScrollView>
-
-        <FloatingDrawerButton />
       </View>
     </SafeAreaView>
   );

@@ -37,7 +37,10 @@ import {
 
 import { GradientBackground } from '../components/GradientBackground';
 import { useSleepProfileContext } from '../context/SleepProfileContext';
-import { scheduleUniqueNotificationAtDate } from '../notifications/scheduler';
+import {
+  scheduleSmartWakeAlarm,
+} from '../notifications/scheduler';
+import { isTimeOptimalForChronotype } from '../domain/sleepProfile';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FloatingDrawerButton } from '../components/FloatingDrawerButton';
 
@@ -118,23 +121,13 @@ export const SleepNowScreen: FC<Props> = ({ navigation }) => {
   const handleScheduleWakeNotification = async () => {
     if (!selectedOption) return;
 
-    const centerTime = new Date(
-      (selectedOption.windowStart.getTime() +
-        selectedOption.windowEnd.getTime()) /
-        2,
-    );
-
-    const id = await scheduleUniqueNotificationAtDate({
-      key: `wake:${selectedOption.cycles}:${centerTime.getTime()}`,
-      title: '¡Es hora de despertar!',
-      body: `Ventana ideal: ${formatTimeRange(
-        selectedOption.windowStart,
-        selectedOption.windowEnd,
-      )}`,
-      date: centerTime,
+    const { centerId } = await scheduleSmartWakeAlarm({
+      keyBase: `wake:${selectedOption.cycles}:${selectedOption.wakeDate.getTime()}`,
+      windowStart: selectedOption.windowStart,
+      windowEnd: selectedOption.windowEnd,
     });
 
-    if (!id) {
+    if (!centerId) {
       Alert.alert(
         'No se pudo programar',
         'Revisa permisos de notificación o la hora seleccionada.',
@@ -142,7 +135,13 @@ export const SleepNowScreen: FC<Props> = ({ navigation }) => {
       return;
     }
 
-    Alert.alert('Alerta programada', 'Tu recordatorio de despertar quedó listo.');
+    Alert.alert(
+      'Alarma inteligente programada',
+      `3 alertas escalonadas en la ventana ${formatTimeRange(
+        selectedOption.windowStart,
+        selectedOption.windowEnd,
+      )}`,
+    );
     closeSheet();
   };
 
@@ -162,11 +161,9 @@ export const SleepNowScreen: FC<Props> = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-      <View style={styles.buttonContainer}>
-        <FloatingDrawerButton />
-      </View>
+      <GradientBackground />
+      <FloatingDrawerButton insideSafeArea />
       <View style={styles.content}>
-        <GradientBackground />
 
         {/* --- Header con Icono Animado --- */}
         <View style={styles.header}>
@@ -264,6 +261,11 @@ export const SleepNowScreen: FC<Props> = ({ navigation }) => {
                           <Text style={styles.recommendedChipText}>
                             ⭐ Mejor Opción
                           </Text>
+                        </View>
+                      )}
+                      {profile && isTimeOptimalForChronotype(opt.wakeDate, 'wake', profile.chronotype) && (
+                        <View style={styles.chronotypeChip}>
+                          <Text style={styles.chronotypeChipText}>🌅 Óptimo</Text>
                         </View>
                       )}
                       <Text style={styles.cardActionNote}>
@@ -405,12 +407,6 @@ const detailRowStyles = StyleSheet.create({
 const PADDING_H = 20;
 
 const styles = StyleSheet.create({
-  buttonContainer: {
-    position: 'relative',
-    top: 5,
-    left: 5,
-    zIndex: 10,
-  },
   container: {
     flex: 1,
     backgroundColor: '#020617',
@@ -418,7 +414,7 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     paddingHorizontal: PADDING_H,
-    paddingTop: 20,
+    paddingTop: 64,
   },
   loadingCenter: {
     flex: 1,
@@ -586,6 +582,20 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     textTransform: 'uppercase',
+  },
+  chronotypeChip: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 999,
+    backgroundColor: 'rgba(167,139,250,0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(167,139,250,0.3)',
+    marginBottom: 4,
+  },
+  chronotypeChipText: {
+    color: '#c4b5fd',
+    fontSize: 11,
+    fontWeight: '700',
   },
   backdrop: {
     ...StyleSheet.absoluteFillObject,

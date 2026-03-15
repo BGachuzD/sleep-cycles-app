@@ -19,11 +19,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { DrawerActions, useNavigation } from '@react-navigation/native';
 
 import { GradientBackground } from '../components/GradientBackground';
-import type { Gender, SleepProfile } from '../domain/sleepProfile';
+import type { Gender, SleepProfile, Chronotype } from '../domain/sleepProfile';
 import {
   calculateBMI,
   categorizeBMI,
   buildDerivedProfile,
+  getOptimalSleepWindow,
 } from '../domain/sleepProfile';
 import { useAuth } from '../context/AuthContext';
 import { useSleepProfileContext } from '../context/SleepProfileContext';
@@ -81,20 +82,27 @@ export const SleepProfileScreen: FC<Props> = ({ navigation, route }) => {
   const { signOut } = useAuth();
   const isForceSetup = route.params?.forceSetup === true;
 
+  const { user } = useAuth();
   const [age, setAge] = useState('');
   const [weight, setWeight] = useState('');
   const [height, setHeight] = useState('');
   const [gender, setGender] = useState<Gender>('male');
+  const [chronotype, setChronotype] = useState<Chronotype>('intermediate');
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
+    // Load chronotype from auth metadata if not yet set in profile
+    const metaChronotype = user?.user_metadata?.chronotype as Chronotype | undefined;
     if (profile) {
       setAge(String(profile.age));
       setWeight(String(profile.weightKg));
       setHeight(String(profile.heightCm));
       setGender(profile.gender);
+      setChronotype(profile.chronotype ?? metaChronotype ?? 'intermediate');
+    } else if (metaChronotype) {
+      setChronotype(metaChronotype);
     }
-  }, [profile]);
+  }, [profile, user]);
 
   const validationError = useMemo(() => {
     const ageNum = Number(age);
@@ -123,8 +131,9 @@ export const SleepProfileScreen: FC<Props> = ({ navigation, route }) => {
       weightKg: Number(weight),
       heightCm: Number(height),
       gender,
+      chronotype,
     };
-  }, [age, weight, height, gender, validationError]);
+  }, [age, weight, height, gender, chronotype, validationError]);
 
   const derived = useMemo(() => {
     if (!parsedProfile) return null;
@@ -339,6 +348,48 @@ export const SleepProfileScreen: FC<Props> = ({ navigation, route }) => {
                 </TouchableOpacity>
               ))}
             </View>
+
+            {/* Cronotipo */}
+            <Text style={styles.label}>Cronotipo</Text>
+            <View style={styles.genderRowContainer}>
+              {([
+                { value: 'morning', label: '🌅 Matutino', icon: 'sunny-outline' },
+                { value: 'intermediate', label: '🌤 Intermedio', icon: 'partly-sunny-outline' },
+                { value: 'night', label: '🌙 Nocturno', icon: 'moon-outline' },
+              ] as { value: Chronotype; label: string; icon: keyof typeof Ionicons.glyphMap }[]).map((c) => {
+                const optimalWindow = getOptimalSleepWindow(c.value);
+                return (
+                  <TouchableOpacity
+                    key={c.value}
+                    style={[
+                      styles.genderChip,
+                      chronotype === c.value && styles.chronotypeChipActive,
+                    ]}
+                    onPress={() => setChronotype(c.value)}
+                  >
+                    <Ionicons
+                      name={c.icon}
+                      size={16}
+                      color={chronotype === c.value ? '#0f172a' : '#9ca3af'}
+                    />
+                    <Text
+                      style={[
+                        styles.genderChipText,
+                        chronotype === c.value && styles.genderChipTextActive,
+                      ]}
+                    >
+                      {c.value === 'morning' ? 'Matutino' : c.value === 'intermediate' ? 'Neutro' : 'Nocturno'}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+            {parsedProfile?.chronotype && (
+              <Text style={styles.chronotypeHint}>
+                Ventana óptima para dormir: {getOptimalSleepWindow(parsedProfile.chronotype).bedtimeStart} – {getOptimalSleepWindow(parsedProfile.chronotype).bedtimeEnd}
+              </Text>
+            )}
+
             {/* --- MENSAJE DE ERROR --- */}
             {validationError && (
               <View style={styles.errorBox}>
@@ -593,6 +644,16 @@ const styles = StyleSheet.create({
   },
   genderChipActive: {
     backgroundColor: '#6366f1',
+  },
+  chronotypeChipActive: {
+    backgroundColor: '#8b5cf6',
+  },
+  chronotypeHint: {
+    color: '#a78bfa',
+    fontSize: 12,
+    textAlign: 'center',
+    marginTop: -12,
+    marginBottom: 16,
   },
   genderChipText: {
     color: '#9ca3af',

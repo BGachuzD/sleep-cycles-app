@@ -31,7 +31,11 @@ import {
 } from '../utils/sleep';
 import { GradientBackground } from '../components/GradientBackground';
 import { useSleepProfileContext } from '../context/SleepProfileContext';
-import { scheduleUniqueNotificationAtDate } from '../notifications/scheduler';
+import {
+  scheduleUniqueNotificationAtDate,
+  scheduleSmartWakeAlarm,
+} from '../notifications/scheduler';
+import { isTimeOptimalForChronotype } from '../domain/sleepProfile';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FloatingDrawerButton } from '../components/FloatingDrawerButton';
 
@@ -101,18 +105,27 @@ const pickerStyles = StyleSheet.create({
 const CardOption: FC<{
   opt: SleepTimeOption;
   onSchedule: (opt: SleepTimeOption) => void;
-}> = ({ opt, onSchedule }) => (
+  chronotype?: import('../domain/sleepProfile').Chronotype;
+}> = ({ opt, onSchedule, chronotype }) => {
+  const isOptimalSleep = isTimeOptimalForChronotype(opt.sleepDate, 'sleep', chronotype);
+  return (
   <View style={[styles.card, opt.isRecommended && styles.cardRecommended]}>
     <View style={styles.cardHeaderRow}>
       <Text style={styles.cardCycles}>
         {opt.cycles} {opt.cycles === 1 ? 'CICLO' : 'CICLOS'}
       </Text>
-
-      {opt.isRecommended && (
-        <View style={styles.recommendedChip}>
-          <Text style={styles.recommendedChipText}>⭐ Mejor Opción</Text>
-        </View>
-      )}
+      <View style={{ flexDirection: 'row', gap: 6 }}>
+        {isOptimalSleep && (
+          <View style={styles.chronotypeChip}>
+            <Text style={styles.chronotypeChipText}>🌙 Óptimo</Text>
+          </View>
+        )}
+        {opt.isRecommended && (
+          <View style={styles.recommendedChip}>
+            <Text style={styles.recommendedChipText}>⭐ Mejor Opción</Text>
+          </View>
+        )}
+      </View>
     </View>
 
     <Text style={styles.cardTime}>
@@ -147,7 +160,8 @@ const CardOption: FC<{
       <Text style={styles.cardButtonText}>Programar recordatorio</Text>
     </TouchableOpacity>
   </View>
-);
+  );
+};
 
 export const WakeAtScreen: FC<Props> = ({ navigation }) => {
   const { profile, loading } = useSleepProfileContext();
@@ -213,6 +227,17 @@ export const WakeAtScreen: FC<Props> = ({ navigation }) => {
       (opt.windowStart.getTime() + opt.windowEnd.getTime()) / 2,
     );
 
+    // Notificación pre-sueño: 30 min antes de la ventana
+    const preSleepTime = new Date(opt.windowStart.getTime() - 30 * 60 * 1000);
+    if (preSleepTime.getTime() > Date.now()) {
+      await scheduleUniqueNotificationAtDate({
+        key: `presleep:${opt.cycles}:${centerTime.getTime()}`,
+        title: 'Prepárate para dormir',
+        body: 'En 30 min empieza tu ventana de sueño. Baja el brillo y relájate. 🌙',
+        date: preSleepTime,
+      });
+    }
+
     const id = await scheduleUniqueNotificationAtDate({
       key: `sleep:${opt.cycles}:${centerTime.getTime()}`,
       title: '¡Es hora de dormir!',
@@ -231,7 +256,10 @@ export const WakeAtScreen: FC<Props> = ({ navigation }) => {
       return;
     }
 
-    Alert.alert('Recordatorio programado', 'Tu alerta para dormir quedó lista.');
+    Alert.alert(
+      'Recordatorios programados',
+      `• Preparación: ${preSleepTime > new Date(0) ? formatTimeRange(new Date(opt.windowStart.getTime() - 30 * 60 * 1000), opt.windowStart) : 'omitida (hora pasada)'}\n• Dormir: ${formatTimeRange(opt.windowStart, opt.windowEnd)}`,
+    );
   };
 
   if (loading || !profile) {
@@ -247,15 +275,14 @@ export const WakeAtScreen: FC<Props> = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+      <GradientBackground />
+      <FloatingDrawerButton insideSafeArea />
+
       <ScrollView
         style={styles.flex}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <GradientBackground />
-
-        <FloatingDrawerButton />
-
         <View style={styles.content}>
           <View style={styles.header}>
             <Animated.View style={[styles.breathingIcon, breathingIconStyle]}>
@@ -349,6 +376,7 @@ export const WakeAtScreen: FC<Props> = ({ navigation }) => {
                   <CardOption
                     opt={opt}
                     onSchedule={handleScheduleSleepNotification}
+                    chronotype={profile?.chronotype}
                   />
                 </Animated.View>
               ))
@@ -376,11 +404,10 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     paddingHorizontal: PADDING_H,
-    paddingTop: 20,
   },
   scrollContent: {
     paddingBottom: 40,
-    paddingTop: 10,
+    paddingTop: 64,
   },
   header: {
     alignItems: 'center',
@@ -557,6 +584,19 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     textTransform: 'uppercase',
+  },
+  chronotypeChip: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 999,
+    backgroundColor: 'rgba(167,139,250,0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(167,139,250,0.3)',
+  },
+  chronotypeChipText: {
+    color: '#c4b5fd',
+    fontSize: 11,
+    fontWeight: '700',
   },
   cardButton: {
     marginTop: 15,
