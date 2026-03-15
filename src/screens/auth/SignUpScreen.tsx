@@ -14,13 +14,16 @@ import type { RootStackParamList } from '../../../App';
 import { useAuth } from '../../context/AuthContext';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'SignUp'>;
+type Chronotype = 'morning' | 'intermediate' | 'night';
 
 export const SignUpScreen: React.FC<Props> = ({ navigation }) => {
   const { signUp } = useAuth();
 
+  const [displayName, setDisplayName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [passwordConfirm, setPasswordConfirm] = useState('');
+  const [chronotype, setChronotype] = useState<Chronotype>('intermediate');
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -30,8 +33,13 @@ export const SignUpScreen: React.FC<Props> = ({ navigation }) => {
     setError(null);
     setInfoMessage(null);
 
-    if (!email.trim() || !password || !passwordConfirm) {
+    if (!displayName.trim() || !email.trim() || !password || !passwordConfirm) {
       setError('Completa todos los campos.');
+      return;
+    }
+
+    if (displayName.trim().length < 2) {
+      setError('Ingresa un nombre válido (mínimo 2 caracteres).');
       return;
     }
 
@@ -46,7 +54,12 @@ export const SignUpScreen: React.FC<Props> = ({ navigation }) => {
     }
 
     setLoading(true);
-    const { error } = await signUp(email.trim(), password);
+    const { error } = await signUp({
+      email: email.trim(),
+      password,
+      displayName: displayName.trim(),
+      chronotype,
+    });
     setLoading(false);
 
     if (error) {
@@ -76,8 +89,18 @@ export const SignUpScreen: React.FC<Props> = ({ navigation }) => {
       <View style={styles.inner}>
         <Text style={styles.title}>Crear cuenta</Text>
         <Text style={styles.subtitle}>
-          Regístrate para guardar tu perfil de sueño y sincronizar tus datos.
+          Regístrate para guardar tu perfil de sueño y personalizar tu
+          experiencia desde el inicio.
         </Text>
+
+        <TextInput
+          style={styles.input}
+          placeholder="Nombre para mostrar"
+          placeholderTextColor="#6b7280"
+          autoCapitalize="words"
+          value={displayName}
+          onChangeText={setDisplayName}
+        />
 
         <TextInput
           style={styles.input}
@@ -106,6 +129,59 @@ export const SignUpScreen: React.FC<Props> = ({ navigation }) => {
           value={passwordConfirm}
           onChangeText={setPasswordConfirm}
         />
+
+        <Text style={styles.fieldLabel}>Cronotipo (recomendado)</Text>
+        <View style={styles.chronotypeRow}>
+          <TouchableOpacity
+            style={[
+              styles.chronotypeChip,
+              chronotype === 'morning' && styles.chronotypeChipActive,
+            ]}
+            onPress={() => setChronotype('morning')}
+          >
+            <Text
+              style={[
+                styles.chronotypeChipText,
+                chronotype === 'morning' && styles.chronotypeChipTextActive,
+              ]}
+            >
+              Matutino
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.chronotypeChip,
+              chronotype === 'intermediate' && styles.chronotypeChipActive,
+            ]}
+            onPress={() => setChronotype('intermediate')}
+          >
+            <Text
+              style={[
+                styles.chronotypeChipText,
+                chronotype === 'intermediate' &&
+                  styles.chronotypeChipTextActive,
+              ]}
+            >
+              Intermedio
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.chronotypeChip,
+              chronotype === 'night' && styles.chronotypeChipActive,
+            ]}
+            onPress={() => setChronotype('night')}
+          >
+            <Text
+              style={[
+                styles.chronotypeChipText,
+                chronotype === 'night' && styles.chronotypeChipTextActive,
+              ]}
+            >
+              Nocturno
+            </Text>
+          </TouchableOpacity>
+        </View>
 
         {error && <Text style={styles.errorText}>{error}</Text>}
         {infoMessage && <Text style={styles.infoText}>{infoMessage}</Text>}
@@ -170,6 +246,39 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     color: '#f9fafb',
     marginBottom: 12,
+  },
+  fieldLabel: {
+    color: '#9ca3af',
+    fontSize: 13,
+    marginTop: 2,
+    marginBottom: 8,
+    fontWeight: '600',
+  },
+  chronotypeRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 12,
+  },
+  chronotypeChip: {
+    flex: 1,
+    backgroundColor: '#020617',
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: '#334155',
+    paddingVertical: 10,
+    alignItems: 'center',
+  },
+  chronotypeChipActive: {
+    backgroundColor: '#4f46e5',
+    borderColor: '#6366f1',
+  },
+  chronotypeChipText: {
+    color: '#9ca3af',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  chronotypeChipTextActive: {
+    color: '#f8fafc',
   },
   errorText: {
     color: '#fca5a5',

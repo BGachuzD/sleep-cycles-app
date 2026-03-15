@@ -23,22 +23,28 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    // Notifications configuration
     "plugins": [
       [
         "expo-notifications",
         {
-          "icon": "./assets/notification-icon.png",
+          "icon": "./assets/adaptive-icon.png",
           "color": "#4f46e5"
         }
       ]
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "tu.bundle.sleepcycles",
+      "bundleIdentifier": "com.bgachuzd.sleepcyclesapp",
       "infoPlist": {
-        "NSUserNotificationUsageDescription": "Esta app utiliza notificaciones para recordarte cuándo dormir o despertar según tus ciclos de sueño."
+        "NSUserNotificationUsageDescription": "Esta app utiliza notificaciones para recordarte cuándo dormir o despertar según tus ciclos de sueño.",
+        "ITSAppUsesNonExemptEncryption": false
       }
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "8e07b2c0-4acb-4fef-a01f-661186ec05bc"
+      }
+    },
+    "owner": "bgachuzd"
   }
 }

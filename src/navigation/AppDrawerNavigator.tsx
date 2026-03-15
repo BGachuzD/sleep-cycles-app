@@ -35,7 +35,7 @@ const HeaderMenuButton = () => {
       style={{ marginLeft: 16 }}
       onPress={() => navigation.openDrawer()}
     >
-      <Ionicons name="moon" size={32} color="#f9fafb" />;
+      <Ionicons name="moon" size={32} color="#f9fafb" />
     </TouchableOpacity>
   );
 };
@@ -43,9 +43,13 @@ const HeaderMenuButton = () => {
 function CustomDrawerContent(props: DrawerContentComponentProps) {
   const { user, signOut } = useAuth();
 
-  const email = user?.email ?? 'Usuario';
+  const displayName =
+    typeof user?.user_metadata?.display_name === 'string'
+      ? user.user_metadata.display_name
+      : null;
+  const identityLabel = displayName || user?.email || 'Usuario';
   const initials =
-    user?.email?.[0]?.toUpperCase?.() ?? user?.id?.[0]?.toUpperCase?.() ?? '?';
+    identityLabel?.[0]?.toUpperCase?.() ?? user?.id?.[0]?.toUpperCase?.() ?? '?';
 
   return (
     <DrawerContentScrollView
@@ -58,7 +62,10 @@ function CustomDrawerContent(props: DrawerContentComponentProps) {
           <Text style={styles.avatarText}>{initials}</Text>
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={styles.userEmail}>{email}</Text>
+          <Text style={styles.userEmail}>{identityLabel}</Text>
+          {!!displayName && !!user?.email && (
+            <Text style={styles.userEmailSecondary}>{user.email}</Text>
+          )}
           <Text style={styles.userSubtitle}>Ciclos de sueño</Text>
         </View>
       </View>
@@ -131,7 +138,6 @@ export const AppDrawerNavigator: React.FC = () => {
         component={NotificationsManagerScreen}
         options={{
           title: 'Notificaciones',
-          drawerItemStyle: { display: 'none' },
         }}
       />
     </Drawer.Navigator>
@@ -166,6 +172,11 @@ const styles = StyleSheet.create({
     color: '#e5e7eb',
     fontSize: 14,
     fontWeight: '600',
+  },
+  userEmailSecondary: {
+    color: '#94a3b8',
+    fontSize: 12,
+    marginTop: 2,
   },
   userSubtitle: {
     color: '#9ca3af',

@@ -12,18 +12,6 @@ export interface SleepRecommendation {
   efficiency: number;
   latencyMinutes: number;
   score: number;
-}
-
-export interface SleepRecommendation {
-  mode: RecommendationMode;
-  cycles: number;
-  sleepDate: Date;
-  wakeDate: Date;
-  totalSleepMinutes: number;
-  tibMinutes: number;
-  efficiency: number;
-  latencyMinutes: number;
-  score: number;
   windowStart: Date;
   windowEnd: Date;
 }

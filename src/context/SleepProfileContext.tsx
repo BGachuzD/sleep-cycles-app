@@ -1,6 +1,7 @@
 import React, { createContext, useContext, type ReactNode } from 'react';
 import { useSleepProfile } from '../hooks/useSleepProfile';
 import type { SleepProfile } from '../domain/sleepProfile';
+import { useAuth } from './AuthContext';
 
 type SleepProfileContextValue = {
   profile: SleepProfile | null;
@@ -17,7 +18,8 @@ type Props = {
 };
 
 export const SleepProfileProvider: React.FC<Props> = ({ children }) => {
-  const { profile, loading, saveProfile } = useSleepProfile();
+  const { user } = useAuth();
+  const { profile, loading, saveProfile } = useSleepProfile(user?.id ?? null);
 
   return (
     <SleepProfileContext.Provider value={{ profile, loading, saveProfile }}>

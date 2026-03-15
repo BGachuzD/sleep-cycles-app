@@ -16,9 +16,9 @@ import type { RootStackParamList } from '../../App';
 
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { DrawerActions, useNavigation } from '@react-navigation/native';
 
 import { GradientBackground } from '../components/GradientBackground';
-import { useSleepProfile } from '../hooks/useSleepProfile';
 import type { Gender, SleepProfile } from '../domain/sleepProfile';
 import {
   calculateBMI,
@@ -26,6 +26,7 @@ import {
   buildDerivedProfile,
 } from '../domain/sleepProfile';
 import { useAuth } from '../context/AuthContext';
+import { useSleepProfileContext } from '../context/SleepProfileContext';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'SleepProfile'>;
 
@@ -74,16 +75,17 @@ const dataRowStyles = StyleSheet.create({
   },
 });
 
-export const SleepProfileScreen: FC<Props> = ({ navigation }) => {
-  const { profile, loading, saveProfile } = useSleepProfile();
+export const SleepProfileScreen: FC<Props> = ({ navigation, route }) => {
+  const rootNavigation = useNavigation();
+  const { profile, loading, saveProfile } = useSleepProfileContext();
   const { signOut } = useAuth();
+  const isForceSetup = route.params?.forceSetup === true;
 
   const [age, setAge] = useState('');
   const [weight, setWeight] = useState('');
   const [height, setHeight] = useState('');
   const [gender, setGender] = useState<Gender>('male');
   const [saving, setSaving] = useState(false);
-  const [validationError, setValidationError] = useState<string | null>(null);
 
   useEffect(() => {
     if (profile) {
@@ -94,33 +96,35 @@ export const SleepProfileScreen: FC<Props> = ({ navigation }) => {
     }
   }, [profile]);
 
-  const parsedProfile: SleepProfile | null = useMemo(() => {
+  const validationError = useMemo(() => {
     const ageNum = Number(age);
     const weightNum = Number(weight);
     const heightNum = Number(height);
-    let error: string | null = null;
 
     if (!age || !weight || !height) {
-      error = 'Por favor, completa todos los campos.';
-    } else if (isNaN(ageNum) || ageNum < 1 || ageNum > 120) {
-      error = 'La edad debe ser un número válido.';
-    } else if (isNaN(weightNum) || weightNum <= 0) {
-      error = 'El peso debe ser mayor a 0.';
-    } else if (isNaN(heightNum) || heightNum <= 0) {
-      error = 'La altura debe ser mayor a 0.';
+      return 'Por favor, completa todos los campos.';
     }
+    if (isNaN(ageNum) || ageNum < 1 || ageNum > 120) {
+      return 'La edad debe ser un número válido.';
+    }
+    if (isNaN(weightNum) || weightNum <= 0) {
+      return 'El peso debe ser mayor a 0.';
+    }
+    if (isNaN(heightNum) || heightNum <= 0) {
+      return 'La altura debe ser mayor a 0.';
+    }
+    return null;
+  }, [age, weight, height]);
 
-    setValidationError(error);
-
-    if (error) return null;
-
+  const parsedProfile: SleepProfile | null = useMemo(() => {
+    if (validationError) return null;
     return {
-      age: ageNum,
-      weightKg: weightNum,
-      heightCm: heightNum,
+      age: Number(age),
+      weightKg: Number(weight),
+      heightCm: Number(height),
       gender,
     };
-  }, [age, weight, height, gender]);
+  }, [age, weight, height, gender, validationError]);
 
   const derived = useMemo(() => {
     if (!parsedProfile) return null;
@@ -145,6 +149,16 @@ export const SleepProfileScreen: FC<Props> = ({ navigation }) => {
 
   const handleLogout = () => {
     signOut();
+  };
+
+  const handleOpenDrawer = () => {
+    rootNavigation.dispatch(DrawerActions.openDrawer());
+  };
+
+  const handleBack = () => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+    }
   };
 
   const getGenderIcon = (g: Gender) => {
@@ -185,22 +199,65 @@ export const SleepProfileScreen: FC<Props> = ({ navigation }) => {
             contentContainerStyle={styles.content}
             showsVerticalScrollIndicator={false}
           >
+            <View style={styles.topActions}>
+              {navigation.canGoBack() && !isForceSetup ? (
+                <TouchableOpacity
+                  onPress={handleBack}
+                  style={styles.topActionButton}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="arrow-back" size={18} color="#e5e7eb" />
+                </TouchableOpacity>
+              ) : (
+                <View style={styles.topActionPlaceholder} />
+              )}
+
+              {!isForceSetup ? (
+                <TouchableOpacity
+                  onPress={handleOpenDrawer}
+                  style={styles.topActionButton}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="menu" size={20} color="#e5e7eb" />
+                </TouchableOpacity>
+              ) : (
+                <View style={styles.topActionPlaceholder} />
+              )}
+            </View>
+
             <View style={styles.headerRow}>
               <Text style={styles.headerTitle}>Tu Perfil</Text>
-              <TouchableOpacity
-                onPress={handleLogout}
-                style={styles.logoutButton}
-                activeOpacity={0.7}
-              >
-                <Ionicons
-                  name="log-out-outline"
-                  size={18}
-                  color="#9ca3af"
-                  style={{ marginRight: 6 }}
-                />
-                <Text style={styles.logoutText}>Cerrar Sesión</Text>
-              </TouchableOpacity>
+              {!isForceSetup && (
+                <TouchableOpacity
+                  onPress={handleLogout}
+                  style={styles.logoutButton}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons
+                    name="log-out-outline"
+                    size={18}
+                    color="#9ca3af"
+                    style={{ marginRight: 6 }}
+                  />
+                  <Text style={styles.logoutText}>Cerrar Sesión</Text>
+                </TouchableOpacity>
+              )}
             </View>
+
+            {isForceSetup && (
+              <View style={styles.infoBanner}>
+                <Ionicons
+                  name="information-circle-outline"
+                  size={18}
+                  color="#93c5fd"
+                  style={{ marginRight: 8 }}
+                />
+                <Text style={styles.infoBannerText}>
+                  Completa tu perfil para obtener recomendaciones personalizadas
+                  antes de continuar.
+                </Text>
+              </View>
+            )}
             {/* --- SECCIÓN DATOS BÁSICOS --- */}
             <View style={styles.sectionHeader}>
               <Ionicons
@@ -336,20 +393,35 @@ export const SleepProfileScreen: FC<Props> = ({ navigation }) => {
                 />
               </View>
             )}
-            <TouchableOpacity
-              onPress={() => navigation.navigate('Notifications')}
-              style={styles.notificationsButton}
-            >
-              <Ionicons
-                name="notifications-outline"
-                size={18}
-                color="#e5e7eb"
-                style={{ marginRight: 8 }}
-              />
-              <Text style={styles.notificationsButtonText}>
-                Ver mis Recordatorios
-              </Text>
-            </TouchableOpacity>
+
+            {derived && (
+              <View style={styles.card}>
+                <View style={styles.cardHeader}>
+                  <Ionicons name="book-outline" size={20} color="#e5e7eb" />
+                  <Text style={styles.cardTitle}>¿Cómo se usa tu perfil?</Text>
+                </View>
+                <Text style={styles.cardLine}>
+                  Ajustamos ciclos, latencia y eficiencia estimada con base en
+                  edad, IMC y género para recomendar horas más realistas.
+                </Text>
+              </View>
+            )}
+            {!isForceSetup && (
+              <TouchableOpacity
+                onPress={() => navigation.navigate('Notifications')}
+                style={styles.notificationsButton}
+              >
+                <Ionicons
+                  name="notifications-outline"
+                  size={18}
+                  color="#e5e7eb"
+                  style={{ marginRight: 8 }}
+                />
+                <Text style={styles.notificationsButtonText}>
+                  Ver mis Recordatorios
+                </Text>
+              </TouchableOpacity>
+            )}
           </ScrollView>
 
           {/* --- FOOTER FIJO (Botón de Guardar) --- */}
@@ -406,6 +478,25 @@ const styles = StyleSheet.create({
     paddingTop: 20,
     paddingBottom: 90,
   },
+  topActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  topActionButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 999,
+    backgroundColor: '#1f2937',
+    borderWidth: 1,
+    borderColor: '#374151',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  topActionPlaceholder: {
+    width: 36,
+    height: 36,
+  },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -434,6 +525,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 16,
     marginTop: 25,
+  },
+  infoBanner: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 10,
+    padding: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#334155',
+    backgroundColor: 'rgba(30,64,175,0.15)',
+  },
+  infoBannerText: {
+    color: '#bfdbfe',
+    fontSize: 13,
+    flex: 1,
   },
   sectionTitle: {
     color: '#e5e7eb',

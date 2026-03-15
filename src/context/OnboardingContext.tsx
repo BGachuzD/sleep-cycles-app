@@ -7,6 +7,7 @@ import React, {
   useCallback,
   type ReactNode,
 } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from './AuthContext';
 
 type OnboardingContextValue = {
@@ -19,31 +20,68 @@ const OnboardingContext = createContext<OnboardingContextValue | undefined>(
   undefined,
 );
 
+const ONBOARDING_KEY_PREFIX = 'onboardingSeen/v1';
+
 export const OnboardingProvider = ({ children }: { children: ReactNode }) => {
   const { user } = useAuth();
   const [hasSeen, setHasSeen] = useState<boolean | null>(null);
 
   useEffect(() => {
-    // Cada vez que cambia el usuario, reiniciamos el estado de onboarding
-    if (!user) {
-      // Sin usuario, realmente no nos interesa el onboarding (RootNavigator ya filtra por !user)
-      setHasSeen(false);
-      return;
-    }
+    let cancelled = false;
 
-    // Nuevo login / usuario presente => siempre empezamos con hasSeen = false
-    setHasSeen(false);
+    const resolveOnboardingState = async () => {
+      if (!user) {
+        setHasSeen(false);
+        return;
+      }
+
+      setHasSeen(null);
+      const key = `${ONBOARDING_KEY_PREFIX}:${user.id}`;
+
+      try {
+        const stored = await AsyncStorage.getItem(key);
+        if (!cancelled) {
+          setHasSeen(stored === '1');
+        }
+      } catch (error) {
+        console.warn('Error loading onboarding flag', error);
+        if (!cancelled) {
+          setHasSeen(false);
+        }
+      }
+    };
+
+    resolveOnboardingState();
+
+    return () => {
+      cancelled = true;
+    };
   }, [user?.id]);
 
   const markAsSeen = useCallback(async () => {
-    // Solo cambiamos el estado en memoria
+    if (!user) return;
+    const key = `${ONBOARDING_KEY_PREFIX}:${user.id}`;
     setHasSeen(true);
-  }, []);
+    try {
+      await AsyncStorage.setItem(key, '1');
+    } catch (error) {
+      console.warn('Error saving onboarding flag', error);
+    }
+  }, [user]);
 
   const resetOnboarding = useCallback(async () => {
-    // Por si quieres forzarlo en algún punto
+    if (!user) {
+      setHasSeen(false);
+      return;
+    }
+    const key = `${ONBOARDING_KEY_PREFIX}:${user.id}`;
     setHasSeen(false);
-  }, []);
+    try {
+      await AsyncStorage.removeItem(key);
+    } catch (error) {
+      console.warn('Error resetting onboarding flag', error);
+    }
+  }, [user]);
 
   return (
     <OnboardingContext.Provider

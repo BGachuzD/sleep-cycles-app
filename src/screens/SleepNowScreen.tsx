@@ -9,6 +9,7 @@ import {
   Dimensions,
   Platform,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../App';
@@ -22,7 +23,6 @@ import Animated, {
   withRepeat,
   interpolate,
   runOnJS,
-  Extrapolation,
   interpolateColor,
 } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
@@ -37,7 +37,7 @@ import {
 
 import { GradientBackground } from '../components/GradientBackground';
 import { useSleepProfileContext } from '../context/SleepProfileContext';
-import { scheduleLocalNotificationAtDate } from '../notifications/scheduler';
+import { scheduleUniqueNotificationAtDate } from '../notifications/scheduler';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FloatingDrawerButton } from '../components/FloatingDrawerButton';
 
@@ -124,7 +124,8 @@ export const SleepNowScreen: FC<Props> = ({ navigation }) => {
         2,
     );
 
-    await scheduleLocalNotificationAtDate({
+    const id = await scheduleUniqueNotificationAtDate({
+      key: `wake:${selectedOption.cycles}:${centerTime.getTime()}`,
       title: '¡Es hora de despertar!',
       body: `Ventana ideal: ${formatTimeRange(
         selectedOption.windowStart,
@@ -133,6 +134,15 @@ export const SleepNowScreen: FC<Props> = ({ navigation }) => {
       date: centerTime,
     });
 
+    if (!id) {
+      Alert.alert(
+        'No se pudo programar',
+        'Revisa permisos de notificación o la hora seleccionada.',
+      );
+      return;
+    }
+
+    Alert.alert('Alerta programada', 'Tu recordatorio de despertar quedó listo.');
     closeSheet();
   };
 
@@ -318,8 +328,8 @@ export const SleepNowScreen: FC<Props> = ({ navigation }) => {
             </View>
 
             <Text style={styles.sheetText}>
-              Esta hora te permite despertar al final de un **ciclo de sueño
-              ligero**. Evitar despertar en sueño profundo te ayudará a sentirte
+              Esta hora te permite despertar al final de un ciclo de sueño
+              ligero. Evitar despertar en sueño profundo te ayudará a sentirte
               menos aturdido y más energizado.
             </Text>
 

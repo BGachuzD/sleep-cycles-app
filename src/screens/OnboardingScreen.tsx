@@ -138,7 +138,6 @@ export const OnboardingScreen: FC<Props> = ({ navigation }) => {
 
   const handleStart = async () => {
     await markAsSeen();
-    navigation.replace('SleepNow');
   };
 
   return (

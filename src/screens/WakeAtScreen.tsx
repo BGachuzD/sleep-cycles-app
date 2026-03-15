@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   ScrollView,
   Platform,
+  Alert,
 } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../App';
@@ -18,7 +19,6 @@ import Animated, {
   withTiming,
   withRepeat,
   interpolateColor,
-  Extrapolation,
 } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -31,7 +31,7 @@ import {
 } from '../utils/sleep';
 import { GradientBackground } from '../components/GradientBackground';
 import { useSleepProfileContext } from '../context/SleepProfileContext';
-import { scheduleLocalNotificationAtDate } from '../notifications/scheduler';
+import { scheduleUniqueNotificationAtDate } from '../notifications/scheduler';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FloatingDrawerButton } from '../components/FloatingDrawerButton';
 
@@ -213,7 +213,8 @@ export const WakeAtScreen: FC<Props> = ({ navigation }) => {
       (opt.windowStart.getTime() + opt.windowEnd.getTime()) / 2,
     );
 
-    await scheduleLocalNotificationAtDate({
+    const id = await scheduleUniqueNotificationAtDate({
+      key: `sleep:${opt.cycles}:${centerTime.getTime()}`,
       title: '¡Es hora de dormir!',
       body: `Ventana ideal para acostarte: ${formatTimeRange(
         opt.windowStart,
@@ -221,6 +222,16 @@ export const WakeAtScreen: FC<Props> = ({ navigation }) => {
       )}`,
       date: centerTime,
     });
+
+    if (!id) {
+      Alert.alert(
+        'No se pudo programar',
+        'Revisa permisos de notificación o la hora seleccionada.',
+      );
+      return;
+    }
+
+    Alert.alert('Recordatorio programado', 'Tu alerta para dormir quedó lista.');
   };
 
   if (loading || !profile) {

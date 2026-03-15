@@ -1,3 +1,4 @@
+// src/screens/NotificationsManagerScreen.tsx
 import React, { useEffect, useState } from 'react';
 import {
   View,
@@ -10,6 +11,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Notifications from 'expo-notifications';
+import { useFocusEffect } from '@react-navigation/native';
 
 import {
   listScheduledNotifications,
@@ -20,6 +22,15 @@ import { formatTime } from '../utils/sleep';
 import { FloatingDrawerButton } from '../components/FloatingDrawerButton';
 
 type NotificationRequest = Notifications.NotificationRequest;
+
+function getTriggerDate(trigger: NotificationRequest['trigger']): Date | null {
+  if (!trigger || typeof trigger !== 'object') return null;
+  if (!('date' in trigger)) return null;
+
+  const rawDate = (trigger as { date?: string | number | Date }).date;
+  if (!rawDate) return null;
+  return rawDate instanceof Date ? rawDate : new Date(rawDate);
+}
 
 export const NotificationsManagerScreen = () => {
   const [items, setItems] = useState<NotificationRequest[]>([]);
@@ -35,6 +46,12 @@ export const NotificationsManagerScreen = () => {
   useEffect(() => {
     load();
   }, []);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      load();
+    }, []),
+  );
 
   const handleCancel = async (id: string) => {
     await cancelNotification(id);
@@ -75,20 +92,7 @@ export const NotificationsManagerScreen = () => {
         <ScrollView contentContainerStyle={styles.scrollViewContent}>
           {items.map((n) => {
             const id = n.identifier;
-
-            let triggerDate: Date | null = null;
-
-            const trigger = n.trigger;
-
-            if (
-              trigger &&
-              trigger.type ===
-                Notifications.ScheduledNotificationTriggerType.DATE
-            ) {
-              const dateValue = trigger.date;
-              triggerDate =
-                dateValue instanceof Date ? dateValue : new Date(dateValue);
-            }
+            const triggerDate = getTriggerDate(n.trigger);
 
             const timeString = triggerDate ? formatTime(triggerDate) : 'N/A';
             const dateString = triggerDate
@@ -155,6 +159,8 @@ export const NotificationsManagerScreen = () => {
     </SafeAreaView>
   );
 };
+
+// ---
 
 const styles = StyleSheet.create({
   container: {

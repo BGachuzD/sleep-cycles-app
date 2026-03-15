@@ -5,7 +5,7 @@ import 'react-native-url-polyfill/auto';
 import 'react-native-get-random-values';
 
 import { useEffect } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, Platform, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -24,12 +24,13 @@ import { SignInScreen } from './src/screens/auth/SignInScreen';
 import { SignUpScreen } from './src/screens/auth/SignUpScreen';
 import { NotificationsManagerScreen } from './src/screens/NotificationsManagerScreen';
 import { OnboardingProvider } from './src/context/OnboardingContext';
+import { useSleepProfileContext } from './src/context/SleepProfileContext';
 
 export type RootStackParamList = {
   Onboarding: undefined;
   SleepNow: undefined;
   WakeAt: undefined;
-  SleepProfile: undefined;
+  SleepProfile: { forceSetup?: boolean } | undefined;
   Notifications: undefined;
   SignIn: undefined;
   SignUp: undefined;
@@ -49,9 +50,18 @@ Notifications.setNotificationHandler({
 function RootNavigator() {
   const { user, loading: authLoading } = useAuth();
   const { hasSeen } = useOnboardingFlag();
+  const { profile, loading: profileLoading } = useSleepProfileContext();
 
   useEffect(() => {
     (async () => {
+      if (Platform.OS === 'android') {
+        await Notifications.setNotificationChannelAsync('sleep-reminders', {
+          name: 'Sleep reminders',
+          importance: Notifications.AndroidImportance.HIGH,
+          sound: 'default',
+        });
+      }
+
       const { status: existingStatus } =
         await Notifications.getPermissionsAsync();
       let finalStatus = existingStatus;
@@ -67,7 +77,7 @@ function RootNavigator() {
     })();
   }, []);
 
-  if (authLoading || hasSeen === null) {
+  if (authLoading || hasSeen === null || profileLoading) {
     return (
       <View
         style={{
@@ -98,12 +108,24 @@ function RootNavigator() {
         screenOptions={{ headerShown: false }}
       >
         <Stack.Screen name="Onboarding" component={OnboardingScreen} />
-        <Stack.Screen name="SleepNow" component={SleepNowScreen} />
         <Stack.Screen name="WakeAt" component={WakeAtScreen} />
+        <Stack.Screen name="SleepNow" component={SleepNowScreen} />
         <Stack.Screen name="SleepProfile" component={SleepProfileScreen} />
         <Stack.Screen
           name="Notifications"
           component={NotificationsManagerScreen}
+        />
+      </Stack.Navigator>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <Stack.Navigator screenOptions={{ headerShown: false }}>
+        <Stack.Screen
+          name="SleepProfile"
+          component={SleepProfileScreen}
+          initialParams={{ forceSetup: true }}
         />
       </Stack.Navigator>
     );
