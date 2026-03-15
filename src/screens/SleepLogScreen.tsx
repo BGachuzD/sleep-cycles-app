@@ -1,5 +1,5 @@
 // src/screens/SleepLogScreen.tsx
-import React, { FC, useState, useCallback, useMemo } from 'react';
+import React, { FC, useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   ScrollView,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,7 +17,6 @@ import { v4 as uuidv4 } from 'uuid';
 
 import { GradientBackground } from '../components/GradientBackground';
 import { FloatingDrawerButton } from '../components/FloatingDrawerButton';
-import { FloatingHomeButton } from '../components/FloatingHomeButton';
 import { useSleepLogContext } from '../context/SleepLogContext';
 import {
   computeSleepMinutes,
@@ -42,17 +42,12 @@ function getSmartDefaults(): { bed: Date; wake: Date } {
   const bed = new Date();
 
   if (hour < 14) {
-    // Mañana / mediodía: el usuario probablemente acaba de despertar
     const mins = Math.round(now.getMinutes() / 15) * 15;
     wake.setMinutes(mins, 0, 0);
-    // Acostarse ~8 h antes del despertar
     bed.setTime(wake.getTime() - 8 * 60 * 60 * 1000);
   } else {
-    // Tarde / noche: el usuario está pre-registrando para esta noche
-    // Despertar por defecto: mañana a las 7:00
     wake.setDate(wake.getDate() + 1);
     wake.setHours(7, 0, 0, 0);
-    // Acostarse: hoy a las 11pm
     bed.setHours(23, 0, 0, 0);
   }
 
@@ -68,7 +63,6 @@ const TimeAdjuster: FC<{
   <View style={timeStyles.wrapper}>
     <Text style={timeStyles.label}>{label}</Text>
 
-    {/* Fila: – | hora | + */}
     <View style={timeStyles.row}>
       <TouchableOpacity
         style={timeStyles.btn}
@@ -108,7 +102,7 @@ const timeStyles = StyleSheet.create({
     paddingHorizontal: 6,
     borderWidth: 1,
     borderColor: '#374151',
-    minWidth: 0, // permite que flex:1 achique el componente
+    minWidth: 0,
   },
   label: {
     color: '#9ca3af',
@@ -145,19 +139,38 @@ const timeStyles = StyleSheet.create({
 
 // ── Pantalla principal ────────────────────────────────────────────────────────
 export const SleepLogScreen: FC = () => {
-  const { entries, addEntry, deleteEntry } = useSleepLogContext();
+  const { entries, loading, addEntry, updateEntry, deleteEntry, refresh } = useSleepLogContext();
   const { profile } = useSleepProfileContext();
+  const scrollRef = useRef<ScrollView>(null);
 
   const cycleMins = profile?.age
     ? profile.age < 18 ? 95 : profile.age > 60 ? 85 : 90
     : 90;
 
-  // Defaults calculados una sola vez al montar el componente
   const { bed: initialBed, wake: initialWake } = useMemo(() => getSmartDefaults(), []);
 
   const [bedTime, setBedTime] = useState<Date>(initialBed);
   const [wakeTime, setWakeTime] = useState<Date>(initialWake);
   const [feeling, setFeeling] = useState<1 | 2 | 3>(2);
+  const [editingEntry, setEditingEntry] = useState<SleepLogEntry | null>(null);
+
+  // Poblar el formulario al entrar en modo edición
+  useEffect(() => {
+    if (editingEntry) {
+      setBedTime(new Date(editingEntry.bedTimeISO));
+      setWakeTime(new Date(editingEntry.wakeTimeISO));
+      setFeeling(editingEntry.feeling);
+      scrollRef.current?.scrollTo({ y: 0, animated: true });
+    }
+  }, [editingEntry]);
+
+  const cancelEdit = useCallback(() => {
+    setEditingEntry(null);
+    const { bed, wake } = getSmartDefaults();
+    setBedTime(bed);
+    setWakeTime(wake);
+    setFeeling(2);
+  }, []);
 
   const adjustBed = useCallback((delta: number) => {
     setBedTime((prev) => new Date(prev.getTime() + delta * 60 * 1000));
@@ -189,24 +202,37 @@ export const SleepLogScreen: FC = () => {
       );
       return;
     }
-    const entry: SleepLogEntry = {
-      id: uuidv4(),
-      date: todayDateString(),
-      bedTimeISO: bedTime.toISOString(),
-      wakeTimeISO: wakeTime.toISOString(),
-      feeling,
-    };
-    await addEntry(entry);
-    Alert.alert('¡Guardado!', 'Tu sueño quedó registrado.');
+
+    if (editingEntry) {
+      const updated: SleepLogEntry = {
+        ...editingEntry,
+        bedTimeISO: bedTime.toISOString(),
+        wakeTimeISO: wakeTime.toISOString(),
+        feeling,
+      };
+      await updateEntry(updated);
+      setEditingEntry(null);
+      Alert.alert('¡Actualizado!', 'Tu registro ha sido actualizado.');
+    } else {
+      const entry: SleepLogEntry = {
+        id: uuidv4(),
+        date: todayDateString(),
+        bedTimeISO: bedTime.toISOString(),
+        wakeTimeISO: wakeTime.toISOString(),
+        feeling,
+      };
+      await addEntry(entry);
+      Alert.alert('¡Guardado!', 'Tu sueño quedó registrado.');
+    }
   };
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <GradientBackground />
       <FloatingDrawerButton insideSafeArea />
-      <FloatingHomeButton insideSafeArea />
 
       <ScrollView
+        ref={scrollRef}
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -221,8 +247,17 @@ export const SleepLogScreen: FC = () => {
         </View>
 
         {/* Form card */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>¿Cómo dormiste anoche?</Text>
+        <View style={[styles.card, editingEntry && styles.cardEditing]}>
+          {editingEntry && (
+            <View style={styles.editBanner}>
+              <Ionicons name="pencil" size={12} color="#fbbf24" style={{ marginRight: 4 }} />
+              <Text style={styles.editBannerText}>Editando · {editingEntry.date}</Text>
+            </View>
+          )}
+
+          <Text style={styles.cardTitle}>
+            {editingEntry ? 'Editar registro' : '¿Cómo dormiste anoche?'}
+          </Text>
 
           {/* Time pickers */}
           <View style={styles.timeRow}>
@@ -274,13 +309,39 @@ export const SleepLogScreen: FC = () => {
           </View>
 
           <TouchableOpacity style={styles.saveButton} onPress={handleSave} activeOpacity={0.85}>
-            <Ionicons name="checkmark-circle-outline" size={18} color="#022c22" style={{ marginRight: 8 }} />
-            <Text style={styles.saveButtonText}>Guardar noche</Text>
+            <Ionicons
+              name={editingEntry ? 'checkmark-done-circle-outline' : 'checkmark-circle-outline'}
+              size={18}
+              color="#022c22"
+              style={{ marginRight: 8 }}
+            />
+            <Text style={styles.saveButtonText}>
+              {editingEntry ? 'Actualizar registro' : 'Guardar noche'}
+            </Text>
           </TouchableOpacity>
+
+          {editingEntry && (
+            <TouchableOpacity style={styles.cancelButton} onPress={cancelEdit} activeOpacity={0.7}>
+              <Text style={styles.cancelButtonText}>Cancelar edición</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* History */}
-        <Text style={styles.historyTitle}>Historial reciente</Text>
+        <View style={styles.historyHeader}>
+          <Text style={styles.historyTitle}>Historial reciente</Text>
+          <TouchableOpacity
+            style={styles.refreshBtn}
+            onPress={refresh}
+            disabled={loading}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            {loading
+              ? <ActivityIndicator size="small" color="#60a5fa" />
+              : <Ionicons name="refresh-outline" size={18} color="#60a5fa" />
+            }
+          </TouchableOpacity>
+        </View>
 
         {entries.length === 0 ? (
           <View style={styles.emptyBox}>
@@ -294,10 +355,11 @@ export const SleepLogScreen: FC = () => {
             const info = FEELING_LABELS[entry.feeling];
             const bedDate = new Date(entry.bedTimeISO);
             const wakeDate = new Date(entry.wakeTimeISO);
+            const isEditing = editingEntry?.id === entry.id;
 
             return (
               <Animated.View key={entry.id} entering={FadeInUp.delay(index * 50).springify()}>
-                <View style={styles.historyCard}>
+                <View style={[styles.historyCard, isEditing && styles.historyCardEditing]}>
                   <View style={styles.historyLeft}>
                     <Text style={styles.historyDate}>{entry.date}</Text>
                     <Text style={styles.historyTime}>
@@ -309,21 +371,36 @@ export const SleepLogScreen: FC = () => {
                   </View>
                   <View style={styles.historyRight}>
                     <Text style={styles.historyFeeling}>{info.emoji}</Text>
-                    <TouchableOpacity
-                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                      onPress={() =>
-                        Alert.alert('Eliminar', '¿Eliminar este registro?', [
-                          { text: 'Cancelar', style: 'cancel' },
-                          {
-                            text: 'Eliminar',
-                            style: 'destructive',
-                            onPress: () => deleteEntry(entry.id),
-                          },
-                        ])
-                      }
-                    >
-                      <Ionicons name="trash-outline" size={16} color="#6b7280" />
-                    </TouchableOpacity>
+                    <View style={styles.historyActions}>
+                      <TouchableOpacity
+                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 4 }}
+                        onPress={() => (isEditing ? cancelEdit() : setEditingEntry(entry))}
+                      >
+                        <Ionicons
+                          name="pencil-outline"
+                          size={16}
+                          color={isEditing ? '#fbbf24' : '#6b7280'}
+                        />
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        hitSlop={{ top: 8, bottom: 8, left: 4, right: 8 }}
+                        onPress={() =>
+                          Alert.alert('Eliminar', '¿Eliminar este registro?', [
+                            { text: 'Cancelar', style: 'cancel' },
+                            {
+                              text: 'Eliminar',
+                              style: 'destructive',
+                              onPress: () => {
+                                if (isEditing) cancelEdit();
+                                deleteEntry(entry.id);
+                              },
+                            },
+                          ])
+                        }
+                      >
+                        <Ionicons name="trash-outline" size={16} color="#6b7280" />
+                      </TouchableOpacity>
+                    </View>
                   </View>
                 </View>
               </Animated.View>
@@ -351,6 +428,20 @@ const styles = StyleSheet.create({
     borderColor: '#374151',
     marginBottom: 28,
   },
+  cardEditing: {
+    borderColor: 'rgba(251,191,36,0.5)',
+  },
+  editBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(251,191,36,0.1)',
+    borderRadius: 8,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    marginBottom: 10,
+    alignSelf: 'flex-start',
+  },
+  editBannerText: { color: '#fbbf24', fontSize: 11, fontWeight: '600' },
   cardTitle: { color: '#e5e7eb', fontSize: 15, fontWeight: '700', marginBottom: 14 },
   timeRow: {
     flexDirection: 'row',
@@ -403,7 +494,25 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   saveButtonText: { color: '#022c22', fontSize: 15, fontWeight: '800' },
-  historyTitle: { color: '#e5e7eb', fontSize: 16, fontWeight: '700', marginBottom: 12 },
+  cancelButton: {
+    marginTop: 10,
+    paddingVertical: 10,
+    alignItems: 'center',
+  },
+  cancelButtonText: { color: '#6b7280', fontSize: 13, fontWeight: '600' },
+  historyHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  historyTitle: { color: '#e5e7eb', fontSize: 16, fontWeight: '700' },
+  refreshBtn: {
+    width: 32,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   emptyBox: {
     alignItems: 'center',
     paddingVertical: 30,
@@ -425,10 +534,15 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#374151',
   },
+  historyCardEditing: {
+    borderColor: 'rgba(251,191,36,0.4)',
+    backgroundColor: 'rgba(251,191,36,0.04)',
+  },
   historyLeft: { flex: 1, marginRight: 8 },
   historyDate: { color: '#9ca3af', fontSize: 11, fontWeight: '600', marginBottom: 2 },
   historyTime: { color: '#e5e7eb', fontSize: 14, fontWeight: '700' },
   historyDetail: { color: '#6b7280', fontSize: 11, marginTop: 2 },
-  historyRight: { alignItems: 'center', gap: 10 },
+  historyRight: { alignItems: 'center', gap: 8 },
   historyFeeling: { fontSize: 20 },
+  historyActions: { flexDirection: 'row', gap: 12, alignItems: 'center' },
 });

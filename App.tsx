@@ -26,6 +26,7 @@ import { NotificationsManagerScreen } from './src/screens/NotificationsManagerSc
 import { OnboardingProvider } from './src/context/OnboardingContext';
 import { useSleepProfileContext } from './src/context/SleepProfileContext';
 import { SleepLogProvider } from './src/context/SleepLogContext';
+import { SleepRoutineProvider } from './src/context/SleepRoutineContext';
 
 export type RootStackParamList = {
   Onboarding: undefined;
@@ -143,10 +144,12 @@ export default function App() {
         <OnboardingProvider>
           <SleepProfileProvider>
             <SleepLogProvider>
+              <SleepRoutineProvider>
               <NavigationContainer>
                 <StatusBar style="light" />
                 <RootNavigator />
               </NavigationContainer>
+              </SleepRoutineProvider>
             </SleepLogProvider>
           </SleepProfileProvider>
         </OnboardingProvider>
