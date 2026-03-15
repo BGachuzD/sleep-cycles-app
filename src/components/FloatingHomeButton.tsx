@@ -1,32 +1,29 @@
 import React from 'react';
 import { TouchableOpacity, StyleSheet, Platform } from 'react-native';
-import { useNavigation, DrawerActions } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import type { DrawerNavigationProp } from '@react-navigation/drawer';
-import type { AppDrawerParamList } from '../navigation/AppDrawerNavigator';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import type { AppDrawerParamList } from '../navigation/AppDrawerNavigator';
 
 interface Props {
-  /** true cuando el componente ya está dentro de un SafeAreaView con edge top */
   insideSafeArea?: boolean;
 }
 
-export const FloatingDrawerButton: React.FC<Props> = ({
+export const FloatingHomeButton: React.FC<Props> = ({
   insideSafeArea = false,
 }) => {
   const navigation = useNavigation<DrawerNavigationProp<AppDrawerParamList>>();
   const insets = useSafeAreaInsets();
-
-  // Siempre respetamos el inset superior para evitar superponer la status bar.
   const topOffset = insets.top + (insideSafeArea ? 8 : 12);
 
   return (
     <TouchableOpacity
-      onPress={() => navigation.dispatch(DrawerActions.openDrawer())}
+      onPress={() => navigation.navigate('Home')}
       activeOpacity={0.85}
       style={[styles.button, { top: topOffset }]}
     >
-      <Ionicons name="menu" size={22} color="#e5e7eb" />
+      <Ionicons name="home-outline" size={20} color="#e5e7eb" />
     </TouchableOpacity>
   );
 };
@@ -34,7 +31,7 @@ export const FloatingDrawerButton: React.FC<Props> = ({
 const styles = StyleSheet.create({
   button: {
     position: 'absolute',
-    right: 16,
+    left: 16,
     zIndex: 100,
     width: 44,
     height: 44,

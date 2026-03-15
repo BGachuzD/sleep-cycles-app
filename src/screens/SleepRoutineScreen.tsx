@@ -15,6 +15,7 @@ import Animated, { FadeInLeft } from 'react-native-reanimated';
 
 import { GradientBackground } from '../components/GradientBackground';
 import { FloatingDrawerButton } from '../components/FloatingDrawerButton';
+import { FloatingHomeButton } from '../components/FloatingHomeButton';
 import { useSleepProfileContext } from '../context/SleepProfileContext';
 import { getOptimalSleepWindow } from '../domain/sleepProfile';
 import { formatTime } from '../utils/sleep';
@@ -148,6 +149,7 @@ export const SleepRoutineScreen: FC = () => {
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <GradientBackground />
       <FloatingDrawerButton insideSafeArea />
+      <FloatingHomeButton insideSafeArea />
 
       <ScrollView
         style={styles.scroll}

@@ -38,6 +38,7 @@ import {
 import { isTimeOptimalForChronotype } from '../domain/sleepProfile';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FloatingDrawerButton } from '../components/FloatingDrawerButton';
+import { FloatingHomeButton } from '../components/FloatingHomeButton';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'WakeAt'>;
 
@@ -277,6 +278,7 @@ export const WakeAtScreen: FC<Props> = ({ navigation }) => {
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <GradientBackground />
       <FloatingDrawerButton insideSafeArea />
+      <FloatingHomeButton insideSafeArea />
 
       <ScrollView
         style={styles.flex}

@@ -93,6 +93,7 @@ export const AppDrawerNavigator: React.FC = () => {
       drawerContent={(props) => <CustomDrawerContent {...props} />}
       screenOptions={{
         headerShown: false,
+        drawerPosition: 'right',
         drawerType: 'slide',
         drawerActiveTintColor: '#e5e7eb',
         drawerInactiveTintColor: '#9ca3af',

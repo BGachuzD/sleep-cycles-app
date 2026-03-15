@@ -164,10 +164,8 @@ export const SleepProfileScreen: FC<Props> = ({ navigation, route }) => {
     rootNavigation.dispatch(DrawerActions.openDrawer());
   };
 
-  const handleBack = () => {
-    if (navigation.canGoBack()) {
-      navigation.goBack();
-    }
+  const handleGoHome = () => {
+    (rootNavigation as any).navigate('Home');
   };
 
   const getGenderIcon = (g: Gender) => {
@@ -209,13 +207,13 @@ export const SleepProfileScreen: FC<Props> = ({ navigation, route }) => {
             showsVerticalScrollIndicator={false}
           >
             <View style={styles.topActions}>
-              {navigation.canGoBack() && !isForceSetup ? (
+              {!isForceSetup ? (
                 <TouchableOpacity
-                  onPress={handleBack}
+                  onPress={handleGoHome}
                   style={styles.topActionButton}
                   activeOpacity={0.7}
                 >
-                  <Ionicons name="arrow-back" size={18} color="#e5e7eb" />
+                  <Ionicons name="home-outline" size={18} color="#e5e7eb" />
                 </TouchableOpacity>
               ) : (
                 <View style={styles.topActionPlaceholder} />

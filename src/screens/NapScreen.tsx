@@ -15,6 +15,7 @@ import Animated, { FadeInUp, useSharedValue, useAnimatedStyle, withSpring } from
 
 import { GradientBackground } from '../components/GradientBackground';
 import { FloatingDrawerButton } from '../components/FloatingDrawerButton';
+import { FloatingHomeButton } from '../components/FloatingHomeButton';
 import { scheduleSmartWakeAlarm } from '../notifications/scheduler';
 import { formatTime } from '../utils/sleep';
 
@@ -105,6 +106,7 @@ export const NapScreen: FC = () => {
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <GradientBackground />
       <FloatingDrawerButton insideSafeArea />
+      <FloatingHomeButton insideSafeArea />
 
       <ScrollView
         style={styles.scroll}

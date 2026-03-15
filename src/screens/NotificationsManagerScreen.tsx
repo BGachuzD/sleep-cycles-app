@@ -20,6 +20,7 @@ import {
 } from '../notifications/scheduler';
 import { formatTime } from '../utils/sleep';
 import { FloatingDrawerButton } from '../components/FloatingDrawerButton';
+import { FloatingHomeButton } from '../components/FloatingHomeButton';
 
 type NotificationRequest = Notifications.NotificationRequest;
 
@@ -64,8 +65,9 @@ export const NotificationsManagerScreen = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-      <FloatingDrawerButton />
+    <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
+      <FloatingDrawerButton insideSafeArea />
+      <FloatingHomeButton insideSafeArea />
       <View style={styles.container}>
         <Text style={styles.title}>Gestión de Alertas</Text>
 
@@ -162,11 +164,15 @@ export const NotificationsManagerScreen = () => {
 // ---
 
 const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: '#020617',
+  },
   container: {
     flex: 1,
     backgroundColor: '#020617',
     paddingHorizontal: 10,
-    paddingTop: 10,
+    paddingTop: 64,
   },
   scrollViewContent: {
     paddingBottom: 20,

@@ -16,6 +16,7 @@ import { v4 as uuidv4 } from 'uuid';
 
 import { GradientBackground } from '../components/GradientBackground';
 import { FloatingDrawerButton } from '../components/FloatingDrawerButton';
+import { FloatingHomeButton } from '../components/FloatingHomeButton';
 import { useSleepLogContext } from '../context/SleepLogContext';
 import {
   computeSleepMinutes,
@@ -203,6 +204,7 @@ export const SleepLogScreen: FC = () => {
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <GradientBackground />
       <FloatingDrawerButton insideSafeArea />
+      <FloatingHomeButton insideSafeArea />
 
       <ScrollView
         style={styles.scroll}
