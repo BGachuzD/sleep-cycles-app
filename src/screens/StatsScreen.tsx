@@ -7,6 +7,7 @@ import {
   ScrollView,
   Platform,
   TouchableOpacity,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -156,7 +157,7 @@ const chartStyles = StyleSheet.create({
 });
 
 export const StatsScreen: FC = () => {
-  const { entries } = useSleepLogContext();
+  const { entries, loading, refresh } = useSleepLogContext();
   const { profile } = useSleepProfileContext();
   const navigation = useNavigation();
 
@@ -181,8 +182,23 @@ export const StatsScreen: FC = () => {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.header}>
-          <Text style={styles.title}>Estadísticas</Text>
-          <Text style={styles.subtitle}>Tu historial de sueño de las últimas semanas.</Text>
+          <View style={styles.headerRow}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.title}>Estadísticas</Text>
+              <Text style={styles.subtitle}>Tu historial de sueño de las últimas semanas.</Text>
+            </View>
+            <TouchableOpacity
+              style={styles.refreshBtn}
+              onPress={refresh}
+              disabled={loading}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              {loading
+                ? <ActivityIndicator size="small" color="#60a5fa" />
+                : <Ionicons name="refresh-outline" size={20} color="#60a5fa" />
+              }
+            </TouchableOpacity>
+          </View>
         </View>
 
         {entries.length === 0 ? (
@@ -305,6 +321,8 @@ const styles = StyleSheet.create({
   scroll: { flex: 1 },
   scrollContent: { paddingHorizontal: 20, paddingTop: 64, paddingBottom: 40 },
   header: { marginBottom: 20 },
+  headerRow: { flexDirection: 'row', alignItems: 'flex-start' },
+  refreshBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center', marginTop: 4 },
   title: { color: '#e0e7ff', fontSize: 28, fontWeight: '900', marginBottom: 4 },
   subtitle: { color: '#9ca3af', fontSize: 14 },
   emptyBox: {

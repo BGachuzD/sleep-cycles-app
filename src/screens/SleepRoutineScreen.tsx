@@ -12,6 +12,7 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Switch,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -187,7 +188,7 @@ const modalStyles = StyleSheet.create({
 // ── Pantalla principal ────────────────────────────────────────────────────────
 export const SleepRoutineScreen: FC = () => {
   const { profile } = useSleepProfileContext();
-  const { steps, toggleStep, updateStep, addStep, deleteStep, resetToDefaults } =
+  const { steps, loading, toggleStep, updateStep, addStep, deleteStep, resetToDefaults, refresh } =
     useSleepRoutineContext();
   const optWindow = getOptimalSleepWindow(profile?.chronotype);
 
@@ -348,19 +349,34 @@ export const SleepRoutineScreen: FC = () => {
                 {optWindow.label !== 'Intermedio' ? ` · ${optWindow.label}` : ''}
               </Text>
             </View>
-            <TouchableOpacity
-              style={[styles.editModeBtn, editMode && styles.editModeBtnActive]}
-              onPress={() => setEditMode((v) => !v)}
-            >
-              <Ionicons
-                name={editMode ? 'checkmark-outline' : 'pencil-outline'}
-                size={16}
-                color={editMode ? '#022c22' : '#9ca3af'}
-              />
-              <Text style={[styles.editModeBtnText, editMode && { color: '#022c22' }]}>
-                {editMode ? 'Listo' : 'Editar'}
-              </Text>
-            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              {!editMode && (
+                <TouchableOpacity
+                  style={styles.refreshBtn}
+                  onPress={refresh}
+                  disabled={loading}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 4 }}
+                >
+                  {loading
+                    ? <ActivityIndicator size="small" color="#60a5fa" />
+                    : <Ionicons name="refresh-outline" size={18} color="#60a5fa" />
+                  }
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity
+                style={[styles.editModeBtn, editMode && styles.editModeBtnActive]}
+                onPress={() => setEditMode((v) => !v)}
+              >
+                <Ionicons
+                  name={editMode ? 'checkmark-outline' : 'pencil-outline'}
+                  size={16}
+                  color={editMode ? '#022c22' : '#9ca3af'}
+                />
+                <Text style={[styles.editModeBtnText, editMode && { color: '#022c22' }]}>
+                  {editMode ? 'Listo' : 'Editar'}
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
 
@@ -517,6 +533,17 @@ const styles = StyleSheet.create({
   title: { color: '#e0e7ff', fontSize: 26, fontWeight: '900', marginBottom: 4 },
   subtitle: { color: '#9ca3af', fontSize: 13, lineHeight: 18 },
   targetTime: { color: '#a78bfa', fontWeight: '700' },
+  refreshBtn: {
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#1f2937',
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: '#374151',
+    marginTop: 4,
+  },
   editModeBtn: {
     flexDirection: 'row',
     alignItems: 'center',

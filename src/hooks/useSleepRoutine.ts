@@ -185,5 +185,22 @@ export function useSleepRoutine(userId: string | null) {
     }
   }, [persist, userId]);
 
-  return { steps, loading, toggleStep, updateStep, addStep, deleteStep, resetToDefaults };
+  const refresh = useCallback(async () => {
+    if (!userId) return;
+    setLoading(true);
+    try {
+      const remote = await loadFromSupabase(userId);
+      if (remote) {
+        const merged = mergeWithDefaults(remote);
+        setSteps(merged);
+        await AsyncStorage.setItem(makeKey(userId), JSON.stringify(merged));
+      }
+    } catch (err) {
+      console.warn('Error refreshing routine', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [userId]);
+
+  return { steps, loading, toggleStep, updateStep, addStep, deleteStep, resetToDefaults, refresh };
 }

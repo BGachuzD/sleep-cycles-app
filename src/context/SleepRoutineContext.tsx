@@ -12,6 +12,7 @@ type SleepRoutineContextValue = {
   addStep: (step: RoutineStep) => Promise<void>;
   deleteStep: (id: string) => Promise<void>;
   resetToDefaults: () => Promise<void>;
+  refresh: () => Promise<void>;
 };
 
 const SleepRoutineContext = createContext<SleepRoutineContextValue | undefined>(undefined);
