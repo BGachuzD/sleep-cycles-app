@@ -19,6 +19,7 @@ import { SleepLogScreen } from '../screens/SleepLogScreen';
 import { StatsScreen } from '../screens/StatsScreen';
 import { NapScreen } from '../screens/NapScreen';
 import { SleepRoutineScreen } from '../screens/SleepRoutineScreen';
+import { DeleteAccountScreen } from '../screens/DeleteAccountScreen';
 
 import { useAuth } from '../context/AuthContext';
 import { useNavigation } from '@react-navigation/native';
@@ -33,6 +34,7 @@ export type AppDrawerParamList = {
   SleepRoutine: undefined;
   SleepProfile: undefined;
   Notifications: undefined;
+  DeleteAccount: undefined;
 };
 
 const Drawer = createDrawerNavigator<AppDrawerParamList>();
@@ -194,6 +196,11 @@ export const AppDrawerNavigator: React.FC = () => {
             <Ionicons name="notifications-outline" size={size} color={color} />
           ),
         }}
+      />
+      <Drawer.Screen
+        name="DeleteAccount"
+        component={DeleteAccountScreen}
+        options={{ drawerItemStyle: { display: 'none' } }}
       />
     </Drawer.Navigator>
   );

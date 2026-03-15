@@ -471,6 +471,22 @@ export const SleepProfileScreen: FC<Props> = ({ navigation, route }) => {
                 </Text>
               </TouchableOpacity>
             )}
+            {!isForceSetup && (
+              <TouchableOpacity
+                onPress={() => (rootNavigation as any).navigate('DeleteAccount')}
+                style={styles.deleteAccountButton}
+              >
+                <Ionicons
+                  name="trash-outline"
+                  size={18}
+                  color="#f87171"
+                  style={{ marginRight: 8 }}
+                />
+                <Text style={styles.deleteAccountButtonText}>
+                  Eliminar cuenta
+                </Text>
+              </TouchableOpacity>
+            )}
           </ScrollView>
 
           {/* --- FOOTER FIJO (Botón de Guardar) --- */}
@@ -728,6 +744,22 @@ const styles = StyleSheet.create({
   },
   notificationsButtonText: {
     color: '#e5e7eb',
+    fontWeight: '600',
+    fontSize: 15,
+  },
+  deleteAccountButton: {
+    paddingVertical: 14,
+    borderRadius: 999,
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginTop: 12,
+    backgroundColor: 'rgba(248,113,113,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(248,113,113,0.3)',
+  },
+  deleteAccountButtonText: {
+    color: '#f87171',
     fontWeight: '600',
     fontSize: 15,
   },

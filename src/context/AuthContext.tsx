@@ -21,6 +21,7 @@ type AuthContextValue = {
     chronotype?: 'morning' | 'intermediate' | 'night';
   }) => Promise<{ error?: string }>;
   signOut: () => Promise<void>;
+  deleteAccount: () => Promise<{ error?: string }>;
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -112,6 +113,36 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setSession(null);
   };
 
+  const deleteAccount: AuthContextValue['deleteAccount'] = async () => {
+    const { data: { session: currentSession } } = await supabase.auth.getSession();
+    if (!currentSession) return { error: 'No active session' };
+
+    const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL!;
+    try {
+      const response = await fetch(`${supabaseUrl}/functions/v1/delete-account`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${currentSession.access_token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        return { error: body.error ?? 'Error al eliminar la cuenta' };
+      }
+    } catch (err) {
+      return { error: 'No se pudo conectar con el servidor' };
+    }
+
+    // Clear all local cache after successful server deletion
+    await AsyncStorage.clear().catch(() => {});
+    await supabase.auth.signOut().catch(() => {});
+    setSession(null);
+
+    return {};
+  };
+
   const value: AuthContextValue = {
     user: session?.user ?? null,
     session,
@@ -119,6 +150,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     signIn,
     signUp,
     signOut,
+    deleteAccount,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
