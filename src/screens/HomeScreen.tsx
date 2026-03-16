@@ -25,6 +25,8 @@ import { FloatingDrawerButton } from '../components/FloatingDrawerButton';
 import { useSleepProfileContext } from '../context/SleepProfileContext';
 import { useSleepLogContext } from '../context/SleepLogContext';
 import { useAuth } from '../context/AuthContext';
+import { useAppTheme } from '../theme/ThemeProvider';
+import type { AppTheme } from '../theme/theme';
 import {
   getWakeTimesFromNowForProfile,
   formatTime,
@@ -92,6 +94,8 @@ export const HomeScreen: FC = () => {
   const { profile } = useSleepProfileContext();
   const { entries } = useSleepLogContext();
   const { user } = useAuth();
+  const { theme } = useAppTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
 
   const now = useMemo(() => new Date(), []);
   const hour = now.getHours();
@@ -246,7 +250,7 @@ export const HomeScreen: FC = () => {
                 <Ionicons
                   name="add-circle-outline"
                   size={24}
-                  color="#fbbf24"
+                  color={theme.colors.warning}
                   style={{ marginBottom: 6 }}
                 />
                 <Text style={styles.logPromptText}>
@@ -266,7 +270,7 @@ export const HomeScreen: FC = () => {
                 <Ionicons
                   name="time-outline"
                   size={16}
-                  color="#a78bfa"
+                  color={theme.colors.primaryStrong}
                   style={{ marginRight: 6 }}
                 />
                 <Text style={styles.cardLabel}>
@@ -295,14 +299,14 @@ export const HomeScreen: FC = () => {
                 <Ionicons
                   name="bar-chart-outline"
                   size={16}
-                  color="#34d399"
+                  color={theme.colors.success}
                   style={{ marginRight: 6 }}
                 />
                 <Text style={styles.cardLabel}>Resumen semanal</Text>
                 <Ionicons
                   name="chevron-forward"
                   size={14}
-                  color="#6b7280"
+                  color={theme.colors.textMuted}
                   style={{ marginLeft: 'auto' }}
                 />
               </View>
@@ -323,7 +327,7 @@ export const HomeScreen: FC = () => {
                   <Text
                     style={[
                       styles.statValue,
-                      stats.currentStreak > 0 && { color: '#f97316' },
+                      stats.currentStreak > 0 && { color: TIME_CONFIG.evening.color },
                     ]}
                   >
                     🔥 {stats.currentStreak}
@@ -336,7 +340,7 @@ export const HomeScreen: FC = () => {
                   <Ionicons
                     name="alert-circle-outline"
                     size={14}
-                    color="#f87171"
+                    color={theme.colors.danger}
                     style={{ marginRight: 4 }}
                   />
                   <Text style={styles.debtText}>
@@ -399,125 +403,144 @@ export const HomeScreen: FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#020617' },
-  scroll: { flex: 1 },
-  scrollContent: { paddingHorizontal: 20, paddingTop: 64, paddingBottom: 40 },
-  greetingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 24,
-    gap: 16,
-  },
-  emojiCircle: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    borderWidth: 2,
-    backgroundColor: 'rgba(15,23,42,0.9)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  emojiText: { fontSize: 34 },
-  greetingTextCol: { flex: 1 },
-  greeting: { color: '#9ca3af', fontSize: 14, fontWeight: '600' },
-  name: { fontSize: 22, fontWeight: '900', marginTop: 2 },
-  contextMsg: { color: '#6b7280', fontSize: 13, marginTop: 4, lineHeight: 18 },
-  actionCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#1f2937',
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#374151',
-    borderLeftWidth: 4,
-    marginBottom: 14,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-      },
-      android: { elevation: 3 },
-    }),
-  },
-  actionLabel: { fontSize: 15, fontWeight: '700', flex: 1 },
-  card: {
-    backgroundColor: '#1f2937',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 14,
-    borderWidth: 1,
-    borderColor: '#374151',
-  },
-  cardHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  cardLabel: { color: '#9ca3af', fontSize: 13, fontWeight: '600' },
-  bigTime: { color: '#f9fafb', fontSize: 36, fontWeight: '900', marginTop: 4 },
-  smallText: { color: '#6b7280', fontSize: 13, marginTop: 2 },
-  bestOptionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: 4,
-  },
-  goBtn: {
-    backgroundColor: '#4f46e5',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 999,
-  },
-  goBtnText: { color: '#e0e7ff', fontSize: 13, fontWeight: '700' },
-  logPromptCard: { alignItems: 'center', paddingVertical: 24 },
-  logPromptText: {
-    color: '#fbbf24',
-    fontSize: 15,
-    fontWeight: '700',
-    textAlign: 'center',
-  },
-  logPromptSub: { color: '#6b7280', fontSize: 12, marginTop: 4 },
-  windowText: {
-    color: '#c4b5fd',
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 2,
-  },
-  statsRow: { flexDirection: 'row', alignItems: 'center', marginTop: 8 },
-  statItem: { flex: 1, alignItems: 'center' },
-  statValue: { color: '#e5e7eb', fontSize: 18, fontWeight: '900' },
-  statLabel: { color: '#6b7280', fontSize: 11, marginTop: 2 },
-  statDivider: { width: 1, height: 32, backgroundColor: '#374151' },
-  debtBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 10,
-    padding: 8,
-    backgroundColor: 'rgba(248,113,113,0.1)',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(248,113,113,0.3)',
-  },
-  debtText: { color: '#f87171', fontSize: 12, fontWeight: '600' },
-  quickGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-    marginTop: 6,
-  },
-  quickItem: {
-    width: '47%',
-    backgroundColor: '#1f2937',
-    borderRadius: 14,
-    padding: 16,
-    alignItems: 'center',
-    gap: 8,
-    borderWidth: 1,
-    borderColor: '#374151',
-  },
-  quickLabel: { fontSize: 13, fontWeight: '700' },
-});
+const createStyles = (theme: AppTheme) =>
+  StyleSheet.create({
+    container: { flex: 1, backgroundColor: theme.colors.background },
+    scroll: { flex: 1 },
+    scrollContent: { paddingHorizontal: 20, paddingTop: 64, paddingBottom: 40 },
+    greetingRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 24,
+      gap: 16,
+    },
+    emojiCircle: {
+      width: 72,
+      height: 72,
+      borderRadius: 36,
+      borderWidth: 2,
+      backgroundColor: `${theme.colors.background}E6`,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    emojiText: { fontSize: 34 },
+    greetingTextCol: { flex: 1 },
+    greeting: {
+      color: theme.colors.textSecondary,
+      fontSize: 14,
+      fontWeight: '600',
+    },
+    name: { fontSize: 22, fontWeight: '900', marginTop: 2 },
+    contextMsg: {
+      color: theme.colors.textMuted,
+      fontSize: 13,
+      marginTop: 4,
+      lineHeight: 18,
+    },
+    actionCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: theme.colors.surface,
+      borderRadius: 16,
+      padding: 16,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      borderLeftWidth: 4,
+      marginBottom: 14,
+      ...Platform.select({
+        ios: {
+          shadowColor: theme.colors.black,
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.1,
+          shadowRadius: 4,
+        },
+        android: { elevation: 3 },
+      }),
+    },
+    actionLabel: { fontSize: 15, fontWeight: '700', flex: 1 },
+    card: {
+      backgroundColor: theme.colors.surface,
+      borderRadius: 16,
+      padding: 16,
+      marginBottom: 14,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+    },
+    cardHeaderRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 8,
+    },
+    cardLabel: {
+      color: theme.colors.textSecondary,
+      fontSize: 13,
+      fontWeight: '600',
+    },
+    bigTime: {
+      color: theme.colors.textPrimary,
+      fontSize: 36,
+      fontWeight: '900',
+      marginTop: 4,
+    },
+    smallText: { color: theme.colors.textMuted, fontSize: 13, marginTop: 2 },
+    bestOptionRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginTop: 4,
+    },
+    goBtn: {
+      backgroundColor: theme.colors.primary,
+      paddingHorizontal: 14,
+      paddingVertical: 8,
+      borderRadius: 999,
+    },
+    goBtnText: { color: theme.colors.white, fontSize: 13, fontWeight: '700' },
+    logPromptCard: { alignItems: 'center', paddingVertical: 24 },
+    logPromptText: {
+      color: theme.colors.warning,
+      fontSize: 15,
+      fontWeight: '700',
+      textAlign: 'center',
+    },
+    logPromptSub: { color: theme.colors.textMuted, fontSize: 12, marginTop: 4 },
+    windowText: {
+      color: theme.colors.primaryStrong,
+      fontSize: 14,
+      fontWeight: '600',
+      marginBottom: 2,
+    },
+    statsRow: { flexDirection: 'row', alignItems: 'center', marginTop: 8 },
+    statItem: { flex: 1, alignItems: 'center' },
+    statValue: { color: theme.colors.textPrimary, fontSize: 18, fontWeight: '900' },
+    statLabel: { color: theme.colors.textMuted, fontSize: 11, marginTop: 2 },
+    statDivider: { width: 1, height: 32, backgroundColor: theme.colors.border },
+    debtBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginTop: 10,
+      padding: 8,
+      backgroundColor: `${theme.colors.danger}1A`,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: `${theme.colors.danger}4D`,
+    },
+    debtText: { color: theme.colors.danger, fontSize: 12, fontWeight: '600' },
+    quickGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 12,
+      marginTop: 6,
+    },
+    quickItem: {
+      width: '47%',
+      backgroundColor: theme.colors.surface,
+      borderRadius: 14,
+      padding: 16,
+      alignItems: 'center',
+      gap: 8,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+    },
+    quickLabel: { fontSize: 13, fontWeight: '700' },
+  });

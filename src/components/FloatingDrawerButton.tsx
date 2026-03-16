@@ -5,6 +5,7 @@ import type { DrawerNavigationProp } from '@react-navigation/drawer';
 import type { AppDrawerParamList } from '../navigation/AppDrawerNavigator';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useAppTheme } from '../theme/ThemeProvider';
 
 interface Props {
   /** true cuando el componente ya está dentro de un SafeAreaView con edge top */
@@ -16,6 +17,7 @@ export const FloatingDrawerButton: React.FC<Props> = ({
 }) => {
   const navigation = useNavigation<DrawerNavigationProp<AppDrawerParamList>>();
   const insets = useSafeAreaInsets();
+  const { theme } = useAppTheme();
 
   // Siempre respetamos el inset superior para evitar superponer la status bar.
   const topOffset = insets.top + (insideSafeArea ? 8 : 12);
@@ -24,9 +26,17 @@ export const FloatingDrawerButton: React.FC<Props> = ({
     <TouchableOpacity
       onPress={() => navigation.dispatch(DrawerActions.openDrawer())}
       activeOpacity={0.85}
-      style={[styles.button, { top: topOffset }]}
+      style={[
+        styles.button,
+        {
+          top: topOffset,
+          backgroundColor: `${theme.colors.surface}EB`,
+          borderColor: theme.colors.border,
+          shadowColor: theme.colors.black,
+        },
+      ]}
     >
-      <Ionicons name="menu" size={22} color="#e5e7eb" />
+      <Ionicons name="menu" size={22} color={theme.colors.textPrimary} />
     </TouchableOpacity>
   );
 };
@@ -39,14 +49,11 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: 'rgba(31,41,55,0.92)',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: '#374151',
     ...Platform.select({
       ios: {
-        shadowColor: '#000',
         shadowOffset: { width: 0, height: 3 },
         shadowOpacity: 0.3,
         shadowRadius: 6,

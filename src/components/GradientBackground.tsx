@@ -8,10 +8,12 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { MoonIcon } from '../icons/moon';
+import { useAppTheme } from '../theme/ThemeProvider';
 
 const { width, height } = Dimensions.get('window');
 
 export const GradientBackground: FC = () => {
+  const { theme } = useAppTheme();
   const glow = useSharedValue(0);
 
   useEffect(() => {
@@ -52,7 +54,11 @@ export const GradientBackground: FC = () => {
     <View style={StyleSheet.absoluteFill} pointerEvents="none">
       {/* 1) Fondo base */}
       <LinearGradient
-        colors={['#020617', '#020617', '#020617']}
+        colors={[
+          theme.colors.background,
+          theme.colors.background,
+          theme.colors.background,
+        ]}
         style={StyleSheet.absoluteFill}
       />
 
@@ -72,6 +78,7 @@ export const GradientBackground: FC = () => {
                 top: star.top,
                 left: star.left,
                 opacity: Math.random() * 0.8 + 0.2,
+                backgroundColor: theme.colors.white,
               },
             ]}
           />
@@ -81,7 +88,7 @@ export const GradientBackground: FC = () => {
       {/* 3) Glow + luna */}
       <Animated.View style={[styles.glow, glowStyle]} pointerEvents="none">
         <View style={styles.moonInner}>
-          <MoonIcon size={width * 0.5} color="#fff" opacity={0.3} />
+          <MoonIcon size={width * 0.5} color={theme.colors.white} opacity={0.3} />
         </View>
       </Animated.View>
     </View>
@@ -112,7 +119,6 @@ const styles = StyleSheet.create({
   },
   star: {
     position: 'absolute',
-    backgroundColor: '#fff',
     borderRadius: 50,
   },
 });

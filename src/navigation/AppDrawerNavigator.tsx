@@ -1,12 +1,11 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import {
   createDrawerNavigator,
   DrawerContentScrollView,
   DrawerItemList,
   DrawerItem,
   type DrawerContentComponentProps,
-  DrawerNavigationProp,
 } from '@react-navigation/drawer';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -22,7 +21,7 @@ import { SleepRoutineScreen } from '../screens/SleepRoutineScreen';
 import { DeleteAccountScreen } from '../screens/DeleteAccountScreen';
 
 import { useAuth } from '../context/AuthContext';
-import { useNavigation } from '@react-navigation/native';
+import { useAppTheme } from '../theme/ThemeProvider';
 
 export type AppDrawerParamList = {
   Home: undefined;
@@ -41,6 +40,7 @@ const Drawer = createDrawerNavigator<AppDrawerParamList>();
 
 function CustomDrawerContent(props: DrawerContentComponentProps) {
   const { user, signOut } = useAuth();
+  const { theme } = useAppTheme();
 
   const displayName =
     typeof user?.user_metadata?.display_name === 'string'
@@ -55,19 +55,35 @@ function CustomDrawerContent(props: DrawerContentComponentProps) {
   return (
     <DrawerContentScrollView
       {...props}
-      contentContainerStyle={{ flex: 1, backgroundColor: '#020617' }}
+      contentContainerStyle={{
+        flex: 1,
+        backgroundColor: theme.colors.background,
+      }}
     >
       {/* Header del usuario */}
-      <View style={styles.header}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>{initials}</Text>
+      <View style={[styles.header, { borderBottomColor: `${theme.colors.border}80` }]}>
+        <View style={[styles.avatar, { backgroundColor: theme.colors.primary }]}>
+          <Text style={[styles.avatarText, { color: theme.colors.white }]}>
+            {initials}
+          </Text>
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={styles.userEmail}>{identityLabel}</Text>
+          <Text style={[styles.userEmail, { color: theme.colors.textPrimary }]}>
+            {identityLabel}
+          </Text>
           {!!displayName && !!user?.email && (
-            <Text style={styles.userEmailSecondary}>{user.email}</Text>
+            <Text
+              style={[
+                styles.userEmailSecondary,
+                { color: theme.colors.textSecondary },
+              ]}
+            >
+              {user.email}
+            </Text>
           )}
-          <Text style={styles.userSubtitle}>Ciclos de sueño</Text>
+          <Text style={[styles.userSubtitle, { color: theme.colors.textMuted }]}>
+            Ciclos de sueño
+          </Text>
         </View>
       </View>
 
@@ -77,10 +93,10 @@ function CustomDrawerContent(props: DrawerContentComponentProps) {
       </View>
 
       {/* Botón de cerrar sesión */}
-      <View style={styles.footer}>
+      <View style={[styles.footer, { borderTopColor: `${theme.colors.border}80` }]}>
         <DrawerItem
           label="Cerrar sesión"
-          labelStyle={{ color: '#fecaca', fontSize: 14 }}
+          labelStyle={{ color: theme.colors.danger, fontSize: 14 }}
           onPress={signOut}
           style={{ borderRadius: 12 }}
         />
@@ -90,6 +106,8 @@ function CustomDrawerContent(props: DrawerContentComponentProps) {
 }
 
 export const AppDrawerNavigator: React.FC = () => {
+  const { theme } = useAppTheme();
+
   return (
     <Drawer.Navigator
       drawerContent={(props) => <CustomDrawerContent {...props} />}
@@ -97,13 +115,13 @@ export const AppDrawerNavigator: React.FC = () => {
         headerShown: false,
         drawerPosition: 'right',
         drawerType: 'slide',
-        drawerActiveTintColor: '#e5e7eb',
-        drawerInactiveTintColor: '#9ca3af',
+        drawerActiveTintColor: theme.colors.textPrimary,
+        drawerInactiveTintColor: theme.colors.textSecondary,
         drawerStyle: {
-          backgroundColor: '#020617',
+          backgroundColor: theme.colors.background,
           width: 270,
         },
-        drawerActiveBackgroundColor: 'rgba(99,102,241,0.15)',
+        drawerActiveBackgroundColor: `${theme.colors.primary}26`,
         drawerItemStyle: { borderRadius: 10 },
       }}
     >
@@ -215,23 +233,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(148,163,184,0.2)',
   },
   avatar: {
     width: 44,
     height: 44,
     borderRadius: 999,
-    backgroundColor: '#4f46e5',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarText: { color: '#f9fafb', fontWeight: '700', fontSize: 18 },
-  userEmail: { color: '#e5e7eb', fontSize: 14, fontWeight: '600' },
-  userEmailSecondary: { color: '#94a3b8', fontSize: 12, marginTop: 2 },
-  userSubtitle: { color: '#9ca3af', fontSize: 12, marginTop: 2 },
+  avatarText: { fontWeight: '700', fontSize: 18 },
+  userEmail: { fontSize: 14, fontWeight: '600' },
+  userEmailSecondary: { fontSize: 12, marginTop: 2 },
+  userSubtitle: { fontSize: 12, marginTop: 2 },
   footer: {
     borderTopWidth: 1,
-    borderTopColor: 'rgba(148,163,184,0.2)',
     paddingTop: 8,
   },
 });

@@ -7,7 +7,11 @@ import 'react-native-get-random-values';
 import { useEffect } from 'react';
 import { ActivityIndicator, Platform, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { NavigationContainer } from '@react-navigation/native';
+import {
+  NavigationContainer,
+  DefaultTheme as NavigationDefaultTheme,
+  DarkTheme as NavigationDarkTheme,
+} from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import * as Notifications from 'expo-notifications';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -27,6 +31,7 @@ import { OnboardingProvider } from './src/context/OnboardingContext';
 import { useSleepProfileContext } from './src/context/SleepProfileContext';
 import { SleepLogProvider } from './src/context/SleepLogContext';
 import { SleepRoutineProvider } from './src/context/SleepRoutineContext';
+import { ThemeProvider, useAppTheme } from './src/theme/ThemeProvider';
 
 export type RootStackParamList = {
   Onboarding: undefined;
@@ -53,6 +58,7 @@ function RootNavigator() {
   const { user, loading: authLoading } = useAuth();
   const { hasSeen } = useOnboardingFlag();
   const { profile, loading: profileLoading } = useSleepProfileContext();
+  const { theme } = useAppTheme();
 
   useEffect(() => {
     (async () => {
@@ -84,12 +90,12 @@ function RootNavigator() {
       <View
         style={{
           flex: 1,
-          backgroundColor: '#020617',
+          backgroundColor: theme.colors.background,
           justifyContent: 'center',
           alignItems: 'center',
         }}
       >
-        <ActivityIndicator color="#e5e7eb" />
+        <ActivityIndicator color={theme.colors.textPrimary} />
       </View>
     );
   }
@@ -136,24 +142,58 @@ function RootNavigator() {
   return <AppDrawerNavigator />;
 }
 
-// App.tsx (solo quita <AuthOnboardingBridge />)
+function AppNavigation() {
+  const { theme } = useAppTheme();
+
+  const navigationTheme =
+    theme.name === 'dark'
+      ? {
+          ...NavigationDarkTheme,
+          colors: {
+            ...NavigationDarkTheme.colors,
+            background: theme.colors.background,
+            card: theme.colors.surface,
+            text: theme.colors.textPrimary,
+            border: theme.colors.border,
+            primary: theme.colors.primary,
+          },
+        }
+      : {
+          ...NavigationDefaultTheme,
+          colors: {
+            ...NavigationDefaultTheme.colors,
+            background: theme.colors.background,
+            card: theme.colors.surface,
+            text: theme.colors.textPrimary,
+            border: theme.colors.border,
+            primary: theme.colors.primary,
+          },
+        };
+
+  return (
+    <NavigationContainer theme={navigationTheme}>
+      <StatusBar style={theme.name === 'dark' ? 'light' : 'dark'} />
+      <RootNavigator />
+    </NavigationContainer>
+  );
+}
+
 export default function App() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <AuthProvider>
-        <OnboardingProvider>
-          <SleepProfileProvider>
-            <SleepLogProvider>
-              <SleepRoutineProvider>
-              <NavigationContainer>
-                <StatusBar style="light" />
-                <RootNavigator />
-              </NavigationContainer>
-              </SleepRoutineProvider>
-            </SleepLogProvider>
-          </SleepProfileProvider>
-        </OnboardingProvider>
-      </AuthProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <OnboardingProvider>
+            <SleepProfileProvider>
+              <SleepLogProvider>
+                <SleepRoutineProvider>
+                  <AppNavigation />
+                </SleepRoutineProvider>
+              </SleepLogProvider>
+            </SleepProfileProvider>
+          </OnboardingProvider>
+        </AuthProvider>
+      </ThemeProvider>
     </GestureHandlerRootView>
   );
 }
