@@ -26,6 +26,8 @@ import {
 } from '../domain/sleepLog';
 import { formatDuration, formatTime } from '../utils/sleep';
 import { useSleepProfileContext } from '../context/SleepProfileContext';
+import { useAppTheme } from '../theme/ThemeProvider';
+import type { AppTheme } from '../theme/theme';
 
 const FEELING_LABELS: Record<1 | 2 | 3, { emoji: string; label: string; color: string }> = {
   1: { emoji: '😴', label: 'Mal', color: '#f87171' },
@@ -59,53 +61,58 @@ const TimeAdjuster: FC<{
   label: string;
   date: Date;
   onAdjust: (deltaMinutes: number) => void;
-}> = ({ label, date, onAdjust }) => (
-  <View style={timeStyles.wrapper}>
-    <Text style={timeStyles.label}>{label}</Text>
+}> = ({ label, date, onAdjust }) => {
+  const { theme } = useAppTheme();
+  const timeStyles = createTimeStyles(theme);
 
-    <View style={timeStyles.row}>
-      <TouchableOpacity
-        style={timeStyles.btn}
-        onPress={() => onAdjust(-15)}
-        hitSlop={{ top: 8, bottom: 8, left: 8, right: 4 }}
-      >
-        <Ionicons name="remove" size={18} color="#60a5fa" />
-      </TouchableOpacity>
+  return (
+    <View style={timeStyles.wrapper}>
+      <Text style={timeStyles.label}>{label}</Text>
 
-      <Text
-        style={timeStyles.value}
-        adjustsFontSizeToFit
-        numberOfLines={1}
-        minimumFontScale={0.7}
-      >
-        {formatTime(date)}
-      </Text>
+      <View style={timeStyles.row}>
+        <TouchableOpacity
+          style={timeStyles.btn}
+          onPress={() => onAdjust(-15)}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 4 }}
+        >
+          <Ionicons name="remove" size={18} color={theme.colors.info} />
+        </TouchableOpacity>
 
-      <TouchableOpacity
-        style={timeStyles.btn}
-        onPress={() => onAdjust(15)}
-        hitSlop={{ top: 8, bottom: 8, left: 4, right: 8 }}
-      >
-        <Ionicons name="add" size={18} color="#60a5fa" />
-      </TouchableOpacity>
+        <Text
+          style={timeStyles.value}
+          adjustsFontSizeToFit
+          numberOfLines={1}
+          minimumFontScale={0.7}
+        >
+          {formatTime(date)}
+        </Text>
+
+        <TouchableOpacity
+          style={timeStyles.btn}
+          onPress={() => onAdjust(15)}
+          hitSlop={{ top: 8, bottom: 8, left: 4, right: 8 }}
+        >
+          <Ionicons name="add" size={18} color={theme.colors.info} />
+        </TouchableOpacity>
+      </View>
     </View>
-  </View>
-);
+  );
+};
 
-const timeStyles = StyleSheet.create({
+const createTimeStyles = (theme: AppTheme) => StyleSheet.create({
   wrapper: {
     flex: 1,
     alignItems: 'center',
-    backgroundColor: '#1f2937',
+    backgroundColor: theme.colors.surface,
     borderRadius: 16,
     paddingVertical: 14,
     paddingHorizontal: 6,
     borderWidth: 1,
-    borderColor: '#374151',
+    borderColor: theme.colors.border,
     minWidth: 0,
   },
   label: {
-    color: '#9ca3af',
+    color: theme.colors.textSecondary,
     fontSize: 10,
     textTransform: 'uppercase',
     letterSpacing: 0.8,
@@ -130,7 +137,7 @@ const timeStyles = StyleSheet.create({
   },
   value: {
     flex: 1,
-    color: '#f9fafb',
+    color: theme.colors.textPrimary,
     fontSize: 18,
     fontWeight: '800',
     textAlign: 'center',
@@ -141,6 +148,8 @@ const timeStyles = StyleSheet.create({
 export const SleepLogScreen: FC = () => {
   const { entries, loading, addEntry, updateEntry, deleteEntry, refresh } = useSleepLogContext();
   const { profile } = useSleepProfileContext();
+  const { theme } = useAppTheme();
+  const styles = createStyles(theme);
   const scrollRef = useRef<ScrollView>(null);
 
   const cycleMins = profile?.age
@@ -154,7 +163,6 @@ export const SleepLogScreen: FC = () => {
   const [feeling, setFeeling] = useState<1 | 2 | 3>(2);
   const [editingEntry, setEditingEntry] = useState<SleepLogEntry | null>(null);
 
-  // Poblar el formulario al entrar en modo edición
   useEffect(() => {
     if (editingEntry) {
       setBedTime(new Date(editingEntry.bedTimeISO));
@@ -262,7 +270,7 @@ export const SleepLogScreen: FC = () => {
           {/* Time pickers */}
           <View style={styles.timeRow}>
             <TimeAdjuster label="Me acosté" date={bedTime} onAdjust={adjustBed} />
-            <Ionicons name="arrow-forward" size={16} color="#4b5563" />
+            <Ionicons name="arrow-forward" size={16} color={theme.colors.textMuted} />
             <TimeAdjuster label="Desperté" date={wakeTime} onAdjust={adjustWake} />
           </View>
 
@@ -276,8 +284,8 @@ export const SleepLogScreen: FC = () => {
             </View>
           ) : previewMinutes > 16 * 60 ? (
             <View style={[styles.previewBox, styles.previewBoxError]}>
-              <Ionicons name="warning-outline" size={14} color="#f87171" style={{ marginRight: 6 }} />
-              <Text style={[styles.previewText, { color: '#f87171' }]}>
+              <Ionicons name="warning-outline" size={14} color={theme.colors.danger} style={{ marginRight: 6 }} />
+              <Text style={[styles.previewText, { color: theme.colors.danger }]}>
                 Rango inválido — revisa las horas
               </Text>
             </View>
@@ -337,15 +345,15 @@ export const SleepLogScreen: FC = () => {
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
             {loading
-              ? <ActivityIndicator size="small" color="#60a5fa" />
-              : <Ionicons name="refresh-outline" size={18} color="#60a5fa" />
+              ? <ActivityIndicator size="small" color={theme.colors.info} />
+              : <Ionicons name="refresh-outline" size={18} color={theme.colors.info} />
             }
           </TouchableOpacity>
         </View>
 
         {entries.length === 0 ? (
           <View style={styles.emptyBox}>
-            <Ionicons name="moon-outline" size={28} color="#4b5563" />
+            <Ionicons name="moon-outline" size={28} color={theme.colors.textMuted} />
             <Text style={styles.emptyText}>Aún no hay registros. ¡Empieza hoy!</Text>
           </View>
         ) : (
@@ -379,7 +387,7 @@ export const SleepLogScreen: FC = () => {
                         <Ionicons
                           name="pencil-outline"
                           size={16}
-                          color={isEditing ? '#fbbf24' : '#6b7280'}
+                          color={isEditing ? '#fbbf24' : theme.colors.textMuted}
                         />
                       </TouchableOpacity>
                       <TouchableOpacity
@@ -398,7 +406,7 @@ export const SleepLogScreen: FC = () => {
                           ])
                         }
                       >
-                        <Ionicons name="trash-outline" size={16} color="#6b7280" />
+                        <Ionicons name="trash-outline" size={16} color={theme.colors.textMuted} />
                       </TouchableOpacity>
                     </View>
                   </View>
@@ -413,19 +421,19 @@ export const SleepLogScreen: FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#020617' },
+const createStyles = (theme: AppTheme) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: theme.colors.background },
   scroll: { flex: 1 },
   scrollContent: { paddingHorizontal: 20, paddingTop: 64, paddingBottom: 40 },
   header: { marginBottom: 20 },
-  title: { color: '#e0e7ff', fontSize: 26, fontWeight: '900', marginBottom: 4 },
+  title: { color: theme.colors.textPrimary, fontSize: 26, fontWeight: '900', marginBottom: 4 },
   subtitle: { color: '#a5b4fc', fontSize: 13, lineHeight: 18 },
   card: {
-    backgroundColor: '#1f2937',
+    backgroundColor: theme.colors.surface,
     borderRadius: 20,
     padding: 18,
     borderWidth: 1,
-    borderColor: '#374151',
+    borderColor: theme.colors.border,
     marginBottom: 28,
   },
   cardEditing: {
@@ -442,7 +450,7 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
   },
   editBannerText: { color: '#fbbf24', fontSize: 11, fontWeight: '600' },
-  cardTitle: { color: '#e5e7eb', fontSize: 15, fontWeight: '700', marginBottom: 14 },
+  cardTitle: { color: theme.colors.textPrimary, fontSize: 15, fontWeight: '700', marginBottom: 14 },
   timeRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -466,7 +474,7 @@ const styles = StyleSheet.create({
   },
   previewText: { color: '#a5b4fc', fontSize: 13, fontWeight: '600' },
   feelingLabel: {
-    color: '#9ca3af',
+    color: theme.colors.textSecondary,
     fontSize: 12,
     fontWeight: '600',
     textTransform: 'uppercase',
@@ -480,11 +488,11 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 12,
     borderWidth: 1.5,
-    borderColor: '#374151',
-    backgroundColor: '#111827',
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surfaceElevated,
   },
   feelingEmoji: { fontSize: 22, marginBottom: 4 },
-  feelingChipText: { color: '#9ca3af', fontSize: 11, fontWeight: '600' },
+  feelingChipText: { color: theme.colors.textSecondary, fontSize: 11, fontWeight: '600' },
   saveButton: {
     backgroundColor: '#10b981',
     borderRadius: 999,
@@ -499,14 +507,14 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     alignItems: 'center',
   },
-  cancelButtonText: { color: '#6b7280', fontSize: 13, fontWeight: '600' },
+  cancelButtonText: { color: theme.colors.textMuted, fontSize: 13, fontWeight: '600' },
   historyHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 12,
   },
-  historyTitle: { color: '#e5e7eb', fontSize: 16, fontWeight: '700' },
+  historyTitle: { color: theme.colors.textPrimary, fontSize: 16, fontWeight: '700' },
   refreshBtn: {
     width: 32,
     height: 32,
@@ -516,32 +524,32 @@ const styles = StyleSheet.create({
   emptyBox: {
     alignItems: 'center',
     paddingVertical: 30,
-    backgroundColor: '#1f2937',
+    backgroundColor: theme.colors.surface,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#374151',
+    borderColor: theme.colors.border,
   },
-  emptyText: { color: '#6b7280', fontSize: 13, marginTop: 10 },
+  emptyText: { color: theme.colors.textMuted, fontSize: 13, marginTop: 10 },
   historyCard: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#1f2937',
+    backgroundColor: theme.colors.surface,
     borderRadius: 14,
     paddingVertical: 12,
     paddingHorizontal: 14,
     marginBottom: 8,
     borderWidth: 1,
-    borderColor: '#374151',
+    borderColor: theme.colors.border,
   },
   historyCardEditing: {
     borderColor: 'rgba(251,191,36,0.4)',
     backgroundColor: 'rgba(251,191,36,0.04)',
   },
   historyLeft: { flex: 1, marginRight: 8 },
-  historyDate: { color: '#9ca3af', fontSize: 11, fontWeight: '600', marginBottom: 2 },
-  historyTime: { color: '#e5e7eb', fontSize: 14, fontWeight: '700' },
-  historyDetail: { color: '#6b7280', fontSize: 11, marginTop: 2 },
+  historyDate: { color: theme.colors.textSecondary, fontSize: 11, fontWeight: '600', marginBottom: 2 },
+  historyTime: { color: theme.colors.textPrimary, fontSize: 14, fontWeight: '700' },
+  historyDetail: { color: theme.colors.textMuted, fontSize: 11, marginTop: 2 },
   historyRight: { alignItems: 'center', gap: 8 },
   historyFeeling: { fontSize: 20 },
   historyActions: { flexDirection: 'row', gap: 12, alignItems: 'center' },

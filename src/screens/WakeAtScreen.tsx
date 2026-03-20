@@ -39,6 +39,8 @@ import { isTimeOptimalForChronotype } from '../domain/sleepProfile';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { FloatingDrawerButton } from '../components/FloatingDrawerButton';
 import { FloatingHomeButton } from '../components/FloatingHomeButton';
+import { useAppTheme } from '../theme/ThemeProvider';
+import type { AppTheme } from '../theme/theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'WakeAt'>;
 
@@ -47,22 +49,27 @@ const TimePickerColumn: FC<{
   value: string;
   onIncrement: () => void;
   onDecrement: () => void;
-}> = ({ label, value, onIncrement, onDecrement }) => (
-  <View style={pickerStyles.column}>
-    <Text style={pickerStyles.label}>{label}</Text>
-    <View style={pickerStyles.pickerRow}>
-      <TouchableOpacity style={pickerStyles.pickerButton} onPress={onDecrement}>
-        <Ionicons name="remove" size={24} color="#60a5fa" />
-      </TouchableOpacity>
-      <Text style={pickerStyles.pickerValue}>{value}</Text>
-      <TouchableOpacity style={pickerStyles.pickerButton} onPress={onIncrement}>
-        <Ionicons name="add" size={24} color="#60a5fa" />
-      </TouchableOpacity>
-    </View>
-  </View>
-);
+}> = ({ label, value, onIncrement, onDecrement }) => {
+  const { theme } = useAppTheme();
+  const pickerStyles = createPickerStyles(theme);
 
-const pickerStyles = StyleSheet.create({
+  return (
+    <View style={pickerStyles.column}>
+      <Text style={pickerStyles.label}>{label}</Text>
+      <View style={pickerStyles.pickerRow}>
+        <TouchableOpacity style={pickerStyles.pickerButton} onPress={onDecrement}>
+          <Ionicons name="remove" size={24} color={theme.colors.info} />
+        </TouchableOpacity>
+        <Text style={pickerStyles.pickerValue}>{value}</Text>
+        <TouchableOpacity style={pickerStyles.pickerButton} onPress={onIncrement}>
+          <Ionicons name="add" size={24} color={theme.colors.info} />
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+};
+
+const createPickerStyles = (theme: AppTheme) => StyleSheet.create({
   column: {
     flex: 1,
     borderRadius: 16,
@@ -70,11 +77,11 @@ const pickerStyles = StyleSheet.create({
     paddingHorizontal: 10,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#374151',
-    backgroundColor: '#1f2937',
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.surface,
   },
   label: {
-    color: '#9ca3af',
+    color: theme.colors.textSecondary,
     fontSize: 14,
     textTransform: 'uppercase',
     letterSpacing: 1,
@@ -97,7 +104,7 @@ const pickerStyles = StyleSheet.create({
     backgroundColor: 'rgba(96,165,250,0.1)',
   },
   pickerValue: {
-    color: '#f9fafb',
+    color: theme.colors.textPrimary,
     fontSize: 32,
     fontWeight: '900',
   },
@@ -108,64 +115,59 @@ const CardOption: FC<{
   onSchedule: (opt: SleepTimeOption) => void;
   chronotype?: import('../domain/sleepProfile').Chronotype;
 }> = ({ opt, onSchedule, chronotype }) => {
+  const { theme } = useAppTheme();
+  const styles = createStyles(theme);
   const isOptimalSleep = isTimeOptimalForChronotype(opt.sleepDate, 'sleep', chronotype);
+
   return (
-  <View style={[styles.card, opt.isRecommended && styles.cardRecommended]}>
-    <View style={styles.cardHeaderRow}>
-      <Text style={styles.cardCycles}>
-        {opt.cycles} {opt.cycles === 1 ? 'CICLO' : 'CICLOS'}
-      </Text>
-      <View style={{ flexDirection: 'row', gap: 6 }}>
-        {isOptimalSleep && (
-          <View style={styles.chronotypeChip}>
-            <Text style={styles.chronotypeChipText}>🌙 Óptimo</Text>
-          </View>
-        )}
-        {opt.isRecommended && (
-          <View style={styles.recommendedChip}>
-            <Text style={styles.recommendedChipText}>⭐ Mejor Opción</Text>
-          </View>
-        )}
-      </View>
-    </View>
-
-    <Text style={styles.cardTime}>
-      {formatTime(opt.windowStart)} - {formatTime(opt.windowEnd)}
-    </Text>
-
-    <View style={styles.cardDetailBox}>
-      <Text style={styles.cardDuration}>
-        <Ionicons name="timer-outline" size={14} color="#a5b4fc" /> Sueño
-        objetivo:
-        <Text style={styles.cardHighlight}>
-          {formatDuration(opt.totalMinutes)}
+    <View style={[styles.card, opt.isRecommended && styles.cardRecommended]}>
+      <View style={styles.cardHeaderRow}>
+        <Text style={styles.cardCycles}>
+          {opt.cycles} {opt.cycles === 1 ? 'CICLO' : 'CICLOS'}
         </Text>
-      </Text>
-      <Text style={styles.cardDuration}>
-        <Ionicons name="bed-outline" size={14} color="#a5b4fc" /> Tiempo en
-        cama: {formatDuration(Math.round(opt.tibMinutes))}
-      </Text>
-    </View>
+        <View style={{ flexDirection: 'row', gap: 6 }}>
+          {isOptimalSleep && (
+            <View style={styles.chronotypeChip}>
+              <Text style={styles.chronotypeChipText}>🌙 Óptimo</Text>
+            </View>
+          )}
+          {opt.isRecommended && (
+            <View style={styles.recommendedChip}>
+              <Text style={styles.recommendedChipText}>⭐ Mejor Opción</Text>
+            </View>
+          )}
+        </View>
+      </View>
 
-    <TouchableOpacity
-      style={styles.cardButton}
-      activeOpacity={0.8}
-      onPress={() => onSchedule(opt)}
-    >
-      <Ionicons
-        name="alarm-outline"
-        size={16}
-        color="#f9fafb"
-        style={{ marginRight: 6 }}
-      />
-      <Text style={styles.cardButtonText}>Programar recordatorio</Text>
-    </TouchableOpacity>
-  </View>
+      <Text style={styles.cardTime}>
+        {formatTime(opt.windowStart)} - {formatTime(opt.windowEnd)}
+      </Text>
+
+      <View style={styles.cardDetailBox}>
+        <Text style={styles.cardDuration}>
+          <Ionicons name="timer-outline" size={14} color="#a5b4fc" /> Sueño objetivo:{' '}
+          <Text style={styles.cardHighlight}>{formatDuration(opt.totalMinutes)}</Text>
+        </Text>
+        <Text style={styles.cardDuration}>
+          <Ionicons name="bed-outline" size={14} color="#a5b4fc" /> Tiempo en cama:{' '}
+          {formatDuration(Math.round(opt.tibMinutes))}
+        </Text>
+      </View>
+
+      <TouchableOpacity style={styles.cardButton} activeOpacity={0.8} onPress={() => onSchedule(opt)}>
+        <Ionicons name="alarm-outline" size={16} color={theme.colors.white} style={{ marginRight: 6 }} />
+        <Text style={styles.cardButtonText}>Programar recordatorio</Text>
+      </TouchableOpacity>
+    </View>
   );
 };
 
+const PADDING_H = 20;
+
 export const WakeAtScreen: FC<Props> = ({ navigation }) => {
   const { profile, loading } = useSleepProfileContext();
+  const { theme } = useAppTheme();
+  const styles = createStyles(theme);
 
   const initialWake = useMemo(() => {
     const now = new Date();
@@ -198,11 +200,7 @@ export const WakeAtScreen: FC<Props> = ({ navigation }) => {
 
   const handleCalculate = () => {
     if (!profile) return;
-    const sleepOptions = getSleepTimesForWakeDateForProfile(
-      profile,
-      wakeDate,
-      [3, 4, 5, 6, 7],
-    );
+    const sleepOptions = getSleepTimesForWakeDateForProfile(profile, wakeDate, [3, 4, 5, 6, 7]);
     setOptions(sleepOptions.reverse());
   };
 
@@ -228,7 +226,6 @@ export const WakeAtScreen: FC<Props> = ({ navigation }) => {
       (opt.windowStart.getTime() + opt.windowEnd.getTime()) / 2,
     );
 
-    // Notificación pre-sueño: 30 min antes de la ventana
     const preSleepTime = new Date(opt.windowStart.getTime() - 30 * 60 * 1000);
     if (preSleepTime.getTime() > Date.now()) {
       await scheduleUniqueNotificationAtDate({
@@ -242,18 +239,12 @@ export const WakeAtScreen: FC<Props> = ({ navigation }) => {
     const id = await scheduleUniqueNotificationAtDate({
       key: `sleep:${opt.cycles}:${centerTime.getTime()}`,
       title: '¡Es hora de dormir!',
-      body: `Ventana ideal para acostarte: ${formatTimeRange(
-        opt.windowStart,
-        opt.windowEnd,
-      )}`,
+      body: `Ventana ideal para acostarte: ${formatTimeRange(opt.windowStart, opt.windowEnd)}`,
       date: centerTime,
     });
 
     if (!id) {
-      Alert.alert(
-        'No se pudo programar',
-        'Revisa permisos de notificación o la hora seleccionada.',
-      );
+      Alert.alert('No se pudo programar', 'Revisa permisos de notificación o la hora seleccionada.');
       return;
     }
 
@@ -268,7 +259,7 @@ export const WakeAtScreen: FC<Props> = ({ navigation }) => {
       <View style={styles.container}>
         <GradientBackground />
         <View style={styles.loadingCenter}>
-          <Text style={{ color: '#e5e7eb' }}>Cargando perfil de sueño…</Text>
+          <Text style={{ color: theme.colors.textPrimary }}>Cargando perfil de sueño…</Text>
         </View>
       </View>
     );
@@ -294,75 +285,54 @@ export const WakeAtScreen: FC<Props> = ({ navigation }) => {
 
           <Text style={styles.title}>Definir Despertar</Text>
           <Text style={styles.subtitle}>
-            Ajusta la hora a la que *debes* despertar. Te diremos cuándo
-            acostarte.
+            Ajusta la hora a la que *debes* despertar. Te diremos cuándo acostarte.
           </Text>
 
-          {/* --- Time Picker --- */}
+          {/* Time Picker */}
           <View style={styles.pickerWrapper}>
             <TimePickerColumn
               label="Hora"
-              value={wakeDate.toLocaleTimeString('es-MX', {
-                hour: '2-digit',
-                hour12: false,
-              })}
+              value={wakeDate.toLocaleTimeString('es-MX', { hour: '2-digit', hour12: false })}
               onIncrement={() => adjustWakeHours(1)}
               onDecrement={() => adjustWakeHours(-1)}
             />
             <Text style={styles.pickerSeparator}>:</Text>
             <TimePickerColumn
               label="Minutos"
-              value={wakeDate.toLocaleTimeString('es-MX', {
-                minute: '2-digit',
-              })}
+              value={wakeDate.toLocaleTimeString('es-MX', { minute: '2-digit' })}
               onIncrement={() => adjustWakeMinutes(15)}
               onDecrement={() => adjustWakeMinutes(-15)}
             />
           </View>
 
           <Text style={styles.currentWakeText}>
-            Hora de Despertar Seleccionada:
+            Hora de Despertar Seleccionada:{' '}
             <Text style={styles.currentWakeTime}>{formatTime(wakeDate)}</Text>
           </Text>
 
-          {/* --- Botón de Cálculo --- */}
-          <Animated.View
-            style={[styles.primaryButtonWrapper, animatedButtonStyle]}
-          >
+          {/* Botón de Cálculo */}
+          <Animated.View style={[styles.primaryButtonWrapper, animatedButtonStyle]}>
             <TouchableOpacity
               activeOpacity={1}
               style={styles.primaryButtonInner}
               onPressIn={() => {
-                buttonScale.value = withSpring(0.96, {
-                  damping: 15,
-                  stiffness: 200,
-                });
+                buttonScale.value = withSpring(0.96, { damping: 15, stiffness: 200 });
               }}
               onPressOut={() => {
-                buttonScale.value = withSpring(1, {
-                  damping: 15,
-                  stiffness: 200,
-                });
+                buttonScale.value = withSpring(1, { damping: 15, stiffness: 200 });
               }}
               onPress={handleCalculate}
             >
-              <Ionicons
-                name="calculator-outline"
-                size={20}
-                color="#022c22"
-                style={{ marginRight: 8 }}
-              />
-              <Text style={styles.primaryButtonText}>
-                Calcular Hora para Dormir
-              </Text>
+              <Ionicons name="calculator-outline" size={20} color="#022c22" style={{ marginRight: 8 }} />
+              <Text style={styles.primaryButtonText}>Calcular Hora para Dormir</Text>
             </TouchableOpacity>
           </Animated.View>
 
-          {/* --- Lista de Opciones --- */}
+          {/* Lista de Opciones */}
           <View style={{ marginTop: 20 }}>
             {options.length === 0 ? (
               <View style={styles.helperBox}>
-                <Ionicons name="moon-outline" size={24} color="#6b7280" />
+                <Ionicons name="moon-outline" size={24} color={theme.colors.textMuted} />
                 <Text style={styles.helperText}>
                   Ajusta la hora y toca "Calcular" para ver cuándo acostarte.
                 </Text>
@@ -371,9 +341,7 @@ export const WakeAtScreen: FC<Props> = ({ navigation }) => {
               options.map((opt, index) => (
                 <Animated.View
                   key={opt.cycles}
-                  entering={FadeInUp.delay(index * 90)
-                    .springify()
-                    .damping(14)}
+                  entering={FadeInUp.delay(index * 90).springify().damping(14)}
                 >
                   <CardOption
                     opt={opt}
@@ -390,31 +358,13 @@ export const WakeAtScreen: FC<Props> = ({ navigation }) => {
   );
 };
 
-const PADDING_H = 20;
-
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) => StyleSheet.create({
   flex: { flex: 1 },
-  loadingCenter: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  container: {
-    flex: 1,
-    backgroundColor: '#020617',
-  },
-  content: {
-    flex: 1,
-    paddingHorizontal: PADDING_H,
-  },
-  scrollContent: {
-    paddingBottom: 40,
-    paddingTop: 64,
-  },
-  header: {
-    alignItems: 'center',
-    marginBottom: 20,
-  },
+  loadingCenter: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  container: { flex: 1, backgroundColor: theme.colors.background },
+  content: { flex: 1, paddingHorizontal: PADDING_H },
+  scrollContent: { paddingBottom: 40, paddingTop: 64 },
+  header: { alignItems: 'center', marginBottom: 20 },
   breathingIcon: {
     width: 70,
     height: 70,
@@ -426,63 +376,36 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(96,165,250,0.5)',
     marginBottom: 10,
   },
-  breathingIconEmoji: {
-    fontSize: 32,
-  },
-  title: {
-    color: '#e0e7ff',
-    fontSize: 30,
-    fontWeight: '900',
-    marginBottom: 4,
-    textAlign: 'center',
-  },
-  subtitle: {
-    color: '#a5b4fc',
-    fontSize: 15,
-    marginBottom: 24,
-    textAlign: 'center',
-  },
+  breathingIconEmoji: { fontSize: 32 },
+  title: { color: theme.colors.textPrimary, fontSize: 30, fontWeight: '900', marginBottom: 4, textAlign: 'center' },
+  subtitle: { color: '#a5b4fc', fontSize: 15, marginBottom: 24, textAlign: 'center' },
   pickerWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 20,
-    backgroundColor: '#0f172a',
+    backgroundColor: theme.colors.surfaceElevated,
     borderRadius: 20,
     paddingVertical: 10,
     paddingHorizontal: 5,
     borderWidth: 1,
-    borderColor: '#374151',
+    borderColor: theme.colors.border,
   },
   pickerSeparator: {
-    color: '#f9fafb',
+    color: theme.colors.textPrimary,
     fontSize: 36,
     fontWeight: '900',
     marginHorizontal: 10,
     paddingTop: 15,
   },
-  currentWakeText: {
-    color: '#9ca3af',
-    fontSize: 15,
-    marginBottom: 20,
-    textAlign: 'center',
-  },
-  currentWakeTime: {
-    color: '#e5e7eb',
-    fontSize: 16,
-    fontWeight: '700',
-  },
+  currentWakeText: { color: theme.colors.textSecondary, fontSize: 15, marginBottom: 20, textAlign: 'center' },
+  currentWakeTime: { color: theme.colors.textPrimary, fontSize: 16, fontWeight: '700' },
   primaryButtonWrapper: {
     borderRadius: 999,
     overflow: 'hidden',
     marginBottom: 12,
     ...Platform.select({
-      ios: {
-        shadowColor: '#22c55e',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.4,
-        shadowRadius: 8,
-      },
+      ios: { shadowColor: '#22c55e', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.4, shadowRadius: 8 },
     }),
   },
   primaryButtonInner: {
@@ -492,101 +415,49 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
   },
-  primaryButtonText: {
-    color: '#022c22',
-    fontSize: 17,
-    fontWeight: '700',
-  },
-  secondaryButton: {
-    borderWidth: 1,
-    borderColor: '#374151',
-    paddingVertical: 14,
-    borderRadius: 999,
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'center',
-    marginBottom: 20,
-    backgroundColor: '#1f2937',
-  },
-  secondaryButtonText: {
-    color: '#a5b4fc',
-    fontSize: 15,
-    fontWeight: '600',
-  },
+  primaryButtonText: { color: '#022c22', fontSize: 17, fontWeight: '700' },
   helperBox: {
     alignItems: 'center',
     padding: 30,
-    backgroundColor: '#1f2937',
+    backgroundColor: theme.colors.surface,
     borderRadius: 16,
     marginTop: 20,
     borderWidth: 1,
-    borderColor: '#374151',
+    borderColor: theme.colors.border,
   },
-  helperText: {
-    color: '#9ca3af',
-    fontSize: 15,
-    marginTop: 15,
-    textAlign: 'center',
-  },
+  helperText: { color: theme.colors.textSecondary, fontSize: 15, marginTop: 15, textAlign: 'center' },
   card: {
-    backgroundColor: '#1f2937',
+    backgroundColor: theme.colors.surface,
     borderRadius: 20,
     padding: 20,
     marginBottom: 16,
     borderLeftWidth: 5,
     borderLeftColor: '#10b981',
   },
-  cardRecommended: {
-    borderLeftColor: '#f97316',
-  },
+  cardRecommended: { borderLeftColor: '#f97316' },
   cardHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 8,
   },
-  cardCycles: {
-    color: '#a5b4fc',
-    fontSize: 14,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-  },
-  cardTime: {
-    color: '#f9fafb',
-    fontSize: 26,
-    fontWeight: '900',
-    marginBottom: 10,
-  },
+  cardCycles: { color: '#a5b4fc', fontSize: 14, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1 },
+  cardTime: { color: theme.colors.textPrimary, fontSize: 26, fontWeight: '900', marginBottom: 10 },
   cardDetailBox: {
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#374151',
+    borderTopColor: theme.colors.border,
     paddingTop: 10,
     marginBottom: 10,
   },
-  cardDuration: {
-    color: '#cbd5e1',
-    fontSize: 14,
-    marginBottom: 6,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  cardHighlight: {
-    color: '#f9fafb',
-    fontWeight: '700',
-  },
+  cardDuration: { color: theme.colors.textSecondary, fontSize: 14, marginBottom: 6, flexDirection: 'row', alignItems: 'center' },
+  cardHighlight: { color: theme.colors.textPrimary, fontWeight: '700' },
   recommendedChip: {
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 999,
     backgroundColor: 'rgba(249,115,22,0.15)',
   },
-  recommendedChipText: {
-    color: '#fb923c',
-    fontSize: 11,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-  },
+  recommendedChipText: { color: '#fb923c', fontSize: 11, fontWeight: '700', textTransform: 'uppercase' },
   chronotypeChip: {
     paddingHorizontal: 8,
     paddingVertical: 3,
@@ -595,25 +466,17 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(167,139,250,0.3)',
   },
-  chronotypeChipText: {
-    color: '#c4b5fd',
-    fontSize: 11,
-    fontWeight: '700',
-  },
+  chronotypeChipText: { color: '#c4b5fd', fontSize: 11, fontWeight: '700' },
   cardButton: {
     marginTop: 15,
-    backgroundColor: '#4f46e5',
+    backgroundColor: theme.colors.primary,
     paddingVertical: 12,
     borderRadius: 999,
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'center',
   },
-  cardButtonText: {
-    color: '#f9fafb',
-    fontSize: 14,
-    fontWeight: '700',
-  },
+  cardButtonText: { color: theme.colors.white, fontSize: 14, fontWeight: '700' },
   floatingButton: {
     position: 'absolute',
     bottom: 20,

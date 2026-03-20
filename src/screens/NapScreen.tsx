@@ -1,5 +1,5 @@
 // src/screens/NapScreen.tsx
-import React, { FC, useState, useMemo } from 'react';
+import React, { FC, useState } from 'react';
 import {
   View,
   Text,
@@ -11,13 +11,15 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import Animated, { FadeInUp, useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
+import Animated, { FadeInUp } from 'react-native-reanimated';
 
 import { GradientBackground } from '../components/GradientBackground';
 import { FloatingDrawerButton } from '../components/FloatingDrawerButton';
 import { FloatingHomeButton } from '../components/FloatingHomeButton';
 import { scheduleSmartWakeAlarm } from '../notifications/scheduler';
 import { formatTime } from '../utils/sleep';
+import { useAppTheme } from '../theme/ThemeProvider';
+import type { AppTheme } from '../theme/theme';
 
 interface NapOption {
   id: string;
@@ -69,18 +71,15 @@ const NAP_OPTIONS: NapOption[] = [
 ];
 
 export const NapScreen: FC = () => {
+  const { theme } = useAppTheme();
+  const styles = createStyles(theme);
+
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [scheduled, setScheduled] = useState<Record<string, string>>({});
-
-  const selectedOption = useMemo(
-    () => NAP_OPTIONS.find((o) => o.id === selectedId) ?? null,
-    [selectedId],
-  );
 
   const handleSchedule = async (option: NapOption) => {
     const now = new Date();
     const wakeTime = new Date(now.getTime() + option.durationMinutes * 60 * 1000);
-    // window: ±10 min around wake time
     const windowStart = new Date(wakeTime.getTime() - 10 * 60 * 1000);
     const windowEnd = new Date(wakeTime.getTime() + 10 * 60 * 1000);
 
@@ -201,7 +200,7 @@ export const NapScreen: FC = () => {
 
         {/* Sleep science note */}
         <View style={styles.scienceCard}>
-          <Ionicons name="flask-outline" size={16} color="#6b7280" style={{ marginRight: 8 }} />
+          <Ionicons name="flask-outline" size={16} color={theme.colors.textMuted} style={{ marginRight: 8 }} />
           <Text style={styles.scienceText}>
             Las siestas de 20 min mejoran el estado de alerta sin causar inercia de sueño. Las de 90 min completan un ciclo y maximizan la recuperación cognitiva.
           </Text>
@@ -213,20 +212,20 @@ export const NapScreen: FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#020617' },
+const createStyles = (theme: AppTheme) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: theme.colors.background },
   scroll: { flex: 1 },
   scrollContent: { paddingHorizontal: 20, paddingTop: 64, paddingBottom: 40 },
   header: { marginBottom: 24 },
-  title: { color: '#e0e7ff', fontSize: 28, fontWeight: '900', marginBottom: 4 },
-  subtitle: { color: '#9ca3af', fontSize: 14, lineHeight: 20 },
+  title: { color: theme.colors.textPrimary, fontSize: 28, fontWeight: '900', marginBottom: 4 },
+  subtitle: { color: theme.colors.textSecondary, fontSize: 14, lineHeight: 20 },
   card: {
-    backgroundColor: '#1f2937',
+    backgroundColor: theme.colors.surface,
     borderRadius: 18,
     padding: 16,
     marginBottom: 14,
     borderWidth: 1,
-    borderColor: '#374151',
+    borderColor: theme.colors.border,
     ...Platform.select({
       ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4 },
       android: { elevation: 2 },
@@ -243,20 +242,20 @@ const styles = StyleSheet.create({
   cardEmoji: { fontSize: 26 },
   cardTextCol: { flex: 1 },
   cardTitleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 },
-  cardLabel: { color: '#e5e7eb', fontSize: 15, fontWeight: '800' },
+  cardLabel: { color: theme.colors.textPrimary, fontSize: 15, fontWeight: '800' },
   durationBadge: {
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 999,
   },
   durationBadgeText: { fontSize: 11, fontWeight: '700' },
-  cardDesc: { color: '#9ca3af', fontSize: 13, lineHeight: 18, marginBottom: 4 },
-  wakeEta: { color: '#6b7280', fontSize: 11 },
-  expandedContent: { marginTop: 14, borderTopWidth: 1, borderTopColor: '#374151', paddingTop: 12 },
+  cardDesc: { color: theme.colors.textSecondary, fontSize: 13, lineHeight: 18, marginBottom: 4 },
+  wakeEta: { color: theme.colors.textMuted, fontSize: 11 },
+  expandedContent: { marginTop: 14, borderTopWidth: 1, borderTopColor: theme.colors.border, paddingTop: 12 },
   tipBox: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    backgroundColor: '#111827',
+    backgroundColor: theme.colors.surfaceElevated,
     borderRadius: 10,
     padding: 10,
     marginBottom: 12,
@@ -283,12 +282,12 @@ const styles = StyleSheet.create({
   scienceCard: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    backgroundColor: '#111827',
+    backgroundColor: theme.colors.surface,
     borderRadius: 14,
     padding: 14,
     marginTop: 8,
     borderWidth: 1,
-    borderColor: '#1f2937',
+    borderColor: theme.colors.border,
   },
-  scienceText: { color: '#4b5563', fontSize: 12, lineHeight: 18, flex: 1 },
+  scienceText: { color: theme.colors.textMuted, fontSize: 12, lineHeight: 18, flex: 1 },
 });

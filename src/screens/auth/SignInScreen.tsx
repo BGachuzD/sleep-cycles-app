@@ -13,11 +13,15 @@ import {
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../../App';
 import { useAuth } from '../../context/AuthContext';
+import { useAppTheme } from '../../theme/ThemeProvider';
+import type { AppTheme } from '../../theme/theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'SignIn'>;
 
 export const SignInScreen: React.FC<Props> = ({ navigation }) => {
   const { signIn } = useAuth();
+  const { theme } = useAppTheme();
+  const styles = createStyles(theme);
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -65,7 +69,7 @@ export const SignInScreen: React.FC<Props> = ({ navigation }) => {
         <TextInput
           style={styles.input}
           placeholder="Correo electrónico"
-          placeholderTextColor="#6b7280"
+          placeholderTextColor={theme.colors.textMuted}
           keyboardType="email-address"
           autoCapitalize="none"
           value={email}
@@ -76,7 +80,7 @@ export const SignInScreen: React.FC<Props> = ({ navigation }) => {
           <TextInput
             style={styles.passwordInput}
             placeholder="Contraseña"
-            placeholderTextColor="#6b7280"
+            placeholderTextColor={theme.colors.textMuted}
             secureTextEntry={!showPassword}
             value={password}
             onChangeText={setPassword}
@@ -100,7 +104,7 @@ export const SignInScreen: React.FC<Props> = ({ navigation }) => {
           activeOpacity={0.8}
         >
           {loading ? (
-            <ActivityIndicator color="#f9fafb" />
+            <ActivityIndicator color={theme.colors.textPrimary} />
           ) : (
             <Text style={styles.buttonText}>Entrar</Text>
           )}
@@ -112,7 +116,7 @@ export const SignInScreen: React.FC<Props> = ({ navigation }) => {
           disabled={loading}
         >
           <Text style={styles.linkText}>
-            ¿Aún no tienes cuenta?
+            ¿Aún no tienes cuenta?{' '}
             <Text style={styles.linkTextHighlight}>Regístrate</Text>
           </Text>
         </TouchableOpacity>
@@ -121,15 +125,15 @@ export const SignInScreen: React.FC<Props> = ({ navigation }) => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#020617',
+    backgroundColor: theme.colors.background,
     justifyContent: 'center',
     paddingHorizontal: 20,
   },
   inner: {
-    backgroundColor: '#0f172a',
+    backgroundColor: theme.colors.surface,
     padding: 30,
     borderRadius: 16,
     shadowColor: '#000',
@@ -139,41 +143,41 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   title: {
-    color: '#e5e7eb',
+    color: theme.colors.textPrimary,
     fontSize: 28,
     fontWeight: 'bold',
     marginBottom: 8,
   },
   subtitle: {
-    color: '#9ca3af',
+    color: theme.colors.textSecondary,
     fontSize: 15,
     marginBottom: 30,
   },
   input: {
-    backgroundColor: '#1e293b',
+    backgroundColor: theme.colors.surfaceElevated,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: theme.colors.border,
     paddingHorizontal: 16,
     paddingVertical: 12,
-    color: '#f9fafb',
+    color: theme.colors.textPrimary,
     fontSize: 16,
     marginBottom: 15,
   },
   passwordContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1e293b',
+    backgroundColor: theme.colors.surfaceElevated,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: theme.colors.border,
     marginBottom: 15,
   },
   passwordInput: {
     flex: 1,
     paddingHorizontal: 16,
     paddingVertical: 12,
-    color: '#f9fafb',
+    color: theme.colors.textPrimary,
     fontSize: 16,
   },
   showHideButton: {
@@ -181,12 +185,12 @@ const styles = StyleSheet.create({
     paddingLeft: 5,
   },
   showHideText: {
-    color: '#60a5fa',
+    color: theme.colors.info,
     fontWeight: '600',
     fontSize: 14,
   },
   errorText: {
-    color: '#f87171',
+    color: theme.colors.danger,
     fontSize: 13,
     marginBottom: 10,
     textAlign: 'center',
@@ -197,10 +201,10 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: 'center',
     marginTop: 10,
-    backgroundColor: '#3b82f6',
+    backgroundColor: theme.colors.primary,
   },
   buttonText: {
-    color: '#f9fafb',
+    color: theme.colors.white,
     fontWeight: '700',
     fontSize: 16,
   },
@@ -209,11 +213,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   linkText: {
-    color: '#9ca3af',
+    color: theme.colors.textSecondary,
     fontSize: 14,
   },
   linkTextHighlight: {
-    color: '#60a5fa',
+    color: theme.colors.info,
     fontWeight: '700',
   },
 });

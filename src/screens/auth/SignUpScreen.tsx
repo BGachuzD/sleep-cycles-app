@@ -12,12 +12,16 @@ import {
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../../App';
 import { useAuth } from '../../context/AuthContext';
+import { useAppTheme } from '../../theme/ThemeProvider';
+import type { AppTheme } from '../../theme/theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'SignUp'>;
 type Chronotype = 'morning' | 'intermediate' | 'night';
 
 export const SignUpScreen: React.FC<Props> = ({ navigation }) => {
   const { signUp } = useAuth();
+  const { theme } = useAppTheme();
+  const styles = createStyles(theme);
 
   const [displayName, setDisplayName] = useState('');
   const [email, setEmail] = useState('');
@@ -67,11 +71,6 @@ export const SignUpScreen: React.FC<Props> = ({ navigation }) => {
       return;
     }
 
-    // Aquí manejamos ambos escenarios:
-    //  - Si Supabase tiene confirmación de email habilitada:
-    //      -> no habrá sesión y el usuario debe validar su correo.
-    //  - Si está deshabilitada:
-    //      -> se crea sesión automáticamente y RootNavigator enviará al flujo principal.
     setInfoMessage(
       'Cuenta creada. Si la verificación por correo está habilitada, revisa tu bandeja de entrada y confirma tu email antes de iniciar sesión.',
     );
@@ -96,7 +95,7 @@ export const SignUpScreen: React.FC<Props> = ({ navigation }) => {
         <TextInput
           style={styles.input}
           placeholder="Nombre para mostrar"
-          placeholderTextColor="#6b7280"
+          placeholderTextColor={theme.colors.textMuted}
           autoCapitalize="words"
           value={displayName}
           onChangeText={setDisplayName}
@@ -105,7 +104,7 @@ export const SignUpScreen: React.FC<Props> = ({ navigation }) => {
         <TextInput
           style={styles.input}
           placeholder="Correo electrónico"
-          placeholderTextColor="#6b7280"
+          placeholderTextColor={theme.colors.textMuted}
           keyboardType="email-address"
           autoCapitalize="none"
           value={email}
@@ -115,7 +114,7 @@ export const SignUpScreen: React.FC<Props> = ({ navigation }) => {
         <TextInput
           style={styles.input}
           placeholder="Contraseña"
-          placeholderTextColor="#6b7280"
+          placeholderTextColor={theme.colors.textMuted}
           secureTextEntry
           value={password}
           onChangeText={setPassword}
@@ -124,7 +123,7 @@ export const SignUpScreen: React.FC<Props> = ({ navigation }) => {
         <TextInput
           style={styles.input}
           placeholder="Confirmar contraseña"
-          placeholderTextColor="#6b7280"
+          placeholderTextColor={theme.colors.textMuted}
           secureTextEntry
           value={passwordConfirm}
           onChangeText={setPasswordConfirm}
@@ -193,7 +192,7 @@ export const SignUpScreen: React.FC<Props> = ({ navigation }) => {
           activeOpacity={0.9}
         >
           {loading ? (
-            <ActivityIndicator color="#f9fafb" />
+            <ActivityIndicator color={theme.colors.white} />
           ) : (
             <Text style={styles.buttonTextPrimary}>Crear cuenta</Text>
           )}
@@ -205,7 +204,7 @@ export const SignUpScreen: React.FC<Props> = ({ navigation }) => {
           disabled={loading}
         >
           <Text style={styles.linkText}>
-            ¿Ya tienes cuenta?
+            ¿Ya tienes cuenta?{' '}
             <Text style={styles.linkTextHighlight}>Inicia sesión</Text>
           </Text>
         </TouchableOpacity>
@@ -214,41 +213,41 @@ export const SignUpScreen: React.FC<Props> = ({ navigation }) => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#020617',
+    backgroundColor: theme.colors.background,
     justifyContent: 'center',
     paddingHorizontal: 24,
   },
   inner: {
-    backgroundColor: 'rgba(15,23,42,0.98)',
+    backgroundColor: theme.colors.surface,
     padding: 24,
     borderRadius: 24,
   },
   title: {
-    color: '#f9fafb',
+    color: theme.colors.textPrimary,
     fontSize: 24,
     fontWeight: '800',
     marginBottom: 8,
   },
   subtitle: {
-    color: '#9ca3af',
+    color: theme.colors.textSecondary,
     fontSize: 14,
     marginBottom: 20,
   },
   input: {
-    backgroundColor: '#020617',
+    backgroundColor: theme.colors.background,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#1f2937',
+    borderColor: theme.colors.border,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    color: '#f9fafb',
+    color: theme.colors.textPrimary,
     marginBottom: 12,
   },
   fieldLabel: {
-    color: '#9ca3af',
+    color: theme.colors.textSecondary,
     fontSize: 13,
     marginTop: 2,
     marginBottom: 8,
@@ -261,24 +260,24 @@ const styles = StyleSheet.create({
   },
   chronotypeChip: {
     flex: 1,
-    backgroundColor: '#020617',
+    backgroundColor: theme.colors.background,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: theme.colors.border,
     paddingVertical: 10,
     alignItems: 'center',
   },
   chronotypeChipActive: {
-    backgroundColor: '#4f46e5',
-    borderColor: '#6366f1',
+    backgroundColor: theme.colors.primary,
+    borderColor: theme.colors.primaryStrong,
   },
   chronotypeChipText: {
-    color: '#9ca3af',
+    color: theme.colors.textSecondary,
     fontSize: 12,
     fontWeight: '600',
   },
   chronotypeChipTextActive: {
-    color: '#f8fafc',
+    color: theme.colors.white,
   },
   errorText: {
     color: '#fca5a5',
@@ -297,10 +296,10 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   buttonPrimary: {
-    backgroundColor: '#4f46e5',
+    backgroundColor: theme.colors.primary,
   },
   buttonTextPrimary: {
-    color: '#f9fafb',
+    color: theme.colors.white,
     fontWeight: '700',
     fontSize: 15,
   },
@@ -309,11 +308,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   linkText: {
-    color: '#9ca3af',
+    color: theme.colors.textSecondary,
     fontSize: 13,
   },
   linkTextHighlight: {
-    color: '#e5e7eb',
+    color: theme.colors.textPrimary,
     fontWeight: '600',
   },
 });

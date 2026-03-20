@@ -26,6 +26,8 @@ import {
   type SleepLogEntry,
 } from '../domain/sleepLog';
 import { formatDuration, formatTime } from '../utils/sleep';
+import { useAppTheme } from '../theme/ThemeProvider';
+import type { AppTheme } from '../theme/theme';
 
 const FEELING_EMOJI: Record<1 | 2 | 3, string> = { 1: '😴', 2: '😐', 3: '😊' };
 
@@ -35,29 +37,34 @@ const StatCard: FC<{
   value: string;
   color: string;
   sub?: string;
-}> = ({ icon, label, value, color, sub }) => (
-  <View style={[statCardStyles.card, { borderTopColor: color }]}>
-    <Ionicons name={icon} size={20} color={color} style={{ marginBottom: 6 }} />
-    <Text style={statCardStyles.value}>{value}</Text>
-    <Text style={statCardStyles.label}>{label}</Text>
-    {sub && <Text style={statCardStyles.sub}>{sub}</Text>}
-  </View>
-);
+}> = ({ icon, label, value, color, sub }) => {
+  const { theme } = useAppTheme();
+  const statCardStyles = createStatCardStyles(theme);
 
-const statCardStyles = StyleSheet.create({
+  return (
+    <View style={[statCardStyles.card, { borderTopColor: color }]}>
+      <Ionicons name={icon} size={20} color={color} style={{ marginBottom: 6 }} />
+      <Text style={statCardStyles.value}>{value}</Text>
+      <Text style={statCardStyles.label}>{label}</Text>
+      {sub && <Text style={statCardStyles.sub}>{sub}</Text>}
+    </View>
+  );
+};
+
+const createStatCardStyles = (theme: AppTheme) => StyleSheet.create({
   card: {
     flex: 1,
-    backgroundColor: '#1f2937',
+    backgroundColor: theme.colors.surface,
     borderRadius: 14,
     padding: 14,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#374151',
+    borderColor: theme.colors.border,
     borderTopWidth: 3,
   },
-  value: { color: '#f9fafb', fontSize: 22, fontWeight: '900', marginBottom: 2 },
-  label: { color: '#9ca3af', fontSize: 11, textAlign: 'center' },
-  sub: { color: '#6b7280', fontSize: 10, marginTop: 2, textAlign: 'center' },
+  value: { color: theme.colors.textPrimary, fontSize: 22, fontWeight: '900', marginBottom: 2 },
+  label: { color: theme.colors.textSecondary, fontSize: 11, textAlign: 'center' },
+  sub: { color: theme.colors.textMuted, fontSize: 10, marginTop: 2, textAlign: 'center' },
 });
 
 // Mini bar chart for last 7 days
@@ -65,6 +72,9 @@ const WeekChart: FC<{ entries: SleepLogEntry[]; cycleMins: number }> = ({
   entries,
   cycleMins,
 }) => {
+  const { theme } = useAppTheme();
+  const chartStyles = createChartStyles(theme);
+
   const days = useMemo(() => {
     const result = [];
     for (let i = 6; i >= 0; i--) {
@@ -88,7 +98,7 @@ const WeekChart: FC<{ entries: SleepLogEntry[]; cycleMins: number }> = ({
         {days.map((day) => {
           const heightPct = day.mins / maxMins;
           const isGood = day.mins >= targetMins;
-          const barColor = day.mins === 0 ? '#1f2937' : isGood ? '#34d399' : '#f97316';
+          const barColor = day.mins === 0 ? theme.colors.surfaceElevated : isGood ? '#34d399' : '#f97316';
           return (
             <View key={day.dateStr} style={chartStyles.barCol}>
               <View style={chartStyles.barWrapper}>
@@ -124,13 +134,13 @@ const WeekChart: FC<{ entries: SleepLogEntry[]; cycleMins: number }> = ({
   );
 };
 
-const chartStyles = StyleSheet.create({
+const createChartStyles = (theme: AppTheme) => StyleSheet.create({
   container: {
-    backgroundColor: '#1f2937',
+    backgroundColor: theme.colors.surface,
     borderRadius: 16,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#374151',
+    borderColor: theme.colors.border,
     marginBottom: 16,
   },
   barsRow: {
@@ -141,24 +151,21 @@ const chartStyles = StyleSheet.create({
     marginBottom: 8,
   },
   barCol: { flex: 1, alignItems: 'center' },
-  barWrapper: {
-    flex: 1,
-    width: '100%',
-    justifyContent: 'flex-end',
-    marginBottom: 4,
-  },
+  barWrapper: { flex: 1, width: '100%', justifyContent: 'flex-end', marginBottom: 4 },
   bar: { width: '100%', borderRadius: 4, minHeight: 0 },
-  cycleLabel: { color: '#6b7280', fontSize: 9, marginBottom: 2 },
-  dayLabel: { color: '#9ca3af', fontSize: 10 },
+  cycleLabel: { color: theme.colors.textMuted, fontSize: 9, marginBottom: 2 },
+  dayLabel: { color: theme.colors.textSecondary, fontSize: 10 },
   legend: { flexDirection: 'row', gap: 16, marginTop: 8 },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   legendDot: { width: 8, height: 8, borderRadius: 4 },
-  legendText: { color: '#6b7280', fontSize: 11 },
+  legendText: { color: theme.colors.textMuted, fontSize: 11 },
 });
 
 export const StatsScreen: FC = () => {
   const { entries, loading, refresh } = useSleepLogContext();
   const { profile } = useSleepProfileContext();
+  const { theme } = useAppTheme();
+  const styles = createStyles(theme);
   const navigation = useNavigation();
 
   const cycleMins = profile?.age
@@ -194,8 +201,8 @@ export const StatsScreen: FC = () => {
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
               {loading
-                ? <ActivityIndicator size="small" color="#60a5fa" />
-                : <Ionicons name="refresh-outline" size={20} color="#60a5fa" />
+                ? <ActivityIndicator size="small" color={theme.colors.info} />
+                : <Ionicons name="refresh-outline" size={20} color={theme.colors.info} />
               }
             </TouchableOpacity>
           </View>
@@ -204,7 +211,7 @@ export const StatsScreen: FC = () => {
         {entries.length === 0 ? (
           <Animated.View entering={FadeInUp.duration(400)}>
             <View style={styles.emptyBox}>
-              <Ionicons name="stats-chart-outline" size={40} color="#374151" />
+              <Ionicons name="stats-chart-outline" size={40} color={theme.colors.border} />
               <Text style={styles.emptyTitle}>Sin datos aún</Text>
               <Text style={styles.emptyText}>
                 Registra tu sueño en el diario para ver estadísticas aquí.
@@ -222,35 +229,12 @@ export const StatsScreen: FC = () => {
             {/* Summary cards grid */}
             <Animated.View entering={FadeInUp.delay(60).duration(400)}>
               <View style={styles.cardsRow}>
-                <StatCard
-                  icon="time-outline"
-                  label="Promedio por noche"
-                  value={`${avgHours}h`}
-                  color="#818cf8"
-                  sub={`${stats.avgCycles} ciclos`}
-                />
-                <StatCard
-                  icon="calendar-outline"
-                  label="Noches registradas"
-                  value={String(stats.totalDays)}
-                  color="#60a5fa"
-                />
+                <StatCard icon="time-outline" label="Promedio por noche" value={`${avgHours}h`} color="#818cf8" sub={`${stats.avgCycles} ciclos`} />
+                <StatCard icon="calendar-outline" label="Noches registradas" value={String(stats.totalDays)} color="#60a5fa" />
               </View>
               <View style={[styles.cardsRow, { marginTop: 10 }]}>
-                <StatCard
-                  icon="flame-outline"
-                  label="Racha actual"
-                  value={`🔥 ${stats.currentStreak}`}
-                  color="#f97316"
-                  sub={`Mejor: ${stats.longestStreak} noches`}
-                />
-                <StatCard
-                  icon="battery-half-outline"
-                  label="Deuda semanal"
-                  value={stats.debtMinutes > 0 ? `${debtHours}h` : '✅'}
-                  color={stats.debtMinutes > 0 ? '#f87171' : '#34d399'}
-                  sub={stats.debtMinutes > 0 ? 'vs objetivo 5 ciclos/noche' : 'Sin deuda esta semana'}
-                />
+                <StatCard icon="flame-outline" label="Racha actual" value={`🔥 ${stats.currentStreak}`} color="#f97316" sub={`Mejor: ${stats.longestStreak} noches`} />
+                <StatCard icon="battery-half-outline" label="Deuda semanal" value={stats.debtMinutes > 0 ? `${debtHours}h` : '✅'} color={stats.debtMinutes > 0 ? '#f87171' : '#34d399'} sub={stats.debtMinutes > 0 ? 'vs objetivo 5 ciclos/noche' : 'Sin deuda esta semana'} />
               </View>
             </Animated.View>
 
@@ -258,7 +242,7 @@ export const StatsScreen: FC = () => {
             {stats.debtMinutes > 0 && (
               <Animated.View entering={FadeInUp.delay(120).duration(400)}>
                 <View style={styles.debtCard}>
-                  <Ionicons name="alert-circle-outline" size={18} color="#f87171" style={{ marginRight: 8 }} />
+                  <Ionicons name="alert-circle-outline" size={18} color={theme.colors.danger} style={{ marginRight: 8 }} />
                   <View style={{ flex: 1 }}>
                     <Text style={styles.debtTitle}>Deuda de sueño esta semana</Text>
                     <Text style={styles.debtText}>
@@ -316,29 +300,29 @@ export const StatsScreen: FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#020617' },
+const createStyles = (theme: AppTheme) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: theme.colors.background },
   scroll: { flex: 1 },
   scrollContent: { paddingHorizontal: 20, paddingTop: 64, paddingBottom: 40 },
   header: { marginBottom: 20 },
   headerRow: { flexDirection: 'row', alignItems: 'flex-start' },
   refreshBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center', marginTop: 4 },
-  title: { color: '#e0e7ff', fontSize: 28, fontWeight: '900', marginBottom: 4 },
-  subtitle: { color: '#9ca3af', fontSize: 14 },
+  title: { color: theme.colors.textPrimary, fontSize: 28, fontWeight: '900', marginBottom: 4 },
+  subtitle: { color: theme.colors.textSecondary, fontSize: 14 },
   emptyBox: {
     alignItems: 'center',
     paddingVertical: 50,
-    backgroundColor: '#1f2937',
+    backgroundColor: theme.colors.surface,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#374151',
+    borderColor: theme.colors.border,
     marginTop: 20,
   },
-  emptyTitle: { color: '#6b7280', fontSize: 18, fontWeight: '700', marginTop: 12 },
-  emptyText: { color: '#4b5563', fontSize: 13, textAlign: 'center', marginTop: 6, paddingHorizontal: 30 },
+  emptyTitle: { color: theme.colors.textMuted, fontSize: 18, fontWeight: '700', marginTop: 12 },
+  emptyText: { color: theme.colors.textMuted, fontSize: 13, textAlign: 'center', marginTop: 6, paddingHorizontal: 30 },
   logBtn: {
     marginTop: 20,
-    backgroundColor: '#4f46e5',
+    backgroundColor: theme.colors.primary,
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 999,
@@ -346,7 +330,7 @@ const styles = StyleSheet.create({
   logBtnText: { color: '#e0e7ff', fontWeight: '700' },
   cardsRow: { flexDirection: 'row', gap: 10 },
   sectionTitle: {
-    color: '#e5e7eb',
+    color: theme.colors.textPrimary,
     fontSize: 16,
     fontWeight: '700',
     marginBottom: 10,
@@ -361,25 +345,25 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(248,113,113,0.3)',
     marginTop: 10,
   },
-  debtTitle: { color: '#f87171', fontWeight: '700', fontSize: 13, marginBottom: 4 },
-  debtText: { color: '#9ca3af', fontSize: 12, lineHeight: 18 },
+  debtTitle: { color: theme.colors.danger, fontWeight: '700', fontSize: 13, marginBottom: 4 },
+  debtText: { color: theme.colors.textSecondary, fontSize: 12, lineHeight: 18 },
   entryRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1f2937',
+    backgroundColor: theme.colors.surface,
     borderRadius: 12,
     padding: 12,
     marginBottom: 8,
     borderWidth: 1,
-    borderColor: '#374151',
+    borderColor: theme.colors.border,
     gap: 10,
   },
   entryDot: { width: 10, height: 10, borderRadius: 5 },
   entryContent: { flex: 1 },
-  entryDate: { color: '#6b7280', fontSize: 11, fontWeight: '600' },
-  entryTimes: { color: '#e5e7eb', fontSize: 13, fontWeight: '700' },
+  entryDate: { color: theme.colors.textMuted, fontSize: 11, fontWeight: '600' },
+  entryTimes: { color: theme.colors.textPrimary, fontSize: 13, fontWeight: '700' },
   entryRight: { alignItems: 'flex-end' },
   entryDuration: { color: '#a5b4fc', fontSize: 13, fontWeight: '700' },
-  entryCycles: { color: '#6b7280', fontSize: 11 },
+  entryCycles: { color: theme.colors.textMuted, fontSize: 11 },
   entryFeeling: { fontSize: 20 },
 });

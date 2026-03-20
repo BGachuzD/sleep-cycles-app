@@ -29,6 +29,8 @@ import { getOptimalSleepWindow } from '../domain/sleepProfile';
 import { type RoutineStep } from '../domain/sleepRoutine';
 import { formatTime } from '../utils/sleep';
 import { scheduleUniqueNotificationAtDate } from '../notifications/scheduler';
+import { useAppTheme } from '../theme/ThemeProvider';
+import type { AppTheme } from '../theme/theme';
 
 // ── Modal de edición de paso ──────────────────────────────────────────────────
 interface StepDraft {
@@ -44,84 +46,89 @@ const EditStepModal: FC<{
   onChange: (d: StepDraft) => void;
   onSave: () => void;
   onCancel: () => void;
-}> = ({ visible, draft, isNew, onChange, onSave, onCancel }) => (
-  <Modal
-    visible={visible}
-    transparent
-    animationType="slide"
-    onRequestClose={onCancel}
-  >
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={modalStyles.overlay}
+}> = ({ visible, draft, isNew, onChange, onSave, onCancel }) => {
+  const { theme } = useAppTheme();
+  const modalStyles = createModalStyles(theme);
+
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="slide"
+      onRequestClose={onCancel}
     >
-      <View style={modalStyles.sheet}>
-        <View style={modalStyles.handle} />
-        <Text style={modalStyles.title}>{isNew ? 'Nuevo paso' : 'Editar paso'}</Text>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={modalStyles.overlay}
+      >
+        <View style={modalStyles.sheet}>
+          <View style={modalStyles.handle} />
+          <Text style={modalStyles.title}>{isNew ? 'Nuevo paso' : 'Editar paso'}</Text>
 
-        <Text style={modalStyles.fieldLabel}>Título</Text>
-        <TextInput
-          style={modalStyles.input}
-          value={draft.title}
-          onChangeText={(t) => onChange({ ...draft, title: t })}
-          placeholder="Ej. Ducha relajante"
-          placeholderTextColor="#4b5563"
-          maxLength={50}
-        />
+          <Text style={modalStyles.fieldLabel}>Título</Text>
+          <TextInput
+            style={modalStyles.input}
+            value={draft.title}
+            onChangeText={(t) => onChange({ ...draft, title: t })}
+            placeholder="Ej. Ducha relajante"
+            placeholderTextColor={theme.colors.textMuted}
+            maxLength={50}
+          />
 
-        <Text style={modalStyles.fieldLabel}>Descripción</Text>
-        <TextInput
-          style={[modalStyles.input, { height: 72, textAlignVertical: 'top' }]}
-          value={draft.description}
-          onChangeText={(t) => onChange({ ...draft, description: t })}
-          placeholder="Breve indicación de qué hacer"
-          placeholderTextColor="#4b5563"
-          multiline
-          maxLength={120}
-        />
+          <Text style={modalStyles.fieldLabel}>Descripción</Text>
+          <TextInput
+            style={[modalStyles.input, { height: 72, textAlignVertical: 'top' }]}
+            value={draft.description}
+            onChangeText={(t) => onChange({ ...draft, description: t })}
+            placeholder="Breve indicación de qué hacer"
+            placeholderTextColor={theme.colors.textMuted}
+            multiline
+            maxLength={120}
+          />
 
-        <Text style={modalStyles.fieldLabel}>Minutos antes de acostarse</Text>
-        <View style={modalStyles.minutesRow}>
-          <TouchableOpacity
-            style={modalStyles.minutesBtn}
-            onPress={() => onChange({ ...draft, minutesBefore: Math.max(0, draft.minutesBefore - 5) })}
-          >
-            <Ionicons name="remove" size={20} color="#60a5fa" />
+          <Text style={modalStyles.fieldLabel}>Minutos antes de acostarse</Text>
+          <View style={modalStyles.minutesRow}>
+            <TouchableOpacity
+              style={modalStyles.minutesBtn}
+              onPress={() => onChange({ ...draft, minutesBefore: Math.max(0, draft.minutesBefore - 5) })}
+            >
+              <Ionicons name="remove" size={20} color="#60a5fa" />
+            </TouchableOpacity>
+            <Text style={modalStyles.minutesValue}>{draft.minutesBefore} min</Text>
+            <TouchableOpacity
+              style={modalStyles.minutesBtn}
+              onPress={() => onChange({ ...draft, minutesBefore: draft.minutesBefore + 5 })}
+            >
+              <Ionicons name="add" size={20} color="#60a5fa" />
+            </TouchableOpacity>
+          </View>
+
+          <TouchableOpacity style={modalStyles.saveBtn} onPress={onSave} activeOpacity={0.85}>
+            <Text style={modalStyles.saveBtnText}>{isNew ? 'Añadir paso' : 'Guardar cambios'}</Text>
           </TouchableOpacity>
-          <Text style={modalStyles.minutesValue}>{draft.minutesBefore} min</Text>
-          <TouchableOpacity
-            style={modalStyles.minutesBtn}
-            onPress={() => onChange({ ...draft, minutesBefore: draft.minutesBefore + 5 })}
-          >
-            <Ionicons name="add" size={20} color="#60a5fa" />
+          <TouchableOpacity style={modalStyles.cancelBtn} onPress={onCancel} activeOpacity={0.7}>
+            <Text style={modalStyles.cancelBtnText}>Cancelar</Text>
           </TouchableOpacity>
         </View>
+      </KeyboardAvoidingView>
+    </Modal>
+  );
+};
 
-        <TouchableOpacity style={modalStyles.saveBtn} onPress={onSave} activeOpacity={0.85}>
-          <Text style={modalStyles.saveBtnText}>{isNew ? 'Añadir paso' : 'Guardar cambios'}</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={modalStyles.cancelBtn} onPress={onCancel} activeOpacity={0.7}>
-          <Text style={modalStyles.cancelBtnText}>Cancelar</Text>
-        </TouchableOpacity>
-      </View>
-    </KeyboardAvoidingView>
-  </Modal>
-);
-
-const modalStyles = StyleSheet.create({
+const createModalStyles = (theme: AppTheme) => StyleSheet.create({
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.6)',
     justifyContent: 'flex-end',
   },
   sheet: {
-    backgroundColor: '#0f172a',
+    backgroundColor: theme.colors.surface,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: 24,
     paddingBottom: Platform.OS === 'ios' ? 40 : 28,
     borderWidth: 1,
-    borderColor: '#374151',
+    borderColor: theme.colors.border,
   },
   handle: {
     alignSelf: 'center',
@@ -131,9 +138,9 @@ const modalStyles = StyleSheet.create({
     backgroundColor: 'rgba(148,163,184,0.5)',
     marginBottom: 20,
   },
-  title: { color: '#e5e7eb', fontSize: 18, fontWeight: '800', marginBottom: 20 },
+  title: { color: theme.colors.textPrimary, fontSize: 18, fontWeight: '800', marginBottom: 20 },
   fieldLabel: {
-    color: '#9ca3af',
+    color: theme.colors.textSecondary,
     fontSize: 11,
     fontWeight: '700',
     textTransform: 'uppercase',
@@ -141,11 +148,11 @@ const modalStyles = StyleSheet.create({
     marginBottom: 6,
   },
   input: {
-    backgroundColor: '#1f2937',
+    backgroundColor: theme.colors.surfaceElevated,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#374151',
-    color: '#f9fafb',
+    borderColor: theme.colors.border,
+    color: theme.colors.textPrimary,
     fontSize: 15,
     paddingHorizontal: 14,
     paddingVertical: 12,
@@ -167,7 +174,7 @@ const modalStyles = StyleSheet.create({
     backgroundColor: 'rgba(96,165,250,0.12)',
   },
   minutesValue: {
-    color: '#f9fafb',
+    color: theme.colors.textPrimary,
     fontSize: 20,
     fontWeight: '800',
     minWidth: 80,
@@ -182,7 +189,7 @@ const modalStyles = StyleSheet.create({
   },
   saveBtnText: { color: '#022c22', fontSize: 15, fontWeight: '800' },
   cancelBtn: { paddingVertical: 10, alignItems: 'center' },
-  cancelBtnText: { color: '#6b7280', fontSize: 13, fontWeight: '600' },
+  cancelBtnText: { color: theme.colors.textMuted, fontSize: 13, fontWeight: '600' },
 });
 
 // ── Pantalla principal ────────────────────────────────────────────────────────
@@ -190,6 +197,8 @@ export const SleepRoutineScreen: FC = () => {
   const { profile } = useSleepProfileContext();
   const { steps, loading, toggleStep, updateStep, addStep, deleteStep, resetToDefaults, refresh } =
     useSleepRoutineContext();
+  const { theme } = useAppTheme();
+  const styles = createStyles(theme);
   const optWindow = getOptimalSleepWindow(profile?.chronotype);
 
   const [editMode, setEditMode] = useState(false);
@@ -358,8 +367,8 @@ export const SleepRoutineScreen: FC = () => {
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 4 }}
                 >
                   {loading
-                    ? <ActivityIndicator size="small" color="#60a5fa" />
-                    : <Ionicons name="refresh-outline" size={18} color="#60a5fa" />
+                    ? <ActivityIndicator size="small" color={theme.colors.info} />
+                    : <Ionicons name="refresh-outline" size={18} color={theme.colors.info} />
                   }
                 </TouchableOpacity>
               )}
@@ -370,7 +379,7 @@ export const SleepRoutineScreen: FC = () => {
                 <Ionicons
                   name={editMode ? 'checkmark-outline' : 'pencil-outline'}
                   size={16}
-                  color={editMode ? '#022c22' : '#9ca3af'}
+                  color={editMode ? '#022c22' : theme.colors.textSecondary}
                 />
                 <Text style={[styles.editModeBtnText, editMode && { color: '#022c22' }]}>
                   {editMode ? 'Listo' : 'Editar'}
@@ -434,8 +443,8 @@ export const SleepRoutineScreen: FC = () => {
                       <Switch
                         value={step.enabled}
                         onValueChange={() => toggleStep(step.id)}
-                        trackColor={{ false: '#374151', true: step.color + '80' }}
-                        thumbColor={step.enabled ? step.color : '#6b7280'}
+                        trackColor={{ false: theme.colors.border, true: step.color + '80' }}
+                        thumbColor={step.enabled ? step.color : theme.colors.textMuted}
                         style={{ marginRight: 10, transform: [{ scaleX: 0.85 }, { scaleY: 0.85 }] }}
                       />
                     )}
@@ -446,7 +455,7 @@ export const SleepRoutineScreen: FC = () => {
 
                     <View style={styles.stepTextCol}>
                       {!editMode && <Text style={styles.stepTime}>{formatTime(time)}</Text>}
-                      <Text style={[styles.stepTitle, !step.enabled && { color: '#4b5563' }]}>
+                      <Text style={[styles.stepTitle, !step.enabled && { color: theme.colors.textMuted }]}>
                         {step.title}
                       </Text>
                     </View>
@@ -457,7 +466,7 @@ export const SleepRoutineScreen: FC = () => {
                           hitSlop={{ top: 8, bottom: 8, left: 8, right: 4 }}
                           onPress={() => openEdit(step)}
                         >
-                          <Ionicons name="pencil-outline" size={18} color="#9ca3af" />
+                          <Ionicons name="pencil-outline" size={18} color={theme.colors.textSecondary} />
                         </TouchableOpacity>
                         {!step.isDefault && (
                           <TouchableOpacity
@@ -471,7 +480,7 @@ export const SleepRoutineScreen: FC = () => {
                     ) : (
                       isScheduled
                         ? <Ionicons name="checkmark-circle" size={20} color="#34d399" />
-                        : <Ionicons name="alarm-outline" size={18} color="#4b5563" />
+                        : <Ionicons name="alarm-outline" size={18} color={theme.colors.textMuted} />
                     )}
                   </View>
 
@@ -487,7 +496,7 @@ export const SleepRoutineScreen: FC = () => {
                   )}
 
                   {editMode && (
-                    <Text style={[styles.stepDesc, { fontSize: 12, marginTop: 4 }, !step.enabled && { color: '#374151' }]}>
+                    <Text style={[styles.stepDesc, { fontSize: 12, marginTop: 4 }, !step.enabled && { color: theme.colors.border }]}>
                       {step.minutesBefore === 0 ? 'Al acostarse' : `${step.minutesBefore} min antes`}
                       {step.isDefault ? '' : ' · personalizado'}
                     </Text>
@@ -524,43 +533,43 @@ export const SleepRoutineScreen: FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#020617' },
+const createStyles = (theme: AppTheme) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: theme.colors.background },
   scroll: { flex: 1 },
   scrollContent: { paddingHorizontal: 20, paddingTop: 64, paddingBottom: 40 },
   header: { marginBottom: 20 },
   headerRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
-  title: { color: '#e0e7ff', fontSize: 26, fontWeight: '900', marginBottom: 4 },
-  subtitle: { color: '#9ca3af', fontSize: 13, lineHeight: 18 },
+  title: { color: theme.colors.textPrimary, fontSize: 26, fontWeight: '900', marginBottom: 4 },
+  subtitle: { color: theme.colors.textSecondary, fontSize: 13, lineHeight: 18 },
   targetTime: { color: '#a78bfa', fontWeight: '700' },
   refreshBtn: {
     width: 36,
     height: 36,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#1f2937',
+    backgroundColor: theme.colors.surface,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: '#374151',
+    borderColor: theme.colors.border,
     marginTop: 4,
   },
   editModeBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: '#1f2937',
+    backgroundColor: theme.colors.surface,
     borderRadius: 999,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderWidth: 1,
-    borderColor: '#374151',
+    borderColor: theme.colors.border,
     marginTop: 4,
   },
   editModeBtnActive: {
     backgroundColor: '#10b981',
     borderColor: '#10b981',
   },
-  editModeBtnText: { color: '#9ca3af', fontSize: 13, fontWeight: '700' },
+  editModeBtnText: { color: theme.colors.textSecondary, fontSize: 13, fontWeight: '700' },
   scheduleAllBtn: {
     backgroundColor: '#10b981',
     borderRadius: 999,
@@ -589,13 +598,13 @@ const styles = StyleSheet.create({
   line: { width: 2, flex: 1, marginTop: 4 },
   stepCard: {
     flex: 1,
-    backgroundColor: '#1f2937',
+    backgroundColor: theme.colors.surface,
     borderRadius: 14,
     padding: 14,
     marginBottom: 10,
     marginLeft: 8,
     borderWidth: 1,
-    borderColor: '#374151',
+    borderColor: theme.colors.border,
   },
   stepCardEditMode: {
     marginLeft: 0,
@@ -619,9 +628,9 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   stepTextCol: { flex: 1 },
-  stepTime: { color: '#9ca3af', fontSize: 12, fontWeight: '600' },
-  stepTitle: { color: '#e5e7eb', fontSize: 14, fontWeight: '700' },
-  stepDesc: { color: '#6b7280', fontSize: 13, lineHeight: 18 },
+  stepTime: { color: theme.colors.textSecondary, fontSize: 12, fontWeight: '600' },
+  stepTitle: { color: theme.colors.textPrimary, fontSize: 14, fontWeight: '700' },
+  stepDesc: { color: theme.colors.textMuted, fontSize: 13, lineHeight: 18 },
   editActions: { flexDirection: 'row', gap: 14, alignItems: 'center' },
   bedtimeBadge: {
     marginTop: 8,

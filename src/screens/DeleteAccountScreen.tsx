@@ -18,12 +18,16 @@ import { useNavigation } from '@react-navigation/native';
 import { GradientBackground } from '../components/GradientBackground';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabaseClient';
+import { useAppTheme } from '../theme/ThemeProvider';
+import type { AppTheme } from '../theme/theme';
 
 type Step = 'warning' | 'reauth' | 'deleting' | 'done';
 
 export const DeleteAccountScreen: FC = () => {
   const navigation = useNavigation();
   const { user, deleteAccount } = useAuth();
+  const { theme } = useAppTheme();
+  const styles = createStyles(theme);
 
   const [step, setStep] = useState<Step>('warning');
   const [password, setPassword] = useState('');
@@ -56,7 +60,6 @@ export const DeleteAccountScreen: FC = () => {
       return;
     }
 
-    // Reauth successful — proceed to deletion
     setStep('deleting');
     performDeletion();
   };
@@ -94,7 +97,7 @@ export const DeleteAccountScreen: FC = () => {
       <View style={styles.doneContainer}>
         <GradientBackground />
         <View style={styles.doneContent}>
-          <ActivityIndicator size="large" color="#f87171" />
+          <ActivityIndicator size="large" color={theme.colors.danger} />
           <Text style={styles.deletingText}>Eliminando tu cuenta...</Text>
           <Text style={styles.deletingSubText}>Esto puede tardar unos segundos.</Text>
         </View>
@@ -121,12 +124,12 @@ export const DeleteAccountScreen: FC = () => {
               style={styles.backBtn}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
-              <Ionicons name="arrow-back" size={22} color="#e5e7eb" />
+              <Ionicons name="arrow-back" size={22} color={theme.colors.textPrimary} />
             </TouchableOpacity>
             <Text style={styles.headerTitle}>Eliminar cuenta</Text>
           </View>
 
-          {step === 'warning' && <WarningStep onConfirm={() => setStep('reauth')} />}
+          {step === 'warning' && <WarningStep onConfirm={() => setStep('reauth')} theme={theme} styles={styles} />}
 
           {step === 'reauth' && (
             <ReauthStep
@@ -140,6 +143,8 @@ export const DeleteAccountScreen: FC = () => {
               loading={reauthLoading}
               onSubmit={handleReauth}
               onCancel={() => navigation.goBack()}
+              theme={theme}
+              styles={styles}
             />
           )}
         </ScrollView>
@@ -150,10 +155,10 @@ export const DeleteAccountScreen: FC = () => {
 
 // ─── Step 1: Warning ─────────────────────────────────────────────────────────
 
-const WarningStep: FC<{ onConfirm: () => void }> = ({ onConfirm }) => (
+const WarningStep: FC<{ onConfirm: () => void; theme: AppTheme; styles: ReturnType<typeof createStyles> }> = ({ onConfirm, theme, styles }) => (
   <View style={styles.stepContainer}>
     <View style={styles.dangerIconCircle}>
-      <Ionicons name="warning" size={36} color="#f87171" />
+      <Ionicons name="warning" size={36} color={theme.colors.danger} />
     </View>
 
     <Text style={styles.stepTitle}>Esta acción es permanente</Text>
@@ -170,21 +175,21 @@ const WarningStep: FC<{ onConfirm: () => void }> = ({ onConfirm }) => (
         { icon: 'notifications-outline', text: 'Tus recordatorios y preferencias' },
       ].map((item) => (
         <View key={item.text} style={styles.listRow}>
-          <Ionicons name={item.icon as any} size={16} color="#f87171" style={{ marginRight: 10 }} />
+          <Ionicons name={item.icon as any} size={16} color={theme.colors.danger} style={{ marginRight: 10 }} />
           <Text style={styles.listRowText}>{item.text}</Text>
         </View>
       ))}
     </View>
 
     <View style={styles.infoCard}>
-      <Ionicons name="information-circle-outline" size={18} color="#60a5fa" style={{ marginRight: 8, marginTop: 1 }} />
+      <Ionicons name="information-circle-outline" size={18} color={theme.colors.info} style={{ marginRight: 8, marginTop: 1 }} />
       <Text style={styles.infoText}>
         No se conserva ningún dato. Esta operación no se puede deshacer.
       </Text>
     </View>
 
     <TouchableOpacity style={styles.continueBtn} onPress={onConfirm} activeOpacity={0.8}>
-      <Ionicons name="trash-outline" size={18} color="#fff" style={{ marginRight: 8 }} />
+      <Ionicons name="trash-outline" size={18} color={theme.colors.white} style={{ marginRight: 8 }} />
       <Text style={styles.continueBtnText}>Quiero eliminar mi cuenta</Text>
     </TouchableOpacity>
   </View>
@@ -200,7 +205,9 @@ const ReauthStep: FC<{
   loading: boolean;
   onSubmit: () => void;
   onCancel: () => void;
-}> = ({ email, password, onChangePassword, error, loading, onSubmit, onCancel }) => (
+  theme: AppTheme;
+  styles: ReturnType<typeof createStyles>;
+}> = ({ email, password, onChangePassword, error, loading, onSubmit, onCancel, theme, styles }) => (
   <View style={styles.stepContainer}>
     <View style={styles.lockIconCircle}>
       <Ionicons name="lock-closed" size={32} color="#f97316" />
@@ -212,7 +219,7 @@ const ReauthStep: FC<{
     </Text>
 
     <View style={styles.emailRow}>
-      <Ionicons name="mail-outline" size={16} color="#9ca3af" style={{ marginRight: 8 }} />
+      <Ionicons name="mail-outline" size={16} color={theme.colors.textSecondary} style={{ marginRight: 8 }} />
       <Text style={styles.emailText}>{email}</Text>
     </View>
 
@@ -223,7 +230,7 @@ const ReauthStep: FC<{
         onChangeText={onChangePassword}
         secureTextEntry
         placeholder="••••••••"
-        placeholderTextColor="#4b5563"
+        placeholderTextColor={theme.colors.textMuted}
         style={styles.input}
         autoFocus
         returnKeyType="done"
@@ -246,10 +253,10 @@ const ReauthStep: FC<{
       activeOpacity={0.8}
     >
       {loading
-        ? <ActivityIndicator color="#fff" size="small" />
+        ? <ActivityIndicator color={theme.colors.white} size="small" />
         : (
           <>
-            <Ionicons name="trash-outline" size={18} color="#fff" style={{ marginRight: 8 }} />
+            <Ionicons name="trash-outline" size={18} color={theme.colors.white} style={{ marginRight: 8 }} />
             <Text style={styles.deleteBtnText}>Eliminar mi cuenta</Text>
           </>
         )}
@@ -263,8 +270,8 @@ const ReauthStep: FC<{
 
 // ─── Styles ──────────────────────────────────────────────────────────────────
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#020617' },
+const createStyles = (theme: AppTheme) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: theme.colors.background },
   scroll: { paddingHorizontal: 24, paddingBottom: 40 },
 
   header: {
@@ -278,13 +285,13 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 999,
-    backgroundColor: '#1f2937',
+    backgroundColor: theme.colors.surface,
     borderWidth: 1,
-    borderColor: '#374151',
+    borderColor: theme.colors.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  headerTitle: { color: '#e5e7eb', fontSize: 20, fontWeight: '800' },
+  headerTitle: { color: theme.colors.textPrimary, fontSize: 20, fontWeight: '800' },
 
   stepContainer: { alignItems: 'center', paddingTop: 8 },
 
@@ -312,14 +319,14 @@ const styles = StyleSheet.create({
   },
 
   stepTitle: {
-    color: '#f9fafb',
+    color: theme.colors.textPrimary,
     fontSize: 22,
     fontWeight: '900',
     textAlign: 'center',
     marginBottom: 10,
   },
   stepSubtitle: {
-    color: '#9ca3af',
+    color: theme.colors.textSecondary,
     fontSize: 14,
     textAlign: 'center',
     lineHeight: 22,
@@ -329,16 +336,16 @@ const styles = StyleSheet.create({
 
   listCard: {
     width: '100%',
-    backgroundColor: '#1f2937',
+    backgroundColor: theme.colors.surface,
     borderRadius: 14,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#374151',
+    borderColor: theme.colors.border,
     marginBottom: 16,
     gap: 12,
   },
   listRow: { flexDirection: 'row', alignItems: 'center' },
-  listRowText: { color: '#d1d5db', fontSize: 14, flex: 1 },
+  listRowText: { color: theme.colors.textPrimary, fontSize: 14, flex: 1 },
 
   infoCard: {
     width: '100%',
@@ -358,34 +365,34 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#dc2626',
+    backgroundColor: theme.colors.danger,
     paddingVertical: 16,
     borderRadius: 999,
   },
-  continueBtnText: { color: '#fff', fontWeight: '800', fontSize: 16 },
+  continueBtnText: { color: theme.colors.white, fontWeight: '800', fontSize: 16 },
 
   emailRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1f2937',
+    backgroundColor: theme.colors.surface,
     borderRadius: 10,
     paddingVertical: 10,
     paddingHorizontal: 14,
     marginBottom: 20,
     borderWidth: 1,
-    borderColor: '#374151',
+    borderColor: theme.colors.border,
     alignSelf: 'stretch',
   },
-  emailText: { color: '#9ca3af', fontSize: 14 },
+  emailText: { color: theme.colors.textSecondary, fontSize: 14 },
 
   inputWrapper: { width: '100%', marginBottom: 16 },
-  inputLabel: { color: '#9ca3af', fontSize: 13, fontWeight: '600', marginBottom: 8 },
+  inputLabel: { color: theme.colors.textSecondary, fontSize: 13, fontWeight: '600', marginBottom: 8 },
   input: {
-    backgroundColor: '#1f2937',
+    backgroundColor: theme.colors.surface,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#374151',
-    color: '#f9fafb',
+    borderColor: theme.colors.border,
+    color: theme.colors.textPrimary,
     fontSize: 16,
     paddingHorizontal: 16,
     paddingVertical: 14,
@@ -409,22 +416,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#dc2626',
+    backgroundColor: theme.colors.danger,
     paddingVertical: 16,
     borderRadius: 999,
     marginBottom: 12,
   },
-  deleteBtnText: { color: '#fff', fontWeight: '800', fontSize: 16 },
+  deleteBtnText: { color: theme.colors.white, fontWeight: '800', fontSize: 16 },
 
   cancelBtn: {
     width: '100%',
     paddingVertical: 14,
     alignItems: 'center',
   },
-  cancelBtnText: { color: '#6b7280', fontSize: 15, fontWeight: '600' },
+  cancelBtnText: { color: theme.colors.textMuted, fontSize: 15, fontWeight: '600' },
 
-  // Done / deleting states
-  doneContainer: { flex: 1, backgroundColor: '#020617' },
+  doneContainer: { flex: 1, backgroundColor: theme.colors.background },
   doneContent: {
     flex: 1,
     alignItems: 'center',
@@ -443,24 +449,24 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   doneTitle: {
-    color: '#f9fafb',
+    color: theme.colors.textPrimary,
     fontSize: 26,
     fontWeight: '900',
     textAlign: 'center',
     marginBottom: 12,
   },
   doneText: {
-    color: '#9ca3af',
+    color: theme.colors.textSecondary,
     fontSize: 15,
     textAlign: 'center',
     lineHeight: 24,
   },
   deletingText: {
-    color: '#f9fafb',
+    color: theme.colors.textPrimary,
     fontSize: 20,
     fontWeight: '700',
     marginTop: 20,
     marginBottom: 6,
   },
-  deletingSubText: { color: '#9ca3af', fontSize: 14 },
+  deletingSubText: { color: theme.colors.textSecondary, fontSize: 14 },
 });

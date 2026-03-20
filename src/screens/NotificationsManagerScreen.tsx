@@ -21,6 +21,8 @@ import {
 import { formatTime } from '../utils/sleep';
 import { FloatingDrawerButton } from '../components/FloatingDrawerButton';
 import { FloatingHomeButton } from '../components/FloatingHomeButton';
+import { useAppTheme } from '../theme/ThemeProvider';
+import type { AppTheme } from '../theme/theme';
 
 type NotificationRequest = Notifications.NotificationRequest;
 
@@ -34,6 +36,9 @@ function getTriggerDate(trigger: NotificationRequest['trigger']): Date | null {
 }
 
 export const NotificationsManagerScreen = () => {
+  const { theme } = useAppTheme();
+  const styles = createStyles(theme);
+
   const [items, setItems] = useState<NotificationRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -74,7 +79,7 @@ export const NotificationsManagerScreen = () => {
         {isLoading && (
           <ActivityIndicator
             size="large"
-            color="#38bdf8"
+            color={theme.colors.info}
             style={{ marginTop: 50 }}
           />
         )}
@@ -84,7 +89,7 @@ export const NotificationsManagerScreen = () => {
             <Ionicons
               name="notifications-off-outline"
               size={50}
-              color="#64748b"
+              color={theme.colors.textMuted}
             />
             <Text style={styles.noText}>
               No tienes alarmas ni recordatorios de sueño pendientes.
@@ -108,7 +113,7 @@ export const NotificationsManagerScreen = () => {
                   <Ionicons
                     name="alarm-outline"
                     size={24}
-                    color="#38bdf8"
+                    color={theme.colors.info}
                     style={styles.itemIcon}
                   />
                   <View style={styles.itemTitleGroup}>
@@ -134,7 +139,7 @@ export const NotificationsManagerScreen = () => {
                   <Ionicons
                     name="close-circle-outline"
                     size={18}
-                    color="#fff"
+                    color={theme.colors.white}
                   />
                   <Text style={styles.itemButtonText}>Cancelar Alerta</Text>
                 </TouchableOpacity>
@@ -147,7 +152,7 @@ export const NotificationsManagerScreen = () => {
               onPress={handleCancelAll}
               style={styles.cancelAllButton}
             >
-              <Ionicons name="trash-outline" size={20} color="#fff" />
+              <Ionicons name="trash-outline" size={20} color={theme.colors.white} />
               <Text style={styles.cancelAllText}>
                 Cancelar todas las notificaciones ({items.length})
               </Text>
@@ -161,16 +166,14 @@ export const NotificationsManagerScreen = () => {
   );
 };
 
-// ---
-
-const styles = StyleSheet.create({
+const createStyles = (theme: AppTheme) => StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: '#020617',
+    backgroundColor: theme.colors.background,
   },
   container: {
     flex: 1,
-    backgroundColor: '#020617',
+    backgroundColor: theme.colors.background,
     paddingHorizontal: 10,
     paddingTop: 64,
   },
@@ -178,7 +181,7 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
   title: {
-    color: '#e2e8f0',
+    color: theme.colors.textPrimary,
     fontSize: 26,
     fontWeight: '900',
     marginBottom: 20,
@@ -188,22 +191,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 50,
     padding: 20,
-    backgroundColor: '#1e293b',
+    backgroundColor: theme.colors.surface,
     borderRadius: 12,
   },
   noText: {
-    color: '#94a3b8',
+    color: theme.colors.textSecondary,
     fontSize: 16,
     marginTop: 15,
     textAlign: 'center',
   },
   itemContainer: {
-    backgroundColor: '#1e293b',
+    backgroundColor: theme.colors.surface,
     padding: 16,
     borderRadius: 16,
     marginBottom: 16,
     borderLeftWidth: 4,
-    borderLeftColor: '#38bdf8',
+    borderLeftColor: theme.colors.info,
   },
   itemHeader: {
     flexDirection: 'row',
@@ -217,17 +220,17 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   itemTitle: {
-    color: '#e2e8f0',
+    color: theme.colors.textPrimary,
     fontSize: 18,
     fontWeight: '700',
   },
   itemBody: {
-    color: '#94a3b8',
+    color: theme.colors.textSecondary,
     fontSize: 14,
     marginTop: 2,
   },
   timeContainer: {
-    backgroundColor: '#334155',
+    backgroundColor: theme.colors.surfaceElevated,
     padding: 10,
     borderRadius: 8,
     marginTop: 10,
@@ -236,24 +239,24 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   timeLabel: {
-    color: '#94a3b8',
+    color: theme.colors.textSecondary,
     fontSize: 12,
     fontWeight: '600',
     marginRight: 10,
   },
   timeValue: {
-    color: '#fff',
+    color: theme.colors.textPrimary,
     fontSize: 24,
     fontWeight: '800',
     flex: 1,
   },
   dateText: {
-    color: '#cbd5e1',
+    color: theme.colors.textSecondary,
     fontSize: 14,
   },
   itemButton: {
     marginTop: 15,
-    backgroundColor: '#ef4444',
+    backgroundColor: theme.colors.danger,
     paddingVertical: 10,
     borderRadius: 8,
     alignItems: 'center',
@@ -262,13 +265,13 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   itemButtonText: {
-    color: '#fff',
+    color: theme.colors.white,
     fontWeight: '700',
     fontSize: 14,
   },
   cancelAllButton: {
     marginTop: 30,
-    backgroundColor: '#334155',
+    backgroundColor: theme.colors.surfaceElevated,
     paddingVertical: 14,
     borderRadius: 10,
     alignItems: 'center',
@@ -276,10 +279,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 10,
     borderWidth: 1,
-    borderColor: '#475569',
+    borderColor: theme.colors.border,
   },
   cancelAllText: {
-    color: '#fff',
+    color: theme.colors.textPrimary,
     fontWeight: '700',
     fontSize: 15,
   },
