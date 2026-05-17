@@ -1,40 +1,21 @@
 import { useEffect, useState, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { SleepProfile } from '../domain/sleepProfile';
-import { supabase } from '../lib/supabaseClient';
+import {
+  loadProfile,
+  loadProfileFromAuthMetadata,
+  saveProfile as saveProfileToTable,
+  saveProfileToAuthMetadata,
+} from '../services/sleepProfileService';
 
 const STORAGE_KEY_PREFIX = 'sleepProfile/v1';
 
-const defaultProfile: SleepProfile = {
+export const defaultProfile: SleepProfile = {
   age: 30,
   weightKg: 70,
   heightCm: 170,
   gender: 'male',
 };
-
-type SleepProfileRow = {
-  user_id: string;
-  age: number;
-  weight_kg: number;
-  height_cm: number;
-  gender: 'male' | 'female' | 'other';
-  chronotype?: 'morning' | 'intermediate' | 'night';
-  updated_at?: string;
-};
-
-type ProfilesTableRow = {
-  id: string;
-  age: number | null;
-  weight_kg: number | null;
-  height_cm: number | null;
-};
-
-type ErrorLike = {
-  code?: string;
-  message?: string;
-};
-
-const TABLE_NOT_FOUND_CODE = 'PGRST205';
 
 function makeStorageKey(userId: string | null) {
   return `${STORAGE_KEY_PREFIX}:${userId ?? 'guest'}`;
@@ -49,110 +30,6 @@ function isValidSleepProfile(value: unknown): value is SleepProfile {
     typeof v.heightCm === 'number' &&
     (v.gender === 'male' || v.gender === 'female' || v.gender === 'other')
   );
-}
-
-function rowToProfile(row: SleepProfileRow): SleepProfile {
-  return {
-    age: row.age,
-    weightKg: row.weight_kg,
-    heightCm: row.height_cm,
-    gender: row.gender,
-    chronotype: row.chronotype,
-  };
-}
-
-function profilesRowToProfile(row: ProfilesTableRow): SleepProfile | null {
-  if (
-    typeof row.age !== 'number' ||
-    typeof row.weight_kg !== 'number' ||
-    typeof row.height_cm !== 'number'
-  ) {
-    return null;
-  }
-
-  return {
-    age: row.age,
-    weightKg: row.weight_kg,
-    heightCm: row.height_cm,
-    // profiles no tiene gender, lo mantenemos local/auth metadata
-    gender: defaultProfile.gender,
-  };
-}
-
-function profileToRow(userId: string, profile: SleepProfile): SleepProfileRow {
-  return {
-    user_id: userId,
-    age: profile.age,
-    weight_kg: profile.weightKg,
-    height_cm: profile.heightCm,
-    gender: profile.gender,
-    chronotype: profile.chronotype,
-  };
-}
-
-function isTableNotFoundError(error: unknown): error is ErrorLike {
-  if (!error || typeof error !== 'object') return false;
-  const code = (error as ErrorLike).code;
-  return code === TABLE_NOT_FOUND_CODE;
-}
-
-async function loadFromProfilesTable(userId: string): Promise<SleepProfile | null> {
-  const { data, error } = await supabase
-    .from('sleep_profiles')
-    .select('user_id,age,weight_kg,height_cm,gender,chronotype,updated_at')
-    .eq('user_id', userId)
-    .maybeSingle();
-
-  if (error) {
-    if (!isTableNotFoundError(error)) {
-      console.warn('Error loading sleep profile from sleep_profiles', error);
-    }
-    const { data: profilesData, error: profilesError } = await supabase
-      .from('profiles')
-      .select('id,age,weight_kg,height_cm')
-      .eq('id', userId)
-      .maybeSingle();
-
-    if (profilesError) {
-      console.warn('Error loading sleep profile from profiles', profilesError);
-      return null;
-    }
-
-    if (!profilesData) return null;
-    return profilesRowToProfile(profilesData as ProfilesTableRow);
-  }
-  if (!data) return null;
-  return rowToProfile(data as SleepProfileRow);
-}
-
-async function saveToProfilesTable(userId: string, profile: SleepProfile): Promise<void> {
-  const row = profileToRow(userId, profile);
-  const { error } = await supabase.from('sleep_profiles').upsert(row, {
-    onConflict: 'user_id',
-  });
-
-  if (!error) return;
-
-  if (!isTableNotFoundError(error)) {
-    console.warn('Error saving sleep profile in sleep_profiles', error);
-    return;
-  }
-
-  const { error: profilesError } = await supabase.from('profiles').upsert(
-    {
-      id: userId,
-      age: profile.age,
-      weight_kg: profile.weightKg,
-      height_cm: profile.heightCm,
-    },
-    {
-      onConflict: 'id',
-    },
-  );
-
-  if (profilesError) {
-    console.warn('Error saving sleep profile in profiles', profilesError);
-  }
 }
 
 export function useSleepProfile(userId: string | null) {
@@ -175,8 +52,8 @@ export function useSleepProfile(userId: string | null) {
           } else if (!cancelled) {
             setProfile(null);
           }
-        } else {
-          if (!cancelled) setProfile(null);
+        } else if (!cancelled) {
+          setProfile(null);
         }
       } catch (err) {
         console.warn('Error loading sleep profile from storage', err);
@@ -189,22 +66,17 @@ export function useSleepProfile(userId: string | null) {
       }
 
       try {
-        const tableProfile = await loadFromProfilesTable(userId);
+        const tableProfile = await loadProfile(userId);
         if (tableProfile && !cancelled) {
           setProfile(tableProfile);
           await AsyncStorage.setItem(storageKey, JSON.stringify(tableProfile));
           return;
         }
 
-        const { data, error } = await supabase.auth.getUser();
-        if (error) {
-          console.warn('Error loading sleep profile from Supabase', error);
-        } else {
-          const remote = data.user?.user_metadata?.sleep_profile;
-          if (isValidSleepProfile(remote) && !cancelled) {
-            setProfile(remote);
-            await AsyncStorage.setItem(storageKey, JSON.stringify(remote));
-          }
+        const remote = await loadProfileFromAuthMetadata();
+        if (isValidSleepProfile(remote) && !cancelled) {
+          setProfile(remote);
+          await AsyncStorage.setItem(storageKey, JSON.stringify(remote));
         }
       } catch (err) {
         console.warn('Error syncing sleep profile from Supabase', err);
@@ -229,14 +101,8 @@ export function useSleepProfile(userId: string | null) {
     if (!userId) return;
 
     try {
-      await saveToProfilesTable(userId, p);
-
-      const { error } = await supabase.auth.updateUser({
-        data: { sleep_profile: p },
-      });
-      if (error) {
-        console.warn('Error saving sleep profile in Supabase', error);
-      }
+      await saveProfileToTable(userId, p);
+      await saveProfileToAuthMetadata(p);
     } catch (err) {
       console.warn('Error syncing sleep profile to Supabase', err);
     }

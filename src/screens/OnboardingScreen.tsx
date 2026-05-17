@@ -28,8 +28,9 @@ import { GradientBackground } from '../components/GradientBackground';
 import { useOnboardingFlag } from '../hooks/useOnboardingFlag';
 import { useSleepProfileContext } from '../context/SleepProfileContext';
 import { useAuth } from '../context/AuthContext';
-import type { Chronotype } from '../domain/sleepProfile';
+import type { Chronotype, SleepProfile } from '../domain/sleepProfile';
 import { getOptimalSleepWindow } from '../domain/sleepProfile';
+import { defaultProfile } from '../hooks/useSleepProfile';
 import { useAppTheme } from '../theme/ThemeProvider';
 import type { AppTheme } from '../theme/theme';
 
@@ -285,16 +286,18 @@ const TOTAL_SLIDES = 5;
 export const OnboardingScreen: FC<Props> = () => {
   const scrollX = useSharedValue(0);
   const { markAsSeen } = useOnboardingFlag();
-  const { saveProfile } = useSleepProfileContext();
+  const { profile, saveProfile } = useSleepProfileContext();
   const { user } = useAuth();
   const { theme } = useAppTheme();
   const flatRef = useRef<FlatList>(null);
 
-  const [wakeHour, setWakeHour] = useState(7);
-  const [wakeMinute, setWakeMinute] = useState(0);
+  const [wakeHour, setWakeHour] = useState(profile?.wakeHour ?? 7);
+  const [wakeMinute, setWakeMinute] = useState(profile?.wakeMinute ?? 0);
 
   const metaChronotype = user?.user_metadata?.chronotype as Chronotype | undefined;
-  const [chronotype, setChronotype] = useState<Chronotype>(metaChronotype ?? 'intermediate');
+  const [chronotype, setChronotype] = useState<Chronotype>(
+    profile?.chronotype ?? metaChronotype ?? 'intermediate',
+  );
 
   const onScroll = useAnimatedScrollHandler({
     onScroll: (event) => {
@@ -312,6 +315,13 @@ export const OnboardingScreen: FC<Props> = () => {
     });
 
   const handleStart = async () => {
+    const next: SleepProfile = {
+      ...(profile ?? defaultProfile),
+      chronotype,
+      wakeHour,
+      wakeMinute,
+    };
+    await saveProfile(next);
     await markAsSeen();
   };
 

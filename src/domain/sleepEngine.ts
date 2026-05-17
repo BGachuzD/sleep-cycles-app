@@ -38,18 +38,6 @@ function makeWindow(
   };
 }
 
-export type WakeTimeOption = {
-  cycles: number;
-  wakeDate: Date;
-  totalMinutes: number;
-  tibMinutes: number;
-  efficiency: number;
-  isRecommended: boolean;
-
-  windowStart: Date;
-  windowEnd: Date;
-};
-
 /**
  * Score simple basado en duración y eficiencia.
  */

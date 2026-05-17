@@ -10,6 +10,8 @@ export interface SleepProfile {
   heightCm: number;
   gender: Gender;
   chronotype?: Chronotype;
+  wakeHour?: number;
+  wakeMinute?: number;
 }
 
 export interface OptimalSleepWindow {

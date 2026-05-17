@@ -26,6 +26,7 @@ import {
 } from '../domain/sleepLog';
 import { formatDuration, formatTime } from '../utils/sleep';
 import { useSleepProfileContext } from '../context/SleepProfileContext';
+import { getAdjustedCycleLengthMinutes } from '../domain/sleepProfile';
 import { useAppTheme } from '../theme/ThemeProvider';
 import type { AppTheme } from '../theme/theme';
 
@@ -152,9 +153,7 @@ export const SleepLogScreen: FC = () => {
   const styles = createStyles(theme);
   const scrollRef = useRef<ScrollView>(null);
 
-  const cycleMins = profile?.age
-    ? profile.age < 18 ? 95 : profile.age > 60 ? 85 : 90
-    : 90;
+  const cycleMins = getAdjustedCycleLengthMinutes(profile?.age ?? 30);
 
   const { bed: initialBed, wake: initialWake } = useMemo(() => getSmartDefaults(), []);
 

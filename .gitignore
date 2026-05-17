@@ -43,3 +43,10 @@ yarn-error.*
 # envarionment files
 .env
 .env.local
+
+# alternative lockfiles (this project uses pnpm exclusively)
+package-lock.json
+yarn.lock
+
+# local Claude Code config
+.claude/

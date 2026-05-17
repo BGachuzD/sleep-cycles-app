@@ -25,6 +25,7 @@ import {
   computeCompleteCycles,
   type SleepLogEntry,
 } from '../domain/sleepLog';
+import { getAdjustedCycleLengthMinutes } from '../domain/sleepProfile';
 import { formatDuration, formatTime } from '../utils/sleep';
 import { useAppTheme } from '../theme/ThemeProvider';
 import type { AppTheme } from '../theme/theme';
@@ -168,9 +169,7 @@ export const StatsScreen: FC = () => {
   const styles = createStyles(theme);
   const navigation = useNavigation();
 
-  const cycleMins = profile?.age
-    ? profile.age < 18 ? 95 : profile.age > 60 ? 85 : 90
-    : 90;
+  const cycleMins = getAdjustedCycleLengthMinutes(profile?.age ?? 30);
 
   const stats = useMemo(() => computeStats(entries, cycleMins), [entries, cycleMins]);
 

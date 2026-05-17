@@ -38,7 +38,7 @@ import {
   computeCompleteCycles,
   todayDateString,
 } from '../domain/sleepLog';
-import { getOptimalSleepWindow } from '../domain/sleepProfile';
+import { getAdjustedCycleLengthMinutes, getOptimalSleepWindow } from '../domain/sleepProfile';
 import type { AppDrawerParamList } from '../navigation/AppDrawerNavigator';
 
 type TimeContext = 'evening' | 'night' | 'morning' | 'afternoon';
@@ -97,7 +97,11 @@ export const HomeScreen: FC = () => {
   const { theme } = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
-  const now = useMemo(() => new Date(), []);
+  const [now, setNow] = useState<Date>(() => new Date());
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 60 * 1000);
+    return () => clearInterval(id);
+  }, []);
   const hour = now.getHours();
   const timeCtx = getTimeContext(hour);
   const config = TIME_CONFIG[timeCtx];
@@ -121,16 +125,11 @@ export const HomeScreen: FC = () => {
   const lastEntry = entries[0] ?? null;
   const isLoggedToday = lastEntry?.date === todayDateString();
 
-  const stats = useMemo(() => {
-    const cycleMins = profile?.age
-      ? profile.age < 18
-        ? 95
-        : profile.age > 60
-          ? 85
-          : 90
-      : 90;
-    return computeStats(entries, cycleMins);
-  }, [entries, profile]);
+  const cycleMins = getAdjustedCycleLengthMinutes(profile?.age ?? 30);
+  const stats = useMemo(
+    () => computeStats(entries, cycleMins),
+    [entries, cycleMins],
+  );
 
   const displayName = user?.user_metadata?.display_name as string | undefined;
   const optWindow = getOptimalSleepWindow(profile?.chronotype);
@@ -233,11 +232,7 @@ export const HomeScreen: FC = () => {
                 <Text style={styles.smallText}>
                   {computeCompleteCycles(
                     computeSleepMinutes(lastEntry),
-                    profile?.age && profile.age > 60
-                      ? 85
-                      : profile?.age && profile.age < 18
-                        ? 95
-                        : 90,
+                    cycleMins,
                   )}{' '}
                   ciclos completos
                 </Text>

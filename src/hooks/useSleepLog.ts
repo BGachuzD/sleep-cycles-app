@@ -2,80 +2,16 @@
 import { useEffect, useState, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { SleepLogEntry } from '../domain/sleepLog';
-import { supabase } from '../lib/supabaseClient';
+import {
+  loadSleepLog,
+  upsertSleepLogEntry,
+  deleteSleepLogEntry,
+} from '../services/sleepLogService';
 
 const KEY_PREFIX = 'sleepLog/v1';
 
 function makeKey(userId: string | null): string {
   return `${KEY_PREFIX}:${userId ?? 'guest'}`;
-}
-
-type SleepLogRow = {
-  id: string;
-  user_id: string;
-  date: string;
-  bed_time_iso: string;
-  wake_time_iso: string;
-  feeling: number;
-};
-
-function rowToEntry(row: SleepLogRow): SleepLogEntry {
-  return {
-    id: row.id,
-    date: row.date,
-    bedTimeISO: row.bed_time_iso,
-    wakeTimeISO: row.wake_time_iso,
-    feeling: row.feeling as 1 | 2 | 3,
-  };
-}
-
-function entryToRow(userId: string, entry: SleepLogEntry): SleepLogRow {
-  return {
-    id: entry.id,
-    user_id: userId,
-    date: entry.date,
-    bed_time_iso: entry.bedTimeISO,
-    wake_time_iso: entry.wakeTimeISO,
-    feeling: entry.feeling,
-  };
-}
-
-async function loadFromSupabase(userId: string): Promise<SleepLogEntry[] | null> {
-  const { data, error } = await supabase
-    .from('sleep_log')
-    .select('id,user_id,date,bed_time_iso,wake_time_iso,feeling')
-    .eq('user_id', userId)
-    .order('date', { ascending: false });
-
-  if (error) {
-    console.warn('Error loading sleep log from Supabase', error);
-    return null;
-  }
-  return (data as SleepLogRow[]).map(rowToEntry);
-}
-
-async function upsertEntryToSupabase(userId: string, entry: SleepLogEntry): Promise<void> {
-  // Eliminar cualquier entrada previa del mismo día con distinto id
-  await supabase
-    .from('sleep_log')
-    .delete()
-    .eq('user_id', userId)
-    .eq('date', entry.date)
-    .neq('id', entry.id);
-
-  const { error } = await supabase
-    .from('sleep_log')
-    .upsert(entryToRow(userId, entry), { onConflict: 'id' });
-  if (error) console.warn('Error saving sleep log entry to Supabase', error);
-}
-
-async function deleteEntryFromSupabase(userId: string, id: string): Promise<void> {
-  const { error } = await supabase
-    .from('sleep_log')
-    .delete()
-    .eq('id', id)
-    .eq('user_id', userId);
-  if (error) console.warn('Error deleting sleep log entry from Supabase', error);
 }
 
 export function useSleepLog(userId: string | null) {
@@ -103,7 +39,7 @@ export function useSleepLog(userId: string | null) {
       // 2. Sincronizar desde Supabase si hay sesión
       if (userId) {
         try {
-          const remote = await loadFromSupabase(userId);
+          const remote = await loadSleepLog(userId);
           if (remote && !cancelled) {
             setEntries(remote);
             await AsyncStorage.setItem(key, JSON.stringify(remote));
@@ -136,7 +72,7 @@ export function useSleepLog(userId: string | null) {
       persist(updated);
       return updated;
     });
-    if (userId) await upsertEntryToSupabase(userId, entry);
+    if (userId) await upsertSleepLogEntry(userId, entry);
   }, [persist, userId]);
 
   const updateEntry = useCallback(async (entry: SleepLogEntry) => {
@@ -145,7 +81,7 @@ export function useSleepLog(userId: string | null) {
       persist(updated);
       return updated;
     });
-    if (userId) await upsertEntryToSupabase(userId, entry);
+    if (userId) await upsertSleepLogEntry(userId, entry);
   }, [persist, userId]);
 
   const deleteEntry = useCallback(async (id: string) => {
@@ -154,14 +90,14 @@ export function useSleepLog(userId: string | null) {
       persist(updated);
       return updated;
     });
-    if (userId) await deleteEntryFromSupabase(userId, id);
+    if (userId) await deleteSleepLogEntry(userId, id);
   }, [persist, userId]);
 
   const refresh = useCallback(async () => {
     if (!userId) return;
     setLoading(true);
     try {
-      const remote = await loadFromSupabase(userId);
+      const remote = await loadSleepLog(userId);
       if (remote) {
         setEntries(remote);
         await AsyncStorage.setItem(makeKey(userId), JSON.stringify(remote));
