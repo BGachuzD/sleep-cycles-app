@@ -24,6 +24,7 @@ import { GradientBackground } from '../components/GradientBackground';
 import { FloatingDrawerButton } from '../components/FloatingDrawerButton';
 import { FloatingHomeButton } from '../components/FloatingHomeButton';
 import { PrimaryCTA } from '../components/PrimaryCTA';
+import { Bumper } from '../components/Bumper';
 import { usePressScale } from '../hooks/usePressScale';
 import { useSleepProfileContext } from '../context/SleepProfileContext';
 import {
@@ -87,50 +88,6 @@ function buildWakeDate(hour: number, minute: number, now: Date = new Date()): Da
   }
   return next;
 }
-
-// ─────────────────────────────────────────────
-// Bumper: chevron arriba/abajo con spring on press
-// ─────────────────────────────────────────────
-const Bumper: FC<{
-  direction: 'up' | 'down';
-  onPress: () => void;
-  theme: AppTheme;
-}> = ({ direction, onPress, theme }) => {
-  const { animatedStyle, onPressIn, onPressOut } = usePressScale(0.85);
-  return (
-    <Animated.View style={animatedStyle}>
-      <Pressable
-        onPress={onPress}
-        onPressIn={onPressIn}
-        onPressOut={onPressOut}
-        accessibilityRole="button"
-        hitSlop={8}
-        style={[
-          bumperStyles.btn,
-          {
-            backgroundColor: `${theme.colors.accent[500]}1A`,
-            borderRadius: 999,
-          },
-        ]}
-      >
-        <Ionicons
-          name={direction === 'up' ? 'chevron-up' : 'chevron-down'}
-          size={20}
-          color={theme.colors.accent[400]}
-        />
-      </Pressable>
-    </Animated.View>
-  );
-};
-
-const bumperStyles = StyleSheet.create({
-  btn: {
-    width: 36,
-    height: 36,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
 
 // ─────────────────────────────────────────────
 // ScoreStars
@@ -501,15 +458,15 @@ export const WakeAtScreen: FC<Props> = () => {
 
           <View style={styles.pickerRow}>
             <View style={styles.pickerColumn}>
-              <Bumper direction="up" onPress={() => adjustHours(1)} theme={theme} />
+              <Bumper icon="chevron-up" onPress={() => adjustHours(1)} accessibilityLabel="Subir hora" />
               <Text style={styles.pickerValue}>{hh}</Text>
-              <Bumper direction="down" onPress={() => adjustHours(-1)} theme={theme} />
+              <Bumper icon="chevron-down" onPress={() => adjustHours(-1)} accessibilityLabel="Bajar hora" />
             </View>
             <Text style={styles.pickerSeparator}>:</Text>
             <View style={styles.pickerColumn}>
-              <Bumper direction="up" onPress={() => adjustMinutes(15)} theme={theme} />
+              <Bumper icon="chevron-up" onPress={() => adjustMinutes(15)} accessibilityLabel="Subir minutos" />
               <Text style={styles.pickerValue}>{mm}</Text>
-              <Bumper direction="down" onPress={() => adjustMinutes(-15)} theme={theme} />
+              <Bumper icon="chevron-down" onPress={() => adjustMinutes(-15)} accessibilityLabel="Bajar minutos" />
             </View>
           </View>
 

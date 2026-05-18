@@ -1,22 +1,25 @@
 // src/screens/SleepLogScreen.tsx
-import React, { FC, useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import React, { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ScrollView,
-  Alert,
   ActivityIndicator,
+  Alert,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import Animated, { FadeInUp } from 'react-native-reanimated';
+import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import 'react-native-get-random-values';
 import { v4 as uuidv4 } from 'uuid';
 
 import { GradientBackground } from '../components/GradientBackground';
 import { FloatingDrawerButton } from '../components/FloatingDrawerButton';
+import { Bumper } from '../components/Bumper';
+import { PrimaryCTA } from '../components/PrimaryCTA';
+import { usePressScale } from '../hooks/usePressScale';
 import { useSleepLogContext } from '../context/SleepLogContext';
 import {
   computeSleepMinutes,
@@ -30,13 +33,24 @@ import { getAdjustedCycleLengthMinutes } from '../domain/sleepProfile';
 import { useAppTheme } from '../theme/ThemeProvider';
 import type { AppTheme } from '../theme/theme';
 
-const FEELING_LABELS: Record<1 | 2 | 3, { emoji: string; label: string; color: string }> = {
-  1: { emoji: '😴', label: 'Mal', color: '#f87171' },
-  2: { emoji: '😐', label: 'Regular', color: '#fbbf24' },
-  3: { emoji: '😊', label: 'Excelente', color: '#34d399' },
+// ─────────────────────────────────────────────
+// Feelings: 1 Mal · 2 Regular · 3 Excelente
+// Iconos meteorológicos + colores semánticos del theme.
+// ─────────────────────────────────────────────
+type FeelingLevel = 1 | 2 | 3;
+
+const FEELINGS: Record<
+  FeelingLevel,
+  { icon: keyof typeof Ionicons.glyphMap; label: string; colorKey: 'danger' | 'warning' | 'success' }
+> = {
+  1: { icon: 'cloud-outline', label: 'Mal', colorKey: 'danger' },
+  2: { icon: 'partly-sunny-outline', label: 'Regular', colorKey: 'warning' },
+  3: { icon: 'sunny-outline', label: 'Excelente', colorKey: 'success' },
 };
 
-// ── Defaults inteligentes según la hora del día ──────────────────────────────
+// ─────────────────────────────────────────────
+// Defaults inteligentes según la hora del día
+// ─────────────────────────────────────────────
 function getSmartDefaults(): { bed: Date; wake: Date } {
   const now = new Date();
   const hour = now.getHours();
@@ -57,109 +71,266 @@ function getSmartDefaults(): { bed: Date; wake: Date } {
   return { bed, wake };
 }
 
-// ── Componente ajustador de hora ─────────────────────────────────────────────
-const TimeAdjuster: FC<{
+// ─────────────────────────────────────────────
+// TimeColumn: columna con label + bumpers + hora
+// ─────────────────────────────────────────────
+const TimeColumn: FC<{
   label: string;
   date: Date;
-  onAdjust: (deltaMinutes: number) => void;
-}> = ({ label, date, onAdjust }) => {
-  const { theme } = useAppTheme();
-  const timeStyles = createTimeStyles(theme);
+  onAdjust: (deltaMin: number) => void;
+  theme: AppTheme;
+}> = ({ label, date, onAdjust, theme }) => (
+  <View
+    style={[
+      timeStyles.column,
+      {
+        backgroundColor: theme.colors.surfaceElevated,
+        borderRadius: theme.radius.lg,
+        borderColor: theme.colors.border,
+      },
+    ]}
+  >
+    <Text
+      style={[
+        timeStyles.label,
+        { color: theme.colors.textMuted, fontSize: theme.type.micro },
+      ]}
+    >
+      {label}
+    </Text>
+    <Bumper
+      icon="chevron-up"
+      onPress={() => onAdjust(15)}
+      size={32}
+      iconSize={18}
+      accessibilityLabel={`Subir 15 min: ${label}`}
+    />
+    <Text
+      style={[
+        timeStyles.value,
+        { color: theme.colors.heroText, fontSize: theme.type.title2 },
+      ]}
+      numberOfLines={1}
+      adjustsFontSizeToFit
+      minimumFontScale={0.65}
+    >
+      {formatTime(date)}
+    </Text>
+    <Bumper
+      icon="chevron-down"
+      onPress={() => onAdjust(-15)}
+      size={32}
+      iconSize={18}
+      accessibilityLabel={`Bajar 15 min: ${label}`}
+    />
+  </View>
+);
+
+const timeStyles = StyleSheet.create({
+  column: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 14,
+    gap: 8,
+    borderWidth: 1,
+  },
+  label: { fontWeight: '700', letterSpacing: 0.8, textTransform: 'uppercase' },
+  value: {
+    fontWeight: '900',
+    letterSpacing: -0.5,
+    fontVariant: ['tabular-nums'],
+  },
+});
+
+// ─────────────────────────────────────────────
+// FeelingChip
+// ─────────────────────────────────────────────
+const FeelingChip: FC<{
+  feeling: FeelingLevel;
+  active: boolean;
+  onPress: () => void;
+  theme: AppTheme;
+}> = ({ feeling, active, onPress, theme }) => {
+  const { animatedStyle, onPressIn, onPressOut } = usePressScale(0.95);
+  const info = FEELINGS[feeling];
+  const color = theme.colors[info.colorKey];
 
   return (
-    <View style={timeStyles.wrapper}>
-      <Text style={timeStyles.label}>{label}</Text>
-
-      <View style={timeStyles.row}>
-        <TouchableOpacity
-          style={timeStyles.btn}
-          onPress={() => onAdjust(-15)}
-          hitSlop={{ top: 8, bottom: 8, left: 8, right: 4 }}
-        >
-          <Ionicons name="remove" size={18} color={theme.colors.info} />
-        </TouchableOpacity>
-
+    <Animated.View style={[{ flex: 1 }, animatedStyle]}>
+      <Pressable
+        onPress={onPress}
+        onPressIn={onPressIn}
+        onPressOut={onPressOut}
+        accessibilityRole="button"
+        accessibilityLabel={info.label}
+        style={[
+          feelingStyles.chip,
+          {
+            backgroundColor: active ? `${color}1F` : theme.colors.surfaceElevated,
+            borderColor: active ? color : theme.colors.border,
+            borderWidth: active ? 1.5 : 1,
+            borderRadius: theme.radius.md,
+          },
+        ]}
+      >
+        <Ionicons
+          name={info.icon}
+          size={24}
+          color={active ? color : theme.colors.textMuted}
+        />
         <Text
-          style={timeStyles.value}
-          adjustsFontSizeToFit
-          numberOfLines={1}
-          minimumFontScale={0.7}
+          style={[
+            feelingStyles.label,
+            {
+              color: active ? color : theme.colors.textSecondary,
+              fontSize: theme.type.small,
+            },
+          ]}
         >
-          {formatTime(date)}
+          {info.label}
         </Text>
+      </Pressable>
+    </Animated.View>
+  );
+};
 
-        <TouchableOpacity
-          style={timeStyles.btn}
-          onPress={() => onAdjust(15)}
-          hitSlop={{ top: 8, bottom: 8, left: 4, right: 8 }}
+const feelingStyles = StyleSheet.create({
+  chip: {
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+  },
+  label: { fontWeight: '700' },
+});
+
+// ─────────────────────────────────────────────
+// HistoryCard
+// ─────────────────────────────────────────────
+const HistoryCard: FC<{
+  entry: SleepLogEntry;
+  cycleMins: number;
+  isEditing: boolean;
+  onEdit: () => void;
+  onDelete: () => void;
+  theme: AppTheme;
+}> = ({ entry, cycleMins, isEditing, onEdit, onDelete, theme }) => {
+  const mins = computeSleepMinutes(entry);
+  const cycles = computeCompleteCycles(mins, cycleMins);
+  const info = FEELINGS[entry.feeling];
+  const color = theme.colors[info.colorKey];
+  const bedDate = new Date(entry.bedTimeISO);
+  const wakeDate = new Date(entry.wakeTimeISO);
+
+  return (
+    <View
+      style={[
+        historyStyles.card,
+        {
+          backgroundColor: theme.colors.surface,
+          borderRadius: theme.radius.lg,
+          borderColor: isEditing ? theme.colors.accent[500] : theme.colors.border,
+          borderWidth: isEditing ? 1.5 : 1,
+          paddingVertical: theme.spacing.md,
+          paddingHorizontal: theme.spacing.lg,
+        },
+      ]}
+    >
+      <View style={historyStyles.left}>
+        <Text
+          style={[
+            historyStyles.date,
+            { color: theme.colors.textMuted, fontSize: theme.type.caption },
+          ]}
         >
-          <Ionicons name="add" size={18} color={theme.colors.info} />
-        </TouchableOpacity>
+          {entry.date}
+        </Text>
+        <Text
+          style={[
+            historyStyles.time,
+            { color: theme.colors.textPrimary, fontSize: theme.type.bodyLarge },
+          ]}
+        >
+          {formatTime(bedDate)} → {formatTime(wakeDate)}
+        </Text>
+        <Text
+          style={[
+            historyStyles.detail,
+            { color: theme.colors.textMuted, fontSize: theme.type.caption },
+          ]}
+        >
+          {formatDuration(mins)} · {cycles} ciclos
+        </Text>
+      </View>
+
+      <View style={historyStyles.right}>
+        <View
+          style={[
+            historyStyles.feelingPill,
+            { backgroundColor: `${color}1F`, borderColor: `${color}55` },
+          ]}
+        >
+          <Ionicons name={info.icon} size={16} color={color} />
+        </View>
+        <View style={historyStyles.actions}>
+          <Pressable hitSlop={8} onPress={onEdit}>
+            <Ionicons
+              name="pencil-outline"
+              size={16}
+              color={isEditing ? theme.colors.accent[400] : theme.colors.textMuted}
+            />
+          </Pressable>
+          <Pressable hitSlop={8} onPress={onDelete}>
+            <Ionicons name="trash-outline" size={16} color={theme.colors.textMuted} />
+          </Pressable>
+        </View>
       </View>
     </View>
   );
 };
 
-const createTimeStyles = (theme: AppTheme) => StyleSheet.create({
-  wrapper: {
-    flex: 1,
-    alignItems: 'center',
-    backgroundColor: theme.colors.surface,
-    borderRadius: 16,
-    paddingVertical: 14,
-    paddingHorizontal: 6,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    minWidth: 0,
-  },
-  label: {
-    color: theme.colors.textSecondary,
-    fontSize: 10,
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-    marginBottom: 8,
-    fontWeight: '700',
-  },
-  row: {
+const historyStyles = StyleSheet.create({
+  card: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    width: '100%',
-    gap: 4,
+    alignItems: 'center',
   },
-  btn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+  left: { flex: 1, marginRight: 8 },
+  date: { fontWeight: '700', letterSpacing: 0.3, marginBottom: 2 },
+  time: { fontWeight: '700', fontVariant: ['tabular-nums'] },
+  detail: { marginTop: 2 },
+  right: { alignItems: 'center', gap: 8 },
+  feelingPill: {
+    width: 30,
+    height: 30,
+    borderRadius: 999,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(96,165,250,0.12)',
-    flexShrink: 0,
+    borderWidth: 1,
   },
-  value: {
-    flex: 1,
-    color: theme.colors.textPrimary,
-    fontSize: 18,
-    fontWeight: '800',
-    textAlign: 'center',
-  },
+  actions: { flexDirection: 'row', gap: 12, alignItems: 'center' },
 });
 
-// ── Pantalla principal ────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────
+// SleepLogScreen
+// ─────────────────────────────────────────────
 export const SleepLogScreen: FC = () => {
-  const { entries, loading, addEntry, updateEntry, deleteEntry, refresh } = useSleepLogContext();
+  const { entries, loading, addEntry, updateEntry, deleteEntry, refresh } =
+    useSleepLogContext();
   const { profile } = useSleepProfileContext();
   const { theme } = useAppTheme();
-  const styles = createStyles(theme);
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const scrollRef = useRef<ScrollView>(null);
 
   const cycleMins = getAdjustedCycleLengthMinutes(profile?.age ?? 30);
-
-  const { bed: initialBed, wake: initialWake } = useMemo(() => getSmartDefaults(), []);
+  const { bed: initialBed, wake: initialWake } = useMemo(
+    () => getSmartDefaults(),
+    [],
+  );
 
   const [bedTime, setBedTime] = useState<Date>(initialBed);
   const [wakeTime, setWakeTime] = useState<Date>(initialWake);
-  const [feeling, setFeeling] = useState<1 | 2 | 3>(2);
+  const [feeling, setFeeling] = useState<FeelingLevel>(2);
   const [editingEntry, setEditingEntry] = useState<SleepLogEntry | null>(null);
 
   useEffect(() => {
@@ -180,21 +351,26 @@ export const SleepLogScreen: FC = () => {
   }, []);
 
   const adjustBed = useCallback((delta: number) => {
-    setBedTime((prev) => new Date(prev.getTime() + delta * 60 * 1000));
+    setBedTime((prev) => new Date(prev.getTime() + delta * 60_000));
   }, []);
 
   const adjustWake = useCallback((delta: number) => {
-    setWakeTime((prev) => new Date(prev.getTime() + delta * 60 * 1000));
+    setWakeTime((prev) => new Date(prev.getTime() + delta * 60_000));
   }, []);
 
   const previewMinutes = useMemo(
-    () => Math.max(0, Math.round((wakeTime.getTime() - bedTime.getTime()) / 60_000)),
+    () =>
+      Math.max(
+        0,
+        Math.round((wakeTime.getTime() - bedTime.getTime()) / 60_000),
+      ),
     [bedTime, wakeTime],
   );
   const previewCycles = computeCompleteCycles(previewMinutes, cycleMins);
   const previewValid = previewMinutes > 0 && previewMinutes <= 16 * 60;
+  const previewOutOfRange = previewMinutes > 16 * 60;
 
-  const handleSave = async () => {
+  const handleSave = useCallback(async () => {
     if (wakeTime <= bedTime) {
       Alert.alert(
         'Hora inválida',
@@ -202,7 +378,7 @@ export const SleepLogScreen: FC = () => {
       );
       return;
     }
-    if (previewMinutes > 16 * 60) {
+    if (previewOutOfRange) {
       Alert.alert(
         'Rango demasiado amplio',
         'La diferencia entre acostarse y despertar parece mayor a 16 h. Ajusta las horas.',
@@ -219,7 +395,7 @@ export const SleepLogScreen: FC = () => {
       };
       await updateEntry(updated);
       setEditingEntry(null);
-      Alert.alert('¡Actualizado!', 'Tu registro ha sido actualizado.');
+      Alert.alert('Actualizado', 'Tu registro ha sido actualizado.');
     } else {
       const entry: SleepLogEntry = {
         id: uuidv4(),
@@ -229,9 +405,34 @@ export const SleepLogScreen: FC = () => {
         feeling,
       };
       await addEntry(entry);
-      Alert.alert('¡Guardado!', 'Tu sueño quedó registrado.');
+      Alert.alert('Guardado', 'Tu sueño quedó registrado.');
     }
-  };
+  }, [
+    wakeTime,
+    bedTime,
+    previewOutOfRange,
+    editingEntry,
+    feeling,
+    addEntry,
+    updateEntry,
+  ]);
+
+  const handleDelete = useCallback(
+    (entry: SleepLogEntry) => {
+      Alert.alert('Eliminar registro', '¿Eliminar este registro?', [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: () => {
+            if (editingEntry?.id === entry.id) cancelEdit();
+            deleteEntry(entry.id);
+          },
+        },
+      ]);
+    },
+    [editingEntry, cancelEdit, deleteEntry],
+  );
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
@@ -245,311 +446,302 @@ export const SleepLogScreen: FC = () => {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.title}>Registro de sueño</Text>
-          <Text style={styles.subtitle}>
-            Registra cómo dormiste anoche para ver tus estadísticas.
+        {/* Hero */}
+        <Animated.View entering={FadeInDown.duration(500)} style={styles.hero}>
+          <Text style={styles.heroEyebrow}>REGISTRO DE SUEÑO</Text>
+          <Text style={styles.heroTitle}>
+            {editingEntry ? 'Editar registro' : '¿Cómo dormiste?'}
           </Text>
-        </View>
-
-        {/* Form card */}
-        <View style={[styles.card, editingEntry && styles.cardEditing]}>
-          {editingEntry && (
-            <View style={styles.editBanner}>
-              <Ionicons name="pencil" size={12} color="#fbbf24" style={{ marginRight: 4 }} />
-              <Text style={styles.editBannerText}>Editando · {editingEntry.date}</Text>
-            </View>
-          )}
-
-          <Text style={styles.cardTitle}>
-            {editingEntry ? 'Editar registro' : '¿Cómo dormiste anoche?'}
+          <Text style={styles.heroSubtitle}>
+            {editingEntry
+              ? `Estás editando el registro del ${editingEntry.date}.`
+              : 'Registra cómo dormiste anoche para alimentar tus estadísticas.'}
           </Text>
+        </Animated.View>
 
+        {/* Form */}
+        <Animated.View
+          entering={FadeInDown.delay(80).duration(500)}
+          style={[
+            styles.formCard,
+            editingEntry && {
+              borderColor: theme.colors.accent[500],
+              borderWidth: 1.5,
+            },
+          ]}
+        >
           {/* Time pickers */}
           <View style={styles.timeRow}>
-            <TimeAdjuster label="Me acosté" date={bedTime} onAdjust={adjustBed} />
-            <Ionicons name="arrow-forward" size={16} color={theme.colors.textMuted} />
-            <TimeAdjuster label="Desperté" date={wakeTime} onAdjust={adjustWake} />
+            <TimeColumn
+              label="Me acosté"
+              date={bedTime}
+              onAdjust={adjustBed}
+              theme={theme}
+            />
+            <View style={styles.timeArrow}>
+              <Ionicons
+                name="arrow-forward"
+                size={16}
+                color={theme.colors.textMuted}
+              />
+            </View>
+            <TimeColumn
+              label="Desperté"
+              date={wakeTime}
+              onAdjust={adjustWake}
+              theme={theme}
+            />
           </View>
 
           {/* Preview */}
-          {previewValid ? (
-            <View style={styles.previewBox}>
-              <Ionicons name="moon" size={14} color="#a5b4fc" style={{ marginRight: 6 }} />
-              <Text style={styles.previewText}>
-                {formatDuration(previewMinutes)} · {previewCycles} ciclos completos
+          {previewValid && (
+            <View
+              style={[
+                styles.previewBox,
+                {
+                  backgroundColor: `${theme.colors.accent[500]}14`,
+                  borderColor: `${theme.colors.accent[500]}40`,
+                },
+              ]}
+            >
+              <Ionicons
+                name="moon-outline"
+                size={14}
+                color={theme.colors.accent[400]}
+              />
+              <Text
+                style={[
+                  styles.previewText,
+                  { color: theme.colors.accent[300] },
+                ]}
+              >
+                {formatDuration(previewMinutes)} · {previewCycles} ciclos
+                completos
               </Text>
             </View>
-          ) : previewMinutes > 16 * 60 ? (
-            <View style={[styles.previewBox, styles.previewBoxError]}>
-              <Ionicons name="warning-outline" size={14} color={theme.colors.danger} style={{ marginRight: 6 }} />
+          )}
+          {previewOutOfRange && (
+            <View
+              style={[
+                styles.previewBox,
+                {
+                  backgroundColor: `${theme.colors.danger}14`,
+                  borderColor: `${theme.colors.danger}40`,
+                },
+              ]}
+            >
+              <Ionicons
+                name="warning-outline"
+                size={14}
+                color={theme.colors.danger}
+              />
               <Text style={[styles.previewText, { color: theme.colors.danger }]}>
                 Rango inválido — revisa las horas
               </Text>
             </View>
-          ) : null}
+          )}
 
-          {/* Feeling */}
-          <Text style={styles.feelingLabel}>¿Cómo te sentiste al despertar?</Text>
+          {/* Feelings */}
+          <Text style={styles.fieldLabel}>¿Cómo te sentiste al despertar?</Text>
           <View style={styles.feelingRow}>
-            {([1, 2, 3] as (1 | 2 | 3)[]).map((f) => {
-              const info = FEELING_LABELS[f];
-              const active = feeling === f;
-              return (
-                <TouchableOpacity
-                  key={f}
-                  style={[
-                    styles.feelingChip,
-                    active && { borderColor: info.color, backgroundColor: `${info.color}20` },
-                  ]}
-                  onPress={() => setFeeling(f)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.feelingEmoji}>{info.emoji}</Text>
-                  <Text style={[styles.feelingChipText, active && { color: info.color }]}>
-                    {info.label}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
+            {([1, 2, 3] as FeelingLevel[]).map((f) => (
+              <FeelingChip
+                key={f}
+                feeling={f}
+                active={feeling === f}
+                onPress={() => setFeeling(f)}
+                theme={theme}
+              />
+            ))}
           </View>
 
-          <TouchableOpacity style={styles.saveButton} onPress={handleSave} activeOpacity={0.85}>
-            <Ionicons
-              name={editingEntry ? 'checkmark-done-circle-outline' : 'checkmark-circle-outline'}
-              size={18}
-              color="#022c22"
-              style={{ marginRight: 8 }}
+          {/* Submit */}
+          <View style={styles.submitWrapper}>
+            <PrimaryCTA
+              label={editingEntry ? 'Actualizar registro' : 'Guardar noche'}
+              icon={editingEntry ? 'checkmark-done-outline' : 'checkmark-outline'}
+              onPress={handleSave}
             />
-            <Text style={styles.saveButtonText}>
-              {editingEntry ? 'Actualizar registro' : 'Guardar noche'}
-            </Text>
-          </TouchableOpacity>
+          </View>
 
           {editingEntry && (
-            <TouchableOpacity style={styles.cancelButton} onPress={cancelEdit} activeOpacity={0.7}>
-              <Text style={styles.cancelButtonText}>Cancelar edición</Text>
-            </TouchableOpacity>
+            <Pressable onPress={cancelEdit} style={styles.cancelBtn}>
+              <Text style={styles.cancelBtnText}>Cancelar edición</Text>
+            </Pressable>
           )}
-        </View>
+        </Animated.View>
 
         {/* History */}
         <View style={styles.historyHeader}>
-          <Text style={styles.historyTitle}>Historial reciente</Text>
-          <TouchableOpacity
-            style={styles.refreshBtn}
+          <Text style={styles.historyEyebrow}>HISTORIAL RECIENTE</Text>
+          <Pressable
             onPress={refresh}
             disabled={loading}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="Refrescar historial"
           >
-            {loading
-              ? <ActivityIndicator size="small" color={theme.colors.info} />
-              : <Ionicons name="refresh-outline" size={18} color={theme.colors.info} />
-            }
-          </TouchableOpacity>
+            {loading ? (
+              <ActivityIndicator
+                size="small"
+                color={theme.colors.accent[400]}
+              />
+            ) : (
+              <Ionicons
+                name="refresh-outline"
+                size={18}
+                color={theme.colors.accent[400]}
+              />
+            )}
+          </Pressable>
         </View>
 
         {entries.length === 0 ? (
           <View style={styles.emptyBox}>
-            <Ionicons name="moon-outline" size={28} color={theme.colors.textMuted} />
-            <Text style={styles.emptyText}>Aún no hay registros. ¡Empieza hoy!</Text>
+            <Ionicons
+              name="moon-outline"
+              size={28}
+              color={theme.colors.textMuted}
+            />
+            <Text style={styles.emptyText}>
+              Aún no hay registros. ¡Empieza hoy!
+            </Text>
           </View>
         ) : (
-          entries.slice(0, 14).map((entry, index) => {
-            const mins = computeSleepMinutes(entry);
-            const cycles = computeCompleteCycles(mins, cycleMins);
-            const info = FEELING_LABELS[entry.feeling];
-            const bedDate = new Date(entry.bedTimeISO);
-            const wakeDate = new Date(entry.wakeTimeISO);
-            const isEditing = editingEntry?.id === entry.id;
-
-            return (
-              <Animated.View key={entry.id} entering={FadeInUp.delay(index * 50).springify()}>
-                <View style={[styles.historyCard, isEditing && styles.historyCardEditing]}>
-                  <View style={styles.historyLeft}>
-                    <Text style={styles.historyDate}>{entry.date}</Text>
-                    <Text style={styles.historyTime}>
-                      {formatTime(bedDate)} → {formatTime(wakeDate)}
-                    </Text>
-                    <Text style={styles.historyDetail}>
-                      {formatDuration(mins)} · {cycles} ciclos
-                    </Text>
-                  </View>
-                  <View style={styles.historyRight}>
-                    <Text style={styles.historyFeeling}>{info.emoji}</Text>
-                    <View style={styles.historyActions}>
-                      <TouchableOpacity
-                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 4 }}
-                        onPress={() => (isEditing ? cancelEdit() : setEditingEntry(entry))}
-                      >
-                        <Ionicons
-                          name="pencil-outline"
-                          size={16}
-                          color={isEditing ? '#fbbf24' : theme.colors.textMuted}
-                        />
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        hitSlop={{ top: 8, bottom: 8, left: 4, right: 8 }}
-                        onPress={() =>
-                          Alert.alert('Eliminar', '¿Eliminar este registro?', [
-                            { text: 'Cancelar', style: 'cancel' },
-                            {
-                              text: 'Eliminar',
-                              style: 'destructive',
-                              onPress: () => {
-                                if (isEditing) cancelEdit();
-                                deleteEntry(entry.id);
-                              },
-                            },
-                          ])
-                        }
-                      >
-                        <Ionicons name="trash-outline" size={16} color={theme.colors.textMuted} />
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                </View>
-              </Animated.View>
-            );
-          })
+          <View style={styles.historyList}>
+            {entries.slice(0, 14).map((entry, index) => {
+              const isEditing = editingEntry?.id === entry.id;
+              return (
+                <Animated.View
+                  key={entry.id}
+                  entering={FadeInUp.delay(index * 40).springify().damping(14)}
+                >
+                  <HistoryCard
+                    entry={entry}
+                    cycleMins={cycleMins}
+                    isEditing={isEditing}
+                    onEdit={() =>
+                      isEditing ? cancelEdit() : setEditingEntry(entry)
+                    }
+                    onDelete={() => handleDelete(entry)}
+                    theme={theme}
+                  />
+                </Animated.View>
+              );
+            })}
+          </View>
         )}
-        <View style={{ height: 40 }} />
+
+        <View style={{ height: theme.spacing.huge }} />
       </ScrollView>
     </SafeAreaView>
   );
 };
 
-const createStyles = (theme: AppTheme) => StyleSheet.create({
-  container: { flex: 1, backgroundColor: theme.colors.background },
-  scroll: { flex: 1 },
-  scrollContent: { paddingHorizontal: 20, paddingTop: 64, paddingBottom: 40 },
-  header: { marginBottom: 20 },
-  title: { color: theme.colors.textPrimary, fontSize: 26, fontWeight: '900', marginBottom: 4 },
-  subtitle: { color: '#a5b4fc', fontSize: 13, lineHeight: 18 },
-  card: {
-    backgroundColor: theme.colors.surface,
-    borderRadius: 20,
-    padding: 18,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    marginBottom: 28,
-  },
-  cardEditing: {
-    borderColor: 'rgba(251,191,36,0.5)',
-  },
-  editBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(251,191,36,0.1)',
-    borderRadius: 8,
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    marginBottom: 10,
-    alignSelf: 'flex-start',
-  },
-  editBannerText: { color: '#fbbf24', fontSize: 11, fontWeight: '600' },
-  cardTitle: { color: theme.colors.textPrimary, fontSize: 15, fontWeight: '700', marginBottom: 14 },
-  timeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 12,
-  },
-  previewBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(99,102,241,0.1)',
-    borderRadius: 10,
-    padding: 10,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(99,102,241,0.25)',
-  },
-  previewBoxError: {
-    backgroundColor: 'rgba(248,113,113,0.08)',
-    borderColor: 'rgba(248,113,113,0.3)',
-  },
-  previewText: { color: '#a5b4fc', fontSize: 13, fontWeight: '600' },
-  feelingLabel: {
-    color: theme.colors.textSecondary,
-    fontSize: 12,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 10,
-  },
-  feelingRow: { flexDirection: 'row', gap: 8, marginBottom: 18 },
-  feelingChip: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: 10,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: theme.colors.border,
-    backgroundColor: theme.colors.surfaceElevated,
-  },
-  feelingEmoji: { fontSize: 22, marginBottom: 4 },
-  feelingChipText: { color: theme.colors.textSecondary, fontSize: 11, fontWeight: '600' },
-  saveButton: {
-    backgroundColor: '#10b981',
-    borderRadius: 999,
-    paddingVertical: 14,
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'center',
-  },
-  saveButtonText: { color: '#022c22', fontSize: 15, fontWeight: '800' },
-  cancelButton: {
-    marginTop: 10,
-    paddingVertical: 10,
-    alignItems: 'center',
-  },
-  cancelButtonText: { color: theme.colors.textMuted, fontSize: 13, fontWeight: '600' },
-  historyHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 12,
-  },
-  historyTitle: { color: theme.colors.textPrimary, fontSize: 16, fontWeight: '700' },
-  refreshBtn: {
-    width: 32,
-    height: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  emptyBox: {
-    alignItems: 'center',
-    paddingVertical: 30,
-    backgroundColor: theme.colors.surface,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-  },
-  emptyText: { color: theme.colors.textMuted, fontSize: 13, marginTop: 10 },
-  historyCard: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: theme.colors.surface,
-    borderRadius: 14,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-  },
-  historyCardEditing: {
-    borderColor: 'rgba(251,191,36,0.4)',
-    backgroundColor: 'rgba(251,191,36,0.04)',
-  },
-  historyLeft: { flex: 1, marginRight: 8 },
-  historyDate: { color: theme.colors.textSecondary, fontSize: 11, fontWeight: '600', marginBottom: 2 },
-  historyTime: { color: theme.colors.textPrimary, fontSize: 14, fontWeight: '700' },
-  historyDetail: { color: theme.colors.textMuted, fontSize: 11, marginTop: 2 },
-  historyRight: { alignItems: 'center', gap: 8 },
-  historyFeeling: { fontSize: 20 },
-  historyActions: { flexDirection: 'row', gap: 12, alignItems: 'center' },
-});
+const createStyles = (theme: AppTheme) =>
+  StyleSheet.create({
+    container: { flex: 1, backgroundColor: theme.colors.background },
+    scroll: { flex: 1 },
+    scrollContent: {
+      paddingHorizontal: theme.spacing.xl,
+      paddingTop: theme.spacing.huge + theme.spacing.xxl,
+      paddingBottom: theme.spacing.huge,
+      gap: theme.spacing.xl,
+    },
+    hero: { gap: 4 },
+    heroEyebrow: {
+      color: theme.colors.textMuted,
+      fontSize: theme.type.micro,
+      fontWeight: '700',
+      letterSpacing: 1.2,
+    },
+    heroTitle: {
+      color: theme.colors.textPrimary,
+      fontSize: theme.type.title2,
+      fontWeight: '900',
+      letterSpacing: -0.5,
+      marginTop: 4,
+    },
+    heroSubtitle: {
+      color: theme.colors.textSecondary,
+      fontSize: theme.type.body,
+      lineHeight: 20,
+      marginTop: 6,
+    },
+    formCard: {
+      backgroundColor: theme.colors.surface,
+      borderRadius: theme.radius.xl,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      padding: theme.spacing.xl,
+      gap: theme.spacing.lg,
+    },
+    timeRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: theme.spacing.sm,
+    },
+    timeArrow: {
+      width: 24,
+      height: 24,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    previewBox: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 6,
+      paddingVertical: theme.spacing.sm,
+      paddingHorizontal: theme.spacing.md,
+      borderRadius: theme.radius.md,
+      borderWidth: 1,
+    },
+    previewText: {
+      fontSize: theme.type.body,
+      fontWeight: '700',
+    },
+    fieldLabel: {
+      color: theme.colors.textMuted,
+      fontSize: theme.type.micro,
+      fontWeight: '700',
+      letterSpacing: 1,
+      textTransform: 'uppercase',
+    },
+    feelingRow: {
+      flexDirection: 'row',
+      gap: theme.spacing.sm,
+    },
+    submitWrapper: { marginTop: theme.spacing.xs },
+    cancelBtn: { alignItems: 'center', paddingVertical: 6 },
+    cancelBtnText: {
+      color: theme.colors.textMuted,
+      fontSize: theme.type.small,
+      fontWeight: '600',
+    },
+    historyHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    historyEyebrow: {
+      color: theme.colors.textMuted,
+      fontSize: theme.type.micro,
+      fontWeight: '700',
+      letterSpacing: 1.2,
+    },
+    emptyBox: {
+      alignItems: 'center',
+      gap: 10,
+      paddingVertical: theme.spacing.xxl,
+      backgroundColor: theme.colors.surface,
+      borderRadius: theme.radius.lg,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+    },
+    emptyText: {
+      color: theme.colors.textMuted,
+      fontSize: theme.type.small,
+    },
+    historyList: { gap: theme.spacing.sm },
+  });

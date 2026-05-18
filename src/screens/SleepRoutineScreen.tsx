@@ -27,6 +27,7 @@ import { GradientBackground } from '../components/GradientBackground';
 import { FloatingDrawerButton } from '../components/FloatingDrawerButton';
 import { FloatingHomeButton } from '../components/FloatingHomeButton';
 import { PrimaryCTA } from '../components/PrimaryCTA';
+import { Bumper } from '../components/Bumper';
 import { usePressScale } from '../hooks/usePressScale';
 import { useSleepProfileContext } from '../context/SleepProfileContext';
 import { useSleepRoutineContext } from '../context/SleepRoutineContext';
@@ -36,50 +37,6 @@ import { formatTime } from '../utils/sleep';
 import { scheduleUniqueNotificationAtDate } from '../notifications/scheduler';
 import { useAppTheme } from '../theme/ThemeProvider';
 import type { AppTheme } from '../theme/theme';
-
-// ─────────────────────────────────────────────
-// Bumper: chevron up/down circular con spring
-// ─────────────────────────────────────────────
-const Bumper: FC<{
-  direction: 'up' | 'down';
-  onPress: () => void;
-  theme: AppTheme;
-}> = ({ direction, onPress, theme }) => {
-  const { animatedStyle, onPressIn, onPressOut } = usePressScale(0.85);
-  return (
-    <Animated.View style={animatedStyle}>
-      <Pressable
-        onPress={onPress}
-        onPressIn={onPressIn}
-        onPressOut={onPressOut}
-        accessibilityRole="button"
-        hitSlop={8}
-        style={[
-          bumperStyles.btn,
-          {
-            backgroundColor: `${theme.colors.accent[500]}1A`,
-            borderRadius: 999,
-          },
-        ]}
-      >
-        <Ionicons
-          name={direction === 'up' ? 'add' : 'remove'}
-          size={18}
-          color={theme.colors.accent[400]}
-        />
-      </Pressable>
-    </Animated.View>
-  );
-};
-
-const bumperStyles = StyleSheet.create({
-  btn: {
-    width: 36,
-    height: 36,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
 
 // ─────────────────────────────────────────────
 // Tipos
@@ -512,27 +469,29 @@ export const SleepRoutineScreen: FC = () => {
                 <Text style={styles.fieldLabel}>Minutos antes de acostarse</Text>
                 <View style={styles.minutesRow}>
                   <Bumper
-                    direction="down"
+                    icon="remove"
+                    iconSize={18}
                     onPress={() =>
                       setDraft((d) => ({
                         ...d,
                         minutesBefore: Math.max(0, d.minutesBefore - 5),
                       }))
                     }
-                    theme={theme}
+                    accessibilityLabel="Restar 5 minutos"
                   />
                   <Text style={styles.minutesValue}>
                     {draft.minutesBefore} min
                   </Text>
                   <Bumper
-                    direction="up"
+                    icon="add"
+                    iconSize={18}
                     onPress={() =>
                       setDraft((d) => ({
                         ...d,
                         minutesBefore: d.minutesBefore + 5,
                       }))
                     }
-                    theme={theme}
+                    accessibilityLabel="Sumar 5 minutos"
                   />
                 </View>
               </View>

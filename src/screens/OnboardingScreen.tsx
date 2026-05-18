@@ -1,304 +1,963 @@
 // src/screens/OnboardingScreen.tsx
-import React, { FC, useEffect, useState, useRef } from 'react';
+import React, { FC, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
   Dimensions,
-  TouchableOpacity,
-  Platform,
   FlatList,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
 } from 'react-native';
-import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import type { RootStackParamList } from '../../App';
-
-import Animated, {
-  useSharedValue,
-  useAnimatedScrollHandler,
-  useAnimatedStyle,
-  interpolate,
-  Extrapolation,
-  withTiming,
-  withRepeat,
-} from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import Animated, {
+  Easing,
+  Extrapolation,
+  FadeInDown,
+  interpolate,
+  useAnimatedScrollHandler,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withTiming,
+  type SharedValue,
+} from 'react-native-reanimated';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
-import { GradientBackground } from '../components/GradientBackground';
+import type { RootStackParamList } from '../../App';
+import { Bumper } from '../components/Bumper';
+import { PrimaryCTA } from '../components/PrimaryCTA';
+import { usePressScale } from '../hooks/usePressScale';
 import { useOnboardingFlag } from '../hooks/useOnboardingFlag';
 import { useSleepProfileContext } from '../context/SleepProfileContext';
+import { defaultProfile } from '../hooks/useSleepProfile';
 import { useAuth } from '../context/AuthContext';
 import type { Chronotype, SleepProfile } from '../domain/sleepProfile';
 import { getOptimalSleepWindow } from '../domain/sleepProfile';
-import { defaultProfile } from '../hooks/useSleepProfile';
 import { useAppTheme } from '../theme/ThemeProvider';
 import type { AppTheme } from '../theme/theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Onboarding'>;
 
 const { width, height } = Dimensions.get('window');
-const PADDING_H = 28;
-const DOT_SIZE = 8;
+const TOTAL_SLIDES = 5;
+const HERO_DIAMETER = Math.min(width * 0.46, 180);
 
-// ── Slide 1: Bienvenida
-const SlideWelcome: FC = () => {
-  const { theme } = useAppTheme();
-  const slideStyles = createSlideStyles(theme);
+// ─────────────────────────────────────────────
+// Partícula que orbita el hero con su propio loop
+// ─────────────────────────────────────────────
+const Particle: FC<{
+  index: number;
+  total: number;
+  radius: number;
+  size: number;
+}> = ({ index, total, radius, size }) => {
+  const t = useSharedValue(0);
+  useEffect(() => {
+    t.value = withRepeat(
+      withTiming(1, {
+        duration: 6000 + (index % 3) * 1500,
+        easing: Easing.inOut(Easing.sin),
+      }),
+      -1,
+      true,
+    );
+  }, [t, index]);
+
+  const baseAngle = (index / total) * Math.PI * 2;
+  const animatedStyle = useAnimatedStyle(() => {
+    const sway = interpolate(t.value, [0, 1], [-0.3, 0.3]);
+    const r = radius + interpolate(t.value, [0, 1], [-6, 6]);
+    const angle = baseAngle + sway;
+    return {
+      transform: [
+        { translateX: Math.cos(angle) * r },
+        { translateY: Math.sin(angle) * r },
+      ],
+      opacity: interpolate(t.value, [0, 1], [0.4, 0.85]),
+    };
+  });
+
   return (
-    <View style={slideStyles.inner}>
-      <View style={slideStyles.emojiWrapper}>
-        <Text style={slideStyles.emoji}>😴</Text>
-      </View>
-      <Text style={slideStyles.title}>Mejores despertares</Text>
-      <Text style={slideStyles.description}>
-        Calculamos las horas exactas para que despiertes al final de un ciclo de sueño ligero — no desde lo más profundo.
-      </Text>
-    </View>
+    <Animated.View
+      style={[
+        {
+          position: 'absolute',
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          backgroundColor: '#ffffff',
+        },
+        animatedStyle,
+      ]}
+      pointerEvents="none"
+    />
   );
 };
 
-// ── Slide 2: Ciencia de ciclos
-const SlideCycles: FC = () => {
-  const { theme } = useAppTheme();
-  const slideStyles = createSlideStyles(theme);
+// ─────────────────────────────────────────────
+// HeroComposition: glow respirante + capas + icon + partículas
+// El parallax viene de fuera vía el `parallaxOffset` prop.
+// ─────────────────────────────────────────────
+const HeroComposition: FC<{
+  icon: keyof typeof Ionicons.glyphMap;
+  scrollX: SharedValue<number>;
+  index: number;
+  theme: AppTheme;
+}> = ({ icon, scrollX, index, theme }) => {
+  // Glow breath
+  const breath = useSharedValue(0);
+  useEffect(() => {
+    breath.value = withRepeat(
+      withTiming(1, { duration: 4000, easing: Easing.inOut(Easing.sin) }),
+      -1,
+      true,
+    );
+  }, [breath]);
+
+  const breathStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: interpolate(breath.value, [0, 1], [0.96, 1.06]) }],
+    opacity: interpolate(breath.value, [0, 1], [0.55, 0.85]),
+  }));
+
+  // Parallax / scale del slide entero según scrollX
+  const containerStyle = useAnimatedStyle(() => {
+    const inputRange = [(index - 1) * width, index * width, (index + 1) * width];
+    const scale = interpolate(
+      scrollX.value,
+      inputRange,
+      [0.85, 1, 0.85],
+      Extrapolation.CLAMP,
+    );
+    const opacity = interpolate(
+      scrollX.value,
+      inputRange,
+      [0.4, 1, 0.4],
+      Extrapolation.CLAMP,
+    );
+    const translateY = interpolate(
+      scrollX.value,
+      inputRange,
+      [40, 0, 40],
+      Extrapolation.CLAMP,
+    );
+    return {
+      transform: [{ scale }, { translateY }],
+      opacity,
+    };
+  });
+
   return (
-    <View style={slideStyles.inner}>
-      <View style={slideStyles.emojiWrapper}>
-        <Text style={slideStyles.emoji}>🌀</Text>
+    <Animated.View style={[heroStyles.hero, containerStyle]}>
+      {/* Capa externa: gradient violeta con glow */}
+      <Animated.View
+        style={[
+          heroStyles.outerGlow,
+          {
+            shadowColor: theme.colors.accent[500],
+            backgroundColor: theme.colors.accent[500],
+          },
+          breathStyle,
+        ]}
+      />
+
+      {/* Anillo intermedio */}
+      <View
+        style={[
+          heroStyles.middleRing,
+          {
+            borderColor: `${theme.colors.accent[400]}55`,
+            backgroundColor: `${theme.colors.accent[500]}1A`,
+          },
+        ]}
+      />
+
+      {/* Gradient violeta central como background del icono */}
+      <LinearGradient
+        colors={[theme.colors.accent[500], theme.colors.accent[700]]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={heroStyles.innerCircle}
+      >
+        <Ionicons
+          name={icon}
+          size={HERO_DIAMETER * 0.36}
+          color={theme.colors.white}
+        />
+      </LinearGradient>
+
+      {/* Partículas orbitando */}
+      <View style={heroStyles.particleLayer} pointerEvents="none">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <Particle
+            key={i}
+            index={i}
+            total={6}
+            radius={HERO_DIAMETER * 0.55}
+            size={3 + (i % 3)}
+          />
+        ))}
       </View>
-      <Text style={slideStyles.title}>Ciclos, no solo horas</Text>
-      <Text style={slideStyles.description}>
-        Tu sueño se organiza en ciclos de ~90 min. Completarlos es más importante que la cantidad total de horas.
-      </Text>
-      <View style={slideStyles.scienceBox}>
-        <Text style={slideStyles.scienceItem}>💤 4 ciclos = 6 h — mínimo aceptable</Text>
-        <Text style={slideStyles.scienceItem}>🌙 5 ciclos = 7.5 h — objetivo ideal</Text>
-        <Text style={slideStyles.scienceItem}>⭐ 6 ciclos = 9 h — recuperación máxima</Text>
-      </View>
-    </View>
+    </Animated.View>
   );
 };
 
-// ── Slide 3: Hora de despertar
-const SlideWakeTime: FC<{
-  wakeHour: number;
-  wakeMinute: number;
-  onAdjustHour: (d: number) => void;
-  onAdjustMinute: (d: number) => void;
-}> = ({ wakeHour, wakeMinute, onAdjustHour, onAdjustMinute }) => {
-  const { theme } = useAppTheme();
-  const slideStyles = createSlideStyles(theme);
-  const hStr = String(wakeHour).padStart(2, '0');
-  const mStr = String(wakeMinute).padStart(2, '0');
-  return (
-    <View style={slideStyles.inner}>
-      <View style={slideStyles.emojiWrapper}>
-        <Text style={slideStyles.emoji}>⏰</Text>
-      </View>
-      <Text style={slideStyles.title}>¿A qué hora sueles despertar?</Text>
-      <Text style={slideStyles.description}>
-        Esto nos ayudará a darte recomendaciones listas de inmediato.
-      </Text>
-      <View style={slideStyles.pickerRow}>
-        {/* Hour */}
-        <View style={slideStyles.pickerCol}>
-          <TouchableOpacity style={slideStyles.pickerBtn} onPress={() => onAdjustHour(1)}>
-            <Ionicons name="chevron-up" size={24} color="#818cf8" />
-          </TouchableOpacity>
-          <Text style={slideStyles.pickerVal}>{hStr}</Text>
-          <TouchableOpacity style={slideStyles.pickerBtn} onPress={() => onAdjustHour(-1)}>
-            <Ionicons name="chevron-down" size={24} color="#818cf8" />
-          </TouchableOpacity>
-        </View>
-        <Text style={slideStyles.pickerSep}>:</Text>
-        {/* Minute */}
-        <View style={slideStyles.pickerCol}>
-          <TouchableOpacity style={slideStyles.pickerBtn} onPress={() => onAdjustMinute(15)}>
-            <Ionicons name="chevron-up" size={24} color="#818cf8" />
-          </TouchableOpacity>
-          <Text style={slideStyles.pickerVal}>{mStr}</Text>
-          <TouchableOpacity style={slideStyles.pickerBtn} onPress={() => onAdjustMinute(-15)}>
-            <Ionicons name="chevron-down" size={24} color="#818cf8" />
-          </TouchableOpacity>
-        </View>
-      </View>
-    </View>
-  );
-};
-
-// ── Slide 4: Cronotipo
-const SlideChronotype: FC<{
-  value: Chronotype;
-  onChange: (c: Chronotype) => void;
-}> = ({ value, onChange }) => {
-  const { theme } = useAppTheme();
-  const slideStyles = createSlideStyles(theme);
-  const OPTIONS: { id: Chronotype; emoji: string; label: string; desc: string }[] = [
-    { id: 'morning', emoji: '🌅', label: 'Matutino', desc: 'Me duermo y me levanto temprano naturalmente.' },
-    { id: 'intermediate', emoji: '🌤', label: 'Intermedio', desc: 'Sin preferencia clara de horario.' },
-    { id: 'night', emoji: '🌙', label: 'Nocturno', desc: 'Me desvelo fácilmente y me cuesta madrugar.' },
-  ];
-  const win = getOptimalSleepWindow(value);
-  return (
-    <View style={slideStyles.inner}>
-      <View style={slideStyles.emojiWrapper}>
-        <Text style={slideStyles.emoji}>🦉</Text>
-      </View>
-      <Text style={slideStyles.title}>¿Cuál es tu cronotipo?</Text>
-      <Text style={slideStyles.description}>
-        Tu reloj biológico natural. Ajustaremos tu latencia y ventanas óptimas con base en esto.
-      </Text>
-      {OPTIONS.map((opt) => (
-        <TouchableOpacity
-          key={opt.id}
-          style={[slideStyles.chronoOption, value === opt.id && slideStyles.chronoActive]}
-          onPress={() => onChange(opt.id)}
-        >
-          <Text style={slideStyles.chronoEmoji}>{opt.emoji}</Text>
-          <View style={{ flex: 1 }}>
-            <Text style={[slideStyles.chronoLabel, value === opt.id && { color: theme.colors.textPrimary }]}>{opt.label}</Text>
-            <Text style={slideStyles.chronoDesc}>{opt.desc}</Text>
-          </View>
-          {value === opt.id && <Ionicons name="checkmark-circle" size={20} color="#818cf8" />}
-        </TouchableOpacity>
-      ))}
-      <Text style={slideStyles.windowHint}>
-        Ventana óptima para dormir: {win.bedtimeStart} – {win.bedtimeEnd}
-      </Text>
-    </View>
-  );
-};
-
-// ── Slide 5: Listo
-const SlideDone: FC<{ onStart: () => void }> = ({ onStart }) => {
-  const { theme } = useAppTheme();
-  const slideStyles = createSlideStyles(theme);
-  return (
-    <View style={slideStyles.inner}>
-      <View style={slideStyles.emojiWrapper}>
-        <Text style={slideStyles.emoji}>🌌</Text>
-      </View>
-      <Text style={slideStyles.title}>Todo listo</Text>
-      <Text style={slideStyles.description}>
-        Tu app está personalizada. Úsala antes de dormir para calcular tus ciclos o por la mañana para registrar cómo dormiste.
-      </Text>
-      <TouchableOpacity style={slideStyles.startButton} onPress={onStart}>
-        <Text style={slideStyles.startButtonText}>Empezar a dormir mejor</Text>
-      </TouchableOpacity>
-    </View>
-  );
-};
-
-const createSlideStyles = (theme: AppTheme) => StyleSheet.create({
-  inner: {
-    paddingTop: height * 0.1,
-    paddingHorizontal: PADDING_H,
-    alignItems: 'center',
-  },
-  emojiWrapper: {
-    width: 110,
-    height: 110,
-    borderRadius: 55,
-    backgroundColor: theme.colors.overlay,
-    borderWidth: 1,
-    borderColor: 'rgba(129,140,248,0.7)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 28,
-    ...Platform.select({
-      ios: {
-        shadowColor: 'rgba(129,140,248,0.7)',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.5,
-        shadowRadius: 6,
-      },
-    }),
-  },
-  emoji: { fontSize: 52 },
-  title: { color: theme.colors.textPrimary, fontSize: 28, fontWeight: '800', textAlign: 'center', marginBottom: 10 },
-  description: { color: theme.colors.textSecondary, fontSize: 15, lineHeight: 22, textAlign: 'center', paddingHorizontal: 10, marginBottom: 20 },
-  scienceBox: {
-    backgroundColor: theme.colors.surface,
-    borderRadius: 14,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    width: '100%',
-    gap: 8,
-  },
-  scienceItem: { color: '#a5b4fc', fontSize: 14, fontWeight: '600' },
-  pickerRow: { flexDirection: 'row', alignItems: 'center', gap: 16 },
-  pickerCol: { alignItems: 'center', gap: 6 },
-  pickerBtn: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: 'rgba(129,140,248,0.15)',
+const heroStyles = StyleSheet.create({
+  hero: {
+    width: HERO_DIAMETER,
+    height: HERO_DIAMETER,
+    alignSelf: 'center',
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: 20,
   },
-  pickerVal: { color: theme.colors.textPrimary, fontSize: 52, fontWeight: '900', minWidth: 80, textAlign: 'center' },
-  pickerSep: { color: '#818cf8', fontSize: 52, fontWeight: '900', paddingBottom: 10 },
-  chronoOption: {
-    flexDirection: 'row',
+  outerGlow: {
+    position: 'absolute',
+    width: HERO_DIAMETER * 1.4,
+    height: HERO_DIAMETER * 1.4,
+    borderRadius: HERO_DIAMETER,
+    opacity: 0.3,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.6,
+    shadowRadius: 80,
+  },
+  middleRing: {
+    position: 'absolute',
+    width: HERO_DIAMETER * 0.95,
+    height: HERO_DIAMETER * 0.95,
+    borderRadius: HERO_DIAMETER,
+    borderWidth: 1,
+  },
+  innerCircle: {
+    width: HERO_DIAMETER * 0.6,
+    height: HERO_DIAMETER * 0.6,
+    borderRadius: HERO_DIAMETER,
     alignItems: 'center',
-    backgroundColor: theme.colors.surface,
-    borderRadius: 14,
-    padding: 14,
-    marginBottom: 10,
-    borderWidth: 1.5,
-    borderColor: theme.colors.border,
-    width: '100%',
-    gap: 12,
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 8,
   },
-  chronoActive: { borderColor: '#818cf8', backgroundColor: 'rgba(129,140,248,0.1)' },
-  chronoEmoji: { fontSize: 28 },
-  chronoLabel: { color: theme.colors.textSecondary, fontWeight: '700', fontSize: 15 },
-  chronoDesc: { color: theme.colors.textMuted, fontSize: 12, marginTop: 2 },
-  windowHint: { color: '#a78bfa', fontSize: 12, marginTop: 8, fontWeight: '600' },
-  startButton: {
-    marginTop: 30,
-    width: width - PADDING_H * 2,
-    backgroundColor: theme.colors.primary,
-    paddingVertical: 18,
-    borderRadius: 999,
+  particleLayer: {
+    ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  startButtonText: { color: theme.colors.white, fontSize: 16, fontWeight: '700' },
 });
 
-// ── Dot indicator
-const DotIndicator: FC<{ scrollX: any; index: number; total: number }> = ({
-  scrollX,
-  index,
-}) => {
-  const animatedDotStyle = useAnimatedStyle(() => {
+// ─────────────────────────────────────────────
+// SlideTextLayer: title + description con entries escalonados
+// Anima translateX por scrollX para parallax horizontal sutil.
+// ─────────────────────────────────────────────
+const SlideTextLayer: FC<{
+  title: string;
+  description: string;
+  scrollX: SharedValue<number>;
+  index: number;
+  theme: AppTheme;
+}> = ({ title, description, scrollX, index, theme }) => {
+  const titleStyle = useAnimatedStyle(() => {
     const inputRange = [(index - 1) * width, index * width, (index + 1) * width];
-    const opacity = interpolate(scrollX.value, inputRange, [0.4, 1, 0.4], Extrapolation.CLAMP);
-    const dotWidth = interpolate(scrollX.value, inputRange, [DOT_SIZE, DOT_SIZE * 3, DOT_SIZE], Extrapolation.CLAMP);
-    return { opacity, width: dotWidth, backgroundColor: '#818cf8' };
+    return {
+      transform: [
+        {
+          translateX: interpolate(
+            scrollX.value,
+            inputRange,
+            [-60, 0, 60],
+            Extrapolation.CLAMP,
+          ),
+        },
+      ],
+      opacity: interpolate(
+        scrollX.value,
+        inputRange,
+        [0, 1, 0],
+        Extrapolation.CLAMP,
+      ),
+    };
   });
-  return <Animated.View style={[{ height: DOT_SIZE, borderRadius: DOT_SIZE / 2, marginHorizontal: 4 }, animatedDotStyle]} />;
+
+  const descStyle = useAnimatedStyle(() => {
+    const inputRange = [(index - 1) * width, index * width, (index + 1) * width];
+    return {
+      transform: [
+        {
+          translateX: interpolate(
+            scrollX.value,
+            inputRange,
+            [-30, 0, 30],
+            Extrapolation.CLAMP,
+          ),
+        },
+      ],
+      opacity: interpolate(
+        scrollX.value,
+        inputRange,
+        [0, 1, 0],
+        Extrapolation.CLAMP,
+      ),
+    };
+  });
+
+  return (
+    <View style={textStyles.wrapper}>
+      <Animated.Text
+        style={[
+          textStyles.title,
+          {
+            color: theme.colors.textPrimary,
+            fontSize: theme.type.title1,
+          },
+          titleStyle,
+        ]}
+      >
+        {title}
+      </Animated.Text>
+      <Animated.Text
+        style={[
+          textStyles.description,
+          {
+            color: theme.colors.textSecondary,
+            fontSize: theme.type.body,
+          },
+          descStyle,
+        ]}
+      >
+        {description}
+      </Animated.Text>
+    </View>
+  );
 };
 
-const TOTAL_SLIDES = 5;
+const textStyles = StyleSheet.create({
+  wrapper: { paddingHorizontal: 28, alignItems: 'center' },
+  title: {
+    fontWeight: '900',
+    letterSpacing: -0.5,
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  description: {
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+});
 
+// ─────────────────────────────────────────────
+// Slides
+// ─────────────────────────────────────────────
+const SlideWelcome: FC<{
+  scrollX: SharedValue<number>;
+  index: number;
+  theme: AppTheme;
+}> = ({ scrollX, index, theme }) => (
+  <SlideShell>
+    <HeroComposition icon="moon-outline" scrollX={scrollX} index={index} theme={theme} />
+    <SlideTextLayer
+      title="Mejores despertares"
+      description="Calculamos las horas exactas para que despiertes al final de un ciclo de sueño ligero — no desde lo más profundo."
+      scrollX={scrollX}
+      index={index}
+      theme={theme}
+    />
+  </SlideShell>
+);
+
+const SlideCycles: FC<{
+  scrollX: SharedValue<number>;
+  index: number;
+  theme: AppTheme;
+}> = ({ scrollX, index, theme }) => {
+  const chipsStyle = useAnimatedStyle(() => {
+    const inputRange = [(index - 1) * width, index * width, (index + 1) * width];
+    return {
+      transform: [
+        {
+          translateY: interpolate(
+            scrollX.value,
+            inputRange,
+            [40, 0, 40],
+            Extrapolation.CLAMP,
+          ),
+        },
+      ],
+      opacity: interpolate(
+        scrollX.value,
+        inputRange,
+        [0, 1, 0],
+        Extrapolation.CLAMP,
+      ),
+    };
+  });
+
+  const data = [
+    { n: '4', d: '6h', label: 'mínimo' },
+    { n: '5', d: '7.5h', label: 'ideal' },
+    { n: '6', d: '9h', label: 'pleno' },
+  ];
+
+  return (
+    <SlideShell>
+      <HeroComposition icon="infinite-outline" scrollX={scrollX} index={index} theme={theme} />
+      <SlideTextLayer
+        title="Ciclos, no solo horas"
+        description="Tu sueño se organiza en ciclos de ~90 min. Completarlos importa más que la cantidad total de horas."
+        scrollX={scrollX}
+        index={index}
+        theme={theme}
+      />
+      <Animated.View style={[cyclesStyles.row, chipsStyle]}>
+        {data.map((c, i) => (
+          <View
+            key={c.n}
+            style={[
+              cyclesStyles.chip,
+              {
+                backgroundColor: theme.colors.surface,
+                borderColor:
+                  i === 1 ? theme.colors.accent[500] : theme.colors.border,
+                borderWidth: i === 1 ? 1.5 : 1,
+                borderRadius: theme.radius.lg,
+              },
+            ]}
+          >
+            <Text
+              style={[
+                cyclesStyles.chipN,
+                {
+                  color: theme.colors.heroText,
+                  fontSize: theme.type.title2,
+                },
+              ]}
+            >
+              {c.n}
+            </Text>
+            <Text
+              style={[
+                cyclesStyles.chipD,
+                { color: theme.colors.textSecondary, fontSize: theme.type.small },
+              ]}
+            >
+              {c.d}
+            </Text>
+            <Text
+              style={[
+                cyclesStyles.chipLabel,
+                { color: theme.colors.textMuted, fontSize: theme.type.caption },
+              ]}
+            >
+              {c.label}
+            </Text>
+          </View>
+        ))}
+      </Animated.View>
+    </SlideShell>
+  );
+};
+
+const cyclesStyles = StyleSheet.create({
+  row: {
+    flexDirection: 'row',
+    gap: 10,
+    paddingHorizontal: 28,
+    marginTop: 28,
+  },
+  chip: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 14,
+    gap: 4,
+  },
+  chipN: {
+    fontWeight: '900',
+    letterSpacing: -1,
+    fontVariant: ['tabular-nums'],
+  },
+  chipD: { fontWeight: '700' },
+  chipLabel: {
+    fontWeight: '700',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
+});
+
+const SlideWakeTime: FC<{
+  scrollX: SharedValue<number>;
+  index: number;
+  wakeHour: number;
+  wakeMinute: number;
+  onAdjustHour: (delta: number) => void;
+  onAdjustMinute: (delta: number) => void;
+  theme: AppTheme;
+}> = ({
+  scrollX,
+  index,
+  wakeHour,
+  wakeMinute,
+  onAdjustHour,
+  onAdjustMinute,
+  theme,
+}) => {
+  const pickerStyle = useAnimatedStyle(() => {
+    const inputRange = [(index - 1) * width, index * width, (index + 1) * width];
+    return {
+      transform: [
+        {
+          translateY: interpolate(
+            scrollX.value,
+            inputRange,
+            [40, 0, 40],
+            Extrapolation.CLAMP,
+          ),
+        },
+      ],
+      opacity: interpolate(
+        scrollX.value,
+        inputRange,
+        [0, 1, 0],
+        Extrapolation.CLAMP,
+      ),
+    };
+  });
+
+  const hh = String(wakeHour).padStart(2, '0');
+  const mm = String(wakeMinute).padStart(2, '0');
+
+  return (
+    <SlideShell>
+      <HeroComposition icon="alarm-outline" scrollX={scrollX} index={index} theme={theme} />
+      <SlideTextLayer
+        title="¿A qué hora despiertas?"
+        description="Esto nos ayudará a darte recomendaciones listas de inmediato."
+        scrollX={scrollX}
+        index={index}
+        theme={theme}
+      />
+      <Animated.View style={[wakeStyles.row, pickerStyle]}>
+        <View style={wakeStyles.column}>
+          <Bumper
+            icon="chevron-up"
+            onPress={() => onAdjustHour(1)}
+            accessibilityLabel="Subir hora"
+          />
+          <Text
+            style={[
+              wakeStyles.value,
+              { color: theme.colors.heroText, fontSize: theme.type.display },
+            ]}
+          >
+            {hh}
+          </Text>
+          <Bumper
+            icon="chevron-down"
+            onPress={() => onAdjustHour(-1)}
+            accessibilityLabel="Bajar hora"
+          />
+        </View>
+        <Text
+          style={[
+            wakeStyles.separator,
+            { color: theme.colors.heroText, fontSize: theme.type.display },
+          ]}
+        >
+          :
+        </Text>
+        <View style={wakeStyles.column}>
+          <Bumper
+            icon="chevron-up"
+            onPress={() => onAdjustMinute(15)}
+            accessibilityLabel="Subir minutos"
+          />
+          <Text
+            style={[
+              wakeStyles.value,
+              { color: theme.colors.heroText, fontSize: theme.type.display },
+            ]}
+          >
+            {mm}
+          </Text>
+          <Bumper
+            icon="chevron-down"
+            onPress={() => onAdjustMinute(-15)}
+            accessibilityLabel="Bajar minutos"
+          />
+        </View>
+      </Animated.View>
+    </SlideShell>
+  );
+};
+
+const wakeStyles = StyleSheet.create({
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 28,
+  },
+  column: { alignItems: 'center', gap: 8 },
+  value: {
+    fontWeight: '800',
+    letterSpacing: -2,
+    fontVariant: ['tabular-nums'],
+    minWidth: 86,
+    textAlign: 'center',
+  },
+  separator: {
+    fontWeight: '800',
+    letterSpacing: -2,
+    marginTop: -8,
+  },
+});
+
+const CHRONO_OPTIONS: Array<{
+  id: Chronotype;
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  desc: string;
+}> = [
+  {
+    id: 'morning',
+    icon: 'sunny-outline',
+    label: 'Matutino',
+    desc: 'Me duermo y me levanto temprano naturalmente.',
+  },
+  {
+    id: 'intermediate',
+    icon: 'partly-sunny-outline',
+    label: 'Intermedio',
+    desc: 'Sin preferencia clara de horario.',
+  },
+  {
+    id: 'night',
+    icon: 'moon-outline',
+    label: 'Nocturno',
+    desc: 'Me desvelo fácilmente y me cuesta madrugar.',
+  },
+];
+
+const ChronotypeOption: FC<{
+  option: (typeof CHRONO_OPTIONS)[number];
+  active: boolean;
+  onPress: () => void;
+  theme: AppTheme;
+}> = ({ option, active, onPress, theme }) => {
+  const { animatedStyle, onPressIn, onPressOut } = usePressScale(0.97);
+  return (
+    <Animated.View style={animatedStyle}>
+      <Pressable
+        onPress={onPress}
+        onPressIn={onPressIn}
+        onPressOut={onPressOut}
+        accessibilityRole="button"
+        style={[
+          chronoStyles.option,
+          {
+            backgroundColor: active
+              ? `${theme.colors.accent[500]}14`
+              : theme.colors.surface,
+            borderColor: active
+              ? theme.colors.accent[500]
+              : theme.colors.border,
+            borderWidth: active ? 1.5 : 1,
+            borderRadius: theme.radius.lg,
+          },
+        ]}
+      >
+        <View
+          style={[
+            chronoStyles.iconCircle,
+            {
+              backgroundColor: `${theme.colors.accent[500]}1F`,
+            },
+          ]}
+        >
+          <Ionicons
+            name={option.icon}
+            size={20}
+            color={theme.colors.accent[400]}
+          />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text
+            style={[
+              chronoStyles.label,
+              {
+                color: active
+                  ? theme.colors.textPrimary
+                  : theme.colors.textSecondary,
+                fontSize: theme.type.bodyLarge,
+              },
+            ]}
+          >
+            {option.label}
+          </Text>
+          <Text
+            style={[
+              chronoStyles.desc,
+              { color: theme.colors.textMuted, fontSize: theme.type.small },
+            ]}
+          >
+            {option.desc}
+          </Text>
+        </View>
+        {active && (
+          <Ionicons
+            name="checkmark-circle"
+            size={20}
+            color={theme.colors.accent[400]}
+          />
+        )}
+      </Pressable>
+    </Animated.View>
+  );
+};
+
+const chronoStyles = StyleSheet.create({
+  option: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 10,
+    gap: 12,
+  },
+  iconCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  label: { fontWeight: '700' },
+  desc: { lineHeight: 16, marginTop: 2 },
+});
+
+const SlideChronotype: FC<{
+  scrollX: SharedValue<number>;
+  index: number;
+  value: Chronotype;
+  onChange: (c: Chronotype) => void;
+  theme: AppTheme;
+}> = ({ scrollX, index, value, onChange, theme }) => {
+  const listStyle = useAnimatedStyle(() => {
+    const inputRange = [(index - 1) * width, index * width, (index + 1) * width];
+    return {
+      transform: [
+        {
+          translateY: interpolate(
+            scrollX.value,
+            inputRange,
+            [40, 0, 40],
+            Extrapolation.CLAMP,
+          ),
+        },
+      ],
+      opacity: interpolate(
+        scrollX.value,
+        inputRange,
+        [0, 1, 0],
+        Extrapolation.CLAMP,
+      ),
+    };
+  });
+
+  const win = getOptimalSleepWindow(value);
+
+  return (
+    <SlideShell>
+      <HeroComposition icon="compass-outline" scrollX={scrollX} index={index} theme={theme} />
+      <SlideTextLayer
+        title="¿Cuál es tu cronotipo?"
+        description="Tu reloj biológico natural. Ajustaremos tu latencia y ventanas óptimas."
+        scrollX={scrollX}
+        index={index}
+        theme={theme}
+      />
+      <Animated.View style={[chronoListStyles.list, listStyle]}>
+        {CHRONO_OPTIONS.map((opt) => (
+          <ChronotypeOption
+            key={opt.id}
+            option={opt}
+            active={value === opt.id}
+            onPress={() => onChange(opt.id)}
+            theme={theme}
+          />
+        ))}
+        <Text
+          style={[
+            chronoListStyles.hint,
+            { color: theme.colors.accent[300], fontSize: theme.type.caption },
+          ]}
+        >
+          Ventana óptima: {win.bedtimeStart} – {win.bedtimeEnd}
+        </Text>
+      </Animated.View>
+    </SlideShell>
+  );
+};
+
+const chronoListStyles = StyleSheet.create({
+  list: {
+    paddingHorizontal: 28,
+    marginTop: 20,
+    gap: 12,
+    alignSelf: 'stretch',
+  },
+  hint: {
+    fontWeight: '700',
+    letterSpacing: 0.5,
+    textAlign: 'center',
+    marginTop: 8,
+  },
+});
+
+const SlideDone: FC<{
+  scrollX: SharedValue<number>;
+  index: number;
+  onStart: () => void;
+  theme: AppTheme;
+}> = ({ scrollX, index, onStart, theme }) => {
+  const ctaStyle = useAnimatedStyle(() => {
+    const inputRange = [(index - 1) * width, index * width, (index + 1) * width];
+    return {
+      transform: [
+        {
+          translateY: interpolate(
+            scrollX.value,
+            inputRange,
+            [40, 0, 40],
+            Extrapolation.CLAMP,
+          ),
+        },
+      ],
+      opacity: interpolate(
+        scrollX.value,
+        inputRange,
+        [0, 1, 0],
+        Extrapolation.CLAMP,
+      ),
+    };
+  });
+
+  return (
+    <SlideShell>
+      <HeroComposition icon="sparkles-outline" scrollX={scrollX} index={index} theme={theme} />
+      <SlideTextLayer
+        title="Todo listo"
+        description="Tu app está personalizada. Empieza a dormir mejor desde esta misma noche."
+        scrollX={scrollX}
+        index={index}
+        theme={theme}
+      />
+      <Animated.View style={[doneStyles.ctaWrapper, ctaStyle]}>
+        <PrimaryCTA
+          label="Empezar a dormir mejor"
+          icon="arrow-forward"
+          trailingIcon="sparkles-outline"
+          onPress={onStart}
+        />
+      </Animated.View>
+    </SlideShell>
+  );
+};
+
+const doneStyles = StyleSheet.create({
+  ctaWrapper: {
+    paddingHorizontal: 28,
+    width: '100%',
+    marginTop: 32,
+  },
+});
+
+// ─────────────────────────────────────────────
+// DotIndicator
+// ─────────────────────────────────────────────
+const Dot: FC<{
+  index: number;
+  scrollX: SharedValue<number>;
+  theme: AppTheme;
+}> = ({ index, scrollX, theme }) => {
+  const animatedStyle = useAnimatedStyle(() => {
+    const inputRange = [(index - 1) * width, index * width, (index + 1) * width];
+    const widthVal = interpolate(
+      scrollX.value,
+      inputRange,
+      [8, 24, 8],
+      Extrapolation.CLAMP,
+    );
+    const opacity = interpolate(
+      scrollX.value,
+      inputRange,
+      [0.35, 1, 0.35],
+      Extrapolation.CLAMP,
+    );
+    return { width: widthVal, opacity };
+  });
+
+  return (
+    <Animated.View
+      style={[
+        {
+          height: 8,
+          borderRadius: 4,
+          marginHorizontal: 4,
+          backgroundColor: theme.colors.accent[400],
+        },
+        animatedStyle,
+      ]}
+    />
+  );
+};
+
+const slideStyles = StyleSheet.create({
+  inner: {
+    width,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: height * 0.04,
+    paddingBottom: 120, // espacio explícito sobre los dots
+  },
+});
+
+// Wrapper común para todos los slides: ScrollView con paging-friendly content.
+const SlideShell: FC<{ children: React.ReactNode }> = ({ children }) => (
+  <View style={slideStyles.inner}>
+    <ScrollView
+      contentContainerStyle={slideStyles.scrollContent}
+      showsVerticalScrollIndicator={false}
+      bounces={false}
+      nestedScrollEnabled
+    >
+      {children}
+    </ScrollView>
+  </View>
+);
+
+// ─────────────────────────────────────────────
+// OnboardingScreen
+// ─────────────────────────────────────────────
 export const OnboardingScreen: FC<Props> = () => {
-  const scrollX = useSharedValue(0);
+  const { theme } = useAppTheme();
   const { markAsSeen } = useOnboardingFlag();
   const { profile, saveProfile } = useSleepProfileContext();
   const { user } = useAuth();
-  const { theme } = useAppTheme();
   const flatRef = useRef<FlatList>(null);
 
   const [wakeHour, setWakeHour] = useState(profile?.wakeHour ?? 7);
   const [wakeMinute, setWakeMinute] = useState(profile?.wakeMinute ?? 0);
-
   const metaChronotype = user?.user_metadata?.chronotype as Chronotype | undefined;
   const [chronotype, setChronotype] = useState<Chronotype>(
     profile?.chronotype ?? metaChronotype ?? 'intermediate',
   );
 
+  const scrollX = useSharedValue(0);
   const onScroll = useAnimatedScrollHandler({
     onScroll: (event) => {
       scrollX.value = event.contentOffset.x;
@@ -306,7 +965,7 @@ export const OnboardingScreen: FC<Props> = () => {
   });
 
   const adjustHour = (delta: number) =>
-    setWakeHour((h) => ((h + delta + 24) % 24));
+    setWakeHour((h) => (h + delta + 24) % 24);
 
   const adjustMinute = (delta: number) =>
     setWakeMinute((m) => {
@@ -325,69 +984,138 @@ export const OnboardingScreen: FC<Props> = () => {
     await markAsSeen();
   };
 
-  const slides = [
-    { key: '1', component: <SlideWelcome /> },
-    { key: '2', component: <SlideCycles /> },
-    {
-      key: '3',
-      component: (
-        <SlideWakeTime
-          wakeHour={wakeHour}
-          wakeMinute={wakeMinute}
-          onAdjustHour={adjustHour}
-          onAdjustMinute={adjustMinute}
-        />
-      ),
-    },
-    {
-      key: '4',
-      component: (
-        <SlideChronotype value={chronotype} onChange={setChronotype} />
-      ),
-    },
-    { key: '5', component: <SlideDone onStart={handleStart} /> },
-  ];
+  const slides = useMemo(
+    () => [
+      { key: 'welcome' },
+      { key: 'cycles' },
+      { key: 'wake' },
+      { key: 'chrono' },
+      { key: 'done' },
+    ],
+    [],
+  );
+
+  const renderItem = ({ index }: { item: { key: string }; index: number }) => {
+    switch (index) {
+      case 0:
+        return <SlideWelcome scrollX={scrollX} index={0} theme={theme} />;
+      case 1:
+        return <SlideCycles scrollX={scrollX} index={1} theme={theme} />;
+      case 2:
+        return (
+          <SlideWakeTime
+            scrollX={scrollX}
+            index={2}
+            wakeHour={wakeHour}
+            wakeMinute={wakeMinute}
+            onAdjustHour={adjustHour}
+            onAdjustMinute={adjustMinute}
+            theme={theme}
+          />
+        );
+      case 3:
+        return (
+          <SlideChronotype
+            scrollX={scrollX}
+            index={3}
+            value={chronotype}
+            onChange={setChronotype}
+            theme={theme}
+          />
+        );
+      case 4:
+        return (
+          <SlideDone
+            scrollX={scrollX}
+            index={4}
+            onStart={handleStart}
+            theme={theme}
+          />
+        );
+      default:
+        return null;
+    }
+  };
 
   return (
-    <SafeAreaView style={styles.container(theme)} edges={['top', 'bottom']}>
-      <View style={styles.flex}>
-        <GradientBackground />
-
-        <Animated.FlatList
-          ref={flatRef as any}
-          data={slides}
-          horizontal
-          pagingEnabled
-          showsHorizontalScrollIndicator={false}
-          keyExtractor={(item) => item.key}
-          onScroll={onScroll}
-          scrollEventThrottle={16}
-          renderItem={({ item }) => (
-            <View style={{ width }}>{item.component}</View>
-          )}
+    <SafeAreaView
+      style={[
+        styles.container,
+        { backgroundColor: theme.colors.background },
+      ]}
+      edges={['top', 'bottom']}
+    >
+      {/* Glow de fondo (ambient) */}
+      <View style={styles.ambient} pointerEvents="none">
+        <Animated.View
+          style={[
+            styles.ambientGlow,
+            {
+              backgroundColor: theme.colors.accent[600],
+              shadowColor: theme.colors.accent[600],
+            },
+          ]}
         />
-
-        <View style={styles.dotsFooter}>
-          <View style={styles.dotsContainer}>
-            {slides.map((_, index) => (
-              <DotIndicator key={index} scrollX={scrollX} index={index} total={TOTAL_SLIDES} />
-            ))}
-          </View>
-        </View>
       </View>
+
+      <Animated.FlatList
+        ref={flatRef as any}
+        data={slides}
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        keyExtractor={(item) => item.key}
+        onScroll={onScroll}
+        scrollEventThrottle={16}
+        renderItem={renderItem}
+        bounces={false}
+      />
+
+      {/* Footer: dots */}
+      <Animated.View
+        entering={FadeInDown.duration(500)}
+        style={styles.footer}
+      >
+        <View style={styles.dotsRow}>
+          {slides.map((_, i) => (
+            <Dot key={i} index={i} scrollX={scrollX} theme={theme} />
+          ))}
+        </View>
+      </Animated.View>
     </SafeAreaView>
   );
 };
 
-const styles = {
-  flex: { flex: 1 } as const,
-  container: (theme: AppTheme) => ({ flex: 1, backgroundColor: theme.colors.background }),
-  dotsFooter: {
-    position: 'absolute' as const,
-    bottom: Platform.OS === 'ios' ? 20 : 10,
+const AMBIENT_DIAMETER = Math.max(width, height);
+
+const styles = StyleSheet.create({
+  container: { flex: 1 },
+  ambient: {
+    ...StyleSheet.absoluteFillObject,
+    overflow: 'hidden',
+  },
+  ambientGlow: {
+    position: 'absolute',
+    top: -AMBIENT_DIAMETER * 0.4,
+    left: (width - AMBIENT_DIAMETER) / 2,
+    width: AMBIENT_DIAMETER,
+    height: AMBIENT_DIAMETER,
+    borderRadius: AMBIENT_DIAMETER / 2,
+    opacity: 0.25,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.5,
+    shadowRadius: 200,
+  },
+  footer: {
+    position: 'absolute',
+    bottom: 24,
     left: 0,
     right: 0,
-    alignItems: 'center' as const,
+    alignItems: 'center',
   },
-  dotsContainer: { flexDirection: 'row' as const, alignItems: 'center' as const, justifyContent: 'center' as const },
-};
+  dotsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+});
