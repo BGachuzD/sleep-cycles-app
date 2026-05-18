@@ -1,124 +1,74 @@
-import React, { FC, useEffect, useMemo } from 'react';
+import React, { FC, useEffect } from 'react';
 import { StyleSheet, View, Dimensions } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withRepeat,
   withTiming,
+  Easing,
+  interpolate,
 } from 'react-native-reanimated';
-import { MoonIcon } from '../icons/moon';
 import { useAppTheme } from '../theme/ThemeProvider';
 
 const { width, height } = Dimensions.get('window');
 
+const GLOW_DIAMETER = Math.max(width, height) * 1.2;
+
 export const GradientBackground: FC = () => {
   const { theme } = useAppTheme();
-  const glow = useSharedValue(0);
+  const breath = useSharedValue(0);
 
   useEffect(() => {
-    glow.value = withRepeat(withTiming(1, { duration: 8000 }), -1, true);
-  }, [glow]);
+    breath.value = withRepeat(
+      withTiming(1, { duration: 8000, easing: Easing.inOut(Easing.sin) }),
+      -1,
+      true,
+    );
+  }, [breath]);
 
-  const glowStyle = useAnimatedStyle(() => {
-    const translateY = -40 + glow.value * 80;
-    const translateX = -20 + glow.value * 40;
+  const glowStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(breath.value, [0, 1], [0.35, 0.6]),
+    transform: [{ scale: interpolate(breath.value, [0, 1], [0.95, 1.05]) }],
+  }));
 
-    return {
-      transform: [
-        { translateY },
-        { translateX },
-        { scale: 1.1 + glow.value * 0.15 },
-      ],
-      opacity: 0.4 + glow.value * 0.3,
-    };
-  });
-
-  const rainStarsStyle = useAnimatedStyle(() => {
-    const opacity = 0.15 + glow.value * 0.35;
-    return { opacity };
-  });
-
-  const stars = useMemo(
-    () =>
-      Array.from({ length: 100 }).map((_, index) => {
-        const size = Math.random() * 3 + 1;
-        const top = Math.random() * height;
-        const left = Math.random() * width;
-        return { id: index, size, top, left };
-      }),
-    [],
-  );
+  const glowColor = theme.name === 'dark'
+    ? theme.colors.accent[600]
+    : theme.colors.accent[400];
 
   return (
-    <View style={StyleSheet.absoluteFill} pointerEvents="none">
-      {/* 1) Fondo base */}
-      <LinearGradient
-        colors={[
-          theme.colors.background,
-          theme.colors.background,
-          theme.colors.background,
-        ]}
-        style={StyleSheet.absoluteFill}
-      />
-
-      {/* 2) Capa de estrellas por encima del gradiente */}
+    <View
+      style={[styles.container, { backgroundColor: theme.colors.background }]}
+      pointerEvents="none"
+    >
       <Animated.View
-        style={[styles.stars, rainStarsStyle]}
-        pointerEvents="none"
-      >
-        {stars.map((star) => (
-          <View
-            key={star.id}
-            style={[
-              styles.star,
-              {
-                width: star.size,
-                height: star.size,
-                top: star.top,
-                left: star.left,
-                opacity: Math.random() * 0.8 + 0.2,
-                backgroundColor: theme.colors.white,
-              },
-            ]}
-          />
-        ))}
-      </Animated.View>
-
-      {/* 3) Glow + luna */}
-      <Animated.View style={[styles.glow, glowStyle]} pointerEvents="none">
-        <View style={styles.moonInner}>
-          <MoonIcon size={width * 0.5} color={theme.colors.white} opacity={0.3} />
-        </View>
-      </Animated.View>
+        style={[
+          styles.glow,
+          {
+            backgroundColor: glowColor,
+            shadowColor: glowColor,
+          },
+          glowStyle,
+        ]}
+      />
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  glow: {
-    position: 'absolute',
-    top: height * 0.55,
-    left: width * 0.1,
-    width: width * 0.5,
-    height: width * 0.5,
-    borderRadius: width,
-    opacity: 0.95,
-  },
-  moonInner: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  stars: {
-    position: 'absolute',
-    flex: 1,
-    width: width,
-    height: height,
+  container: {
+    ...StyleSheet.absoluteFillObject,
     overflow: 'hidden',
   },
-  star: {
+  glow: {
     position: 'absolute',
-    borderRadius: 50,
+    top: -GLOW_DIAMETER * 0.45,
+    left: (width - GLOW_DIAMETER) / 2,
+    width: GLOW_DIAMETER,
+    height: GLOW_DIAMETER,
+    borderRadius: GLOW_DIAMETER / 2,
+    opacity: 0.35,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.6,
+    shadowRadius: 200,
   },
 });

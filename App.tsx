@@ -15,6 +15,7 @@ import {
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import * as Notifications from 'expo-notifications';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 
 import { AppDrawerNavigator } from './src/navigation/AppDrawerNavigator';
 import { SleepNowScreen } from './src/screens/SleepNowScreen';
@@ -187,7 +188,9 @@ export default function App() {
             <SleepProfileProvider>
               <SleepLogProvider>
                 <SleepRoutineProvider>
-                  <AppNavigation />
+                  <BottomSheetModalProvider>
+                    <AppNavigation />
+                  </BottomSheetModalProvider>
                 </SleepRoutineProvider>
               </SleepLogProvider>
             </SleepProfileProvider>

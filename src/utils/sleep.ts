@@ -12,6 +12,8 @@ export type WakeTimeOption = {
   tibMinutes: number;
   efficiency: number;
   isRecommended: boolean;
+  latencyMinutes: number;
+  score: number;
 
   windowStart: Date;
   windowEnd: Date;
@@ -24,6 +26,8 @@ export type SleepTimeOption = {
   tibMinutes: number;
   efficiency: number;
   isRecommended: boolean;
+  latencyMinutes: number;
+  score: number;
 
   windowStart: Date;
   windowEnd: Date;
@@ -52,6 +56,8 @@ export function getWakeTimesFromNowForProfile(
     tibMinutes: r.tibMinutes,
     efficiency: r.efficiency,
     isRecommended: r.score === bestScore,
+    latencyMinutes: r.latencyMinutes,
+    score: r.score,
     windowStart: r.windowStart,
     windowEnd: r.windowEnd,
   }));
@@ -80,6 +86,8 @@ export function getSleepTimesForWakeDateForProfile(
     tibMinutes: r.tibMinutes,
     efficiency: r.efficiency,
     isRecommended: r.score === bestScore,
+    latencyMinutes: r.latencyMinutes,
+    score: r.score,
     windowStart: r.windowStart,
     windowEnd: r.windowEnd,
   }));

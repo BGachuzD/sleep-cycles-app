@@ -1,28 +1,33 @@
 // src/screens/SleepRoutineScreen.tsx
-import React, { FC, useMemo, useState, useCallback } from 'react';
+import React, { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ScrollView,
-  Platform,
-  Alert,
-  Modal,
-  TextInput,
-  KeyboardAvoidingView,
-  Switch,
   ActivityIndicator,
+  Alert,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  Text,
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import Animated, { FadeInLeft, FadeInDown } from 'react-native-reanimated';
+import Animated, { FadeInDown, FadeInLeft } from 'react-native-reanimated';
 import 'react-native-get-random-values';
 import { v4 as uuidv4 } from 'uuid';
+import {
+  BottomSheetBackdrop,
+  BottomSheetModal,
+  BottomSheetTextInput,
+  BottomSheetView,
+  type BottomSheetBackdropProps,
+} from '@gorhom/bottom-sheet';
 
 import { GradientBackground } from '../components/GradientBackground';
 import { FloatingDrawerButton } from '../components/FloatingDrawerButton';
 import { FloatingHomeButton } from '../components/FloatingHomeButton';
+import { PrimaryCTA } from '../components/PrimaryCTA';
+import { usePressScale } from '../hooks/usePressScale';
 import { useSleepProfileContext } from '../context/SleepProfileContext';
 import { useSleepRoutineContext } from '../context/SleepRoutineContext';
 import { getOptimalSleepWindow } from '../domain/sleepProfile';
@@ -32,179 +37,86 @@ import { scheduleUniqueNotificationAtDate } from '../notifications/scheduler';
 import { useAppTheme } from '../theme/ThemeProvider';
 import type { AppTheme } from '../theme/theme';
 
-// ── Modal de edición de paso ──────────────────────────────────────────────────
+// ─────────────────────────────────────────────
+// Bumper: chevron up/down circular con spring
+// ─────────────────────────────────────────────
+const Bumper: FC<{
+  direction: 'up' | 'down';
+  onPress: () => void;
+  theme: AppTheme;
+}> = ({ direction, onPress, theme }) => {
+  const { animatedStyle, onPressIn, onPressOut } = usePressScale(0.85);
+  return (
+    <Animated.View style={animatedStyle}>
+      <Pressable
+        onPress={onPress}
+        onPressIn={onPressIn}
+        onPressOut={onPressOut}
+        accessibilityRole="button"
+        hitSlop={8}
+        style={[
+          bumperStyles.btn,
+          {
+            backgroundColor: `${theme.colors.accent[500]}1A`,
+            borderRadius: 999,
+          },
+        ]}
+      >
+        <Ionicons
+          name={direction === 'up' ? 'add' : 'remove'}
+          size={18}
+          color={theme.colors.accent[400]}
+        />
+      </Pressable>
+    </Animated.View>
+  );
+};
+
+const bumperStyles = StyleSheet.create({
+  btn: {
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+});
+
+// ─────────────────────────────────────────────
+// Tipos
+// ─────────────────────────────────────────────
 interface StepDraft {
   title: string;
   description: string;
   minutesBefore: number;
 }
 
-const EditStepModal: FC<{
-  visible: boolean;
-  draft: StepDraft;
-  isNew: boolean;
-  onChange: (d: StepDraft) => void;
-  onSave: () => void;
-  onCancel: () => void;
-}> = ({ visible, draft, isNew, onChange, onSave, onCancel }) => {
-  const { theme } = useAppTheme();
-  const modalStyles = createModalStyles(theme);
-
-  return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="slide"
-      onRequestClose={onCancel}
-    >
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={modalStyles.overlay}
-      >
-        <View style={modalStyles.sheet}>
-          <View style={modalStyles.handle} />
-          <Text style={modalStyles.title}>{isNew ? 'Nuevo paso' : 'Editar paso'}</Text>
-
-          <Text style={modalStyles.fieldLabel}>Título</Text>
-          <TextInput
-            style={modalStyles.input}
-            value={draft.title}
-            onChangeText={(t) => onChange({ ...draft, title: t })}
-            placeholder="Ej. Ducha relajante"
-            placeholderTextColor={theme.colors.textMuted}
-            maxLength={50}
-          />
-
-          <Text style={modalStyles.fieldLabel}>Descripción</Text>
-          <TextInput
-            style={[modalStyles.input, { height: 72, textAlignVertical: 'top' }]}
-            value={draft.description}
-            onChangeText={(t) => onChange({ ...draft, description: t })}
-            placeholder="Breve indicación de qué hacer"
-            placeholderTextColor={theme.colors.textMuted}
-            multiline
-            maxLength={120}
-          />
-
-          <Text style={modalStyles.fieldLabel}>Minutos antes de acostarse</Text>
-          <View style={modalStyles.minutesRow}>
-            <TouchableOpacity
-              style={modalStyles.minutesBtn}
-              onPress={() => onChange({ ...draft, minutesBefore: Math.max(0, draft.minutesBefore - 5) })}
-            >
-              <Ionicons name="remove" size={20} color="#60a5fa" />
-            </TouchableOpacity>
-            <Text style={modalStyles.minutesValue}>{draft.minutesBefore} min</Text>
-            <TouchableOpacity
-              style={modalStyles.minutesBtn}
-              onPress={() => onChange({ ...draft, minutesBefore: draft.minutesBefore + 5 })}
-            >
-              <Ionicons name="add" size={20} color="#60a5fa" />
-            </TouchableOpacity>
-          </View>
-
-          <TouchableOpacity style={modalStyles.saveBtn} onPress={onSave} activeOpacity={0.85}>
-            <Text style={modalStyles.saveBtnText}>{isNew ? 'Añadir paso' : 'Guardar cambios'}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={modalStyles.cancelBtn} onPress={onCancel} activeOpacity={0.7}>
-            <Text style={modalStyles.cancelBtnText}>Cancelar</Text>
-          </TouchableOpacity>
-        </View>
-      </KeyboardAvoidingView>
-    </Modal>
-  );
-};
-
-const createModalStyles = (theme: AppTheme) => StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    justifyContent: 'flex-end',
-  },
-  sheet: {
-    backgroundColor: theme.colors.surface,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: 24,
-    paddingBottom: Platform.OS === 'ios' ? 40 : 28,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-  },
-  handle: {
-    alignSelf: 'center',
-    width: 40,
-    height: 4,
-    borderRadius: 999,
-    backgroundColor: 'rgba(148,163,184,0.5)',
-    marginBottom: 20,
-  },
-  title: { color: theme.colors.textPrimary, fontSize: 18, fontWeight: '800', marginBottom: 20 },
-  fieldLabel: {
-    color: theme.colors.textSecondary,
-    fontSize: 11,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 6,
-  },
-  input: {
-    backgroundColor: theme.colors.surfaceElevated,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    color: theme.colors.textPrimary,
-    fontSize: 15,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    marginBottom: 16,
-  },
-  minutesRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 20,
-    marginBottom: 24,
-  },
-  minutesBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(96,165,250,0.12)',
-  },
-  minutesValue: {
-    color: theme.colors.textPrimary,
-    fontSize: 20,
-    fontWeight: '800',
-    minWidth: 80,
-    textAlign: 'center',
-  },
-  saveBtn: {
-    backgroundColor: '#10b981',
-    borderRadius: 999,
-    paddingVertical: 14,
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  saveBtnText: { color: '#022c22', fontSize: 15, fontWeight: '800' },
-  cancelBtn: { paddingVertical: 10, alignItems: 'center' },
-  cancelBtnText: { color: theme.colors.textMuted, fontSize: 13, fontWeight: '600' },
-});
-
-// ── Pantalla principal ────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────
+// SleepRoutineScreen
+// ─────────────────────────────────────────────
 export const SleepRoutineScreen: FC = () => {
   const { profile } = useSleepProfileContext();
-  const { steps, loading, toggleStep, updateStep, addStep, deleteStep, resetToDefaults, refresh } =
-    useSleepRoutineContext();
+  const {
+    steps,
+    loading,
+    toggleStep,
+    updateStep,
+    addStep,
+    deleteStep,
+    resetToDefaults,
+    refresh,
+  } = useSleepRoutineContext();
   const { theme } = useAppTheme();
-  const styles = createStyles(theme);
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const optWindow = getOptimalSleepWindow(profile?.chronotype);
 
   const [editMode, setEditMode] = useState(false);
   const [editingStep, setEditingStep] = useState<RoutineStep | null>(null);
   const [isNewStep, setIsNewStep] = useState(false);
-  const [draft, setDraft] = useState<StepDraft>({ title: '', description: '', minutesBefore: 30 });
+  const [draft, setDraft] = useState<StepDraft>({
+    title: '',
+    description: '',
+    minutesBefore: 30,
+  });
   const [scheduledSteps, setScheduledSteps] = useState<Set<string>>(new Set());
 
   // Hora objetivo de dormir: centro de la ventana óptima
@@ -230,9 +142,40 @@ export const SleepRoutineScreen: FC = () => {
   );
 
   // Pasos a mostrar: en modo normal solo habilitados; en edición todos
-  const visibleSteps = editMode ? steps : steps.filter((s) => s.enabled);
+  const visibleSteps = useMemo(
+    () => (editMode ? steps : steps.filter((s) => s.enabled)),
+    [editMode, steps],
+  );
 
-  const handleScheduleAll = async () => {
+  // ── Bottom sheet edit ───────────────────────
+  const sheetRef = useRef<BottomSheetModal>(null);
+  const snapPoints = useMemo(() => ['72%'], []);
+
+  useEffect(() => {
+    if (editingStep) {
+      sheetRef.current?.present();
+    }
+  }, [editingStep]);
+
+  const closeSheet = useCallback(() => {
+    sheetRef.current?.dismiss();
+  }, []);
+
+  const renderBackdrop = useCallback(
+    (props: BottomSheetBackdropProps) => (
+      <BottomSheetBackdrop
+        {...props}
+        appearsOnIndex={0}
+        disappearsOnIndex={-1}
+        opacity={0.6}
+        pressBehavior="close"
+      />
+    ),
+    [],
+  );
+
+  // ── Acciones ────────────────────────────────
+  const handleScheduleAll = useCallback(async () => {
     let count = 0;
     for (const step of visibleSteps) {
       const time = stepTime(step);
@@ -247,32 +190,45 @@ export const SleepRoutineScreen: FC = () => {
       }
     }
     setScheduledSteps(new Set(visibleSteps.map((s) => s.id)));
-    Alert.alert('Rutina programada', `${count} recordatorios configurados para esta noche.`);
-  };
+    Alert.alert(
+      'Rutina programada',
+      `${count} recordatorios configurados para esta noche.`,
+    );
+  }, [visibleSteps, stepTime]);
 
-  const handleScheduleStep = async (step: RoutineStep) => {
-    const time = stepTime(step);
-    if (time.getTime() <= Date.now()) {
-      Alert.alert('Hora pasada', 'Esta hora ya pasó. Programa para mañana ajustando tu horario.');
-      return;
-    }
-    await scheduleUniqueNotificationAtDate({
-      key: `routine:${step.id}`,
-      title: step.title,
-      body: step.description,
-      date: time,
-    });
-    setScheduledSteps((prev) => new Set([...prev, step.id]));
-    Alert.alert('Recordatorio', `Programado para las ${formatTime(time)}`);
-  };
+  const handleScheduleStep = useCallback(
+    async (step: RoutineStep) => {
+      const time = stepTime(step);
+      if (time.getTime() <= Date.now()) {
+        Alert.alert(
+          'Hora pasada',
+          'Esta hora ya pasó. Programa para mañana ajustando tu horario.',
+        );
+        return;
+      }
+      await scheduleUniqueNotificationAtDate({
+        key: `routine:${step.id}`,
+        title: step.title,
+        body: step.description,
+        date: time,
+      });
+      setScheduledSteps((prev) => new Set([...prev, step.id]));
+      Alert.alert('Recordatorio', `Programado para las ${formatTime(time)}`);
+    },
+    [stepTime],
+  );
 
-  const openEdit = (step: RoutineStep) => {
-    setEditingStep(step);
+  const openEdit = useCallback((step: RoutineStep) => {
     setIsNewStep(false);
-    setDraft({ title: step.title, description: step.description, minutesBefore: step.minutesBefore });
-  };
+    setDraft({
+      title: step.title,
+      description: step.description,
+      minutesBefore: step.minutesBefore,
+    });
+    setEditingStep(step);
+  }, []);
 
-  const openAdd = () => {
+  const openAdd = useCallback(() => {
     const newStep: RoutineStep = {
       id: uuidv4(),
       minutesBefore: 30,
@@ -283,12 +239,12 @@ export const SleepRoutineScreen: FC = () => {
       enabled: true,
       isDefault: false,
     };
-    setEditingStep(newStep);
     setIsNewStep(true);
     setDraft({ title: '', description: '', minutesBefore: 30 });
-  };
+    setEditingStep(newStep);
+  }, []);
 
-  const handleSaveDraft = async () => {
+  const handleSaveDraft = useCallback(async () => {
     if (!editingStep) return;
     if (!draft.title.trim()) {
       Alert.alert('Campo requerido', 'El título no puede estar vacío.');
@@ -305,25 +261,24 @@ export const SleepRoutineScreen: FC = () => {
     } else {
       await updateStep(updated);
     }
-    setEditingStep(null);
-  };
+    closeSheet();
+  }, [editingStep, draft, isNewStep, addStep, updateStep, closeSheet]);
 
-  const handleDeleteStep = (step: RoutineStep) => {
-    Alert.alert(
-      'Eliminar paso',
-      `¿Eliminar "${step.title}"?`,
-      [
+  const handleDeleteStep = useCallback(
+    (step: RoutineStep) => {
+      Alert.alert('Eliminar paso', `¿Eliminar "${step.title}"?`, [
         { text: 'Cancelar', style: 'cancel' },
         {
           text: 'Eliminar',
           style: 'destructive',
           onPress: () => deleteStep(step.id),
         },
-      ],
-    );
-  };
+      ]);
+    },
+    [deleteStep],
+  );
 
-  const handleReset = () => {
+  const handleReset = useCallback(() => {
     Alert.alert(
       'Restablecer rutina',
       'Se eliminarán tus pasos personalizados y se restaurarán los pasos por defecto.',
@@ -332,7 +287,7 @@ export const SleepRoutineScreen: FC = () => {
         { text: 'Restablecer', style: 'destructive', onPress: resetToDefaults },
       ],
     );
-  };
+  }, [resetToDefaults]);
 
   const isLast = (index: number) => index === visibleSteps.length - 1;
 
@@ -347,313 +302,651 @@ export const SleepRoutineScreen: FC = () => {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
-        <View style={styles.header}>
-          <View style={styles.headerRow}>
+        {/* Hero */}
+        <Animated.View entering={FadeInDown.duration(500)} style={styles.hero}>
+          <View style={styles.heroTopRow}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.title}>Rutina pre-sueño</Text>
-              <Text style={styles.subtitle}>
-                Prepararte antes de dormir a las{' '}
-                <Text style={styles.targetTime}>{formatTime(targetBedTime)}</Text>
-                {optWindow.label !== 'Intermedio' ? ` · ${optWindow.label}` : ''}
-              </Text>
+              <Text style={styles.heroEyebrow}>RUTINA PARA DORMIR A LAS</Text>
+              <Text style={styles.heroClock}>{formatTime(targetBedTime)}</Text>
             </View>
-            <View style={{ flexDirection: 'row', gap: 8 }}>
+            <View style={styles.heroActions}>
               {!editMode && (
-                <TouchableOpacity
-                  style={styles.refreshBtn}
+                <Pressable
                   onPress={refresh}
                   disabled={loading}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 4 }}
+                  hitSlop={8}
+                  style={styles.iconBtn}
+                  accessibilityRole="button"
+                  accessibilityLabel="Refrescar rutina"
                 >
-                  {loading
-                    ? <ActivityIndicator size="small" color={theme.colors.info} />
-                    : <Ionicons name="refresh-outline" size={18} color={theme.colors.info} />
-                  }
-                </TouchableOpacity>
+                  {loading ? (
+                    <ActivityIndicator
+                      size="small"
+                      color={theme.colors.accent[400]}
+                    />
+                  ) : (
+                    <Ionicons
+                      name="refresh-outline"
+                      size={18}
+                      color={theme.colors.accent[400]}
+                    />
+                  )}
+                </Pressable>
               )}
-              <TouchableOpacity
-                style={[styles.editModeBtn, editMode && styles.editModeBtnActive]}
+              <Pressable
                 onPress={() => setEditMode((v) => !v)}
+                hitSlop={8}
+                style={[
+                  styles.editToggle,
+                  editMode && {
+                    backgroundColor: theme.colors.accent[500],
+                    borderColor: theme.colors.accent[500],
+                  },
+                ]}
+                accessibilityRole="button"
+                accessibilityLabel={editMode ? 'Salir de edición' : 'Editar rutina'}
               >
                 <Ionicons
                   name={editMode ? 'checkmark-outline' : 'pencil-outline'}
-                  size={16}
-                  color={editMode ? '#022c22' : theme.colors.textSecondary}
+                  size={15}
+                  color={
+                    editMode ? theme.colors.white : theme.colors.textSecondary
+                  }
                 />
-                <Text style={[styles.editModeBtnText, editMode && { color: '#022c22' }]}>
+                <Text
+                  style={[
+                    styles.editToggleText,
+                    editMode && { color: theme.colors.white },
+                  ]}
+                >
                   {editMode ? 'Listo' : 'Editar'}
                 </Text>
-              </TouchableOpacity>
+              </Pressable>
             </View>
           </View>
+          <Text style={styles.heroSubtitle}>
+            Prepárate antes de tu ventana óptima
+            {optWindow.label !== 'Intermedio'
+              ? ` · cronotipo ${optWindow.label.toLowerCase()}`
+              : ''}
+            .
+          </Text>
+        </Animated.View>
+
+        {/* Acción contextual */}
+        {!editMode ? (
+          <Animated.View entering={FadeInDown.delay(80).duration(500)}>
+            <PrimaryCTA
+              label="Programar toda la rutina"
+              icon="notifications-outline"
+              onPress={handleScheduleAll}
+            />
+          </Animated.View>
+        ) : (
+          <Animated.View
+            entering={FadeInDown.duration(300)}
+            style={styles.resetWrapper}
+          >
+            <Pressable
+              style={styles.resetBtn}
+              onPress={handleReset}
+              accessibilityRole="button"
+            >
+              <Ionicons
+                name="refresh-outline"
+                size={15}
+                color={theme.colors.danger}
+              />
+              <Text style={styles.resetBtnText}>Restablecer por defecto</Text>
+            </Pressable>
+          </Animated.View>
+        )}
+
+        {/* Timeline de pasos */}
+        <View style={styles.timeline}>
+          {visibleSteps.map((step, index) => {
+            const time = stepTime(step);
+            const isScheduled = scheduledSteps.has(step.id);
+            const isPast = time.getTime() <= Date.now();
+            return (
+              <Animated.View
+                key={step.id}
+                entering={FadeInLeft.delay(index * 60)
+                  .springify()
+                  .damping(14)}
+              >
+                <StepRow
+                  step={step}
+                  time={time}
+                  isScheduled={isScheduled}
+                  isPast={isPast}
+                  isLast={isLast(index)}
+                  editMode={editMode}
+                  onToggle={() => toggleStep(step.id)}
+                  onPress={() =>
+                    editMode ? openEdit(step) : handleScheduleStep(step)
+                  }
+                  onEdit={() => openEdit(step)}
+                  onDelete={() => handleDeleteStep(step)}
+                  theme={theme}
+                />
+              </Animated.View>
+            );
+          })}
         </View>
 
-        {/* Schedule all / Reset buttons */}
-        {!editMode ? (
-          <TouchableOpacity style={styles.scheduleAllBtn} onPress={handleScheduleAll}>
-            <Ionicons name="notifications-outline" size={18} color="#022c22" style={{ marginRight: 8 }} />
-            <Text style={styles.scheduleAllText}>Programar toda la rutina</Text>
-          </TouchableOpacity>
-        ) : (
-          <Animated.View entering={FadeInDown.duration(300)}>
-            <TouchableOpacity style={styles.resetBtn} onPress={handleReset}>
-              <Ionicons name="refresh-outline" size={15} color="#f87171" style={{ marginRight: 6 }} />
-              <Text style={styles.resetBtnText}>Restablecer por defecto</Text>
-            </TouchableOpacity>
-          </Animated.View>
-        )}
-
-        {/* Steps timeline */}
-        {visibleSteps.map((step, index) => {
-          const time = stepTime(step);
-          const isScheduled = scheduledSteps.has(step.id);
-          const isPast = time.getTime() <= Date.now();
-
-          return (
-            <Animated.View
-              key={step.id}
-              entering={FadeInLeft.delay(index * 60).springify().damping(14)}
-            >
-              <View style={styles.stepRow}>
-                {/* Timeline dot + line */}
-                {!editMode && (
-                  <View style={styles.timelineCol}>
-                    <View style={[styles.dot, { backgroundColor: step.color }]} />
-                    {!isLast(index) && (
-                      <View style={[styles.line, { backgroundColor: step.color + '40' }]} />
-                    )}
-                  </View>
-                )}
-
-                {/* Card */}
-                <TouchableOpacity
-                  style={[
-                    styles.stepCard,
-                    editMode && styles.stepCardEditMode,
-                    !editMode && isPast && styles.stepCardPast,
-                    !editMode && isScheduled && styles.stepCardScheduled,
-                    !step.enabled && editMode && styles.stepCardDisabled,
-                  ]}
-                  onPress={() => editMode ? openEdit(step) : handleScheduleStep(step)}
-                  activeOpacity={0.8}
-                >
-                  <View style={styles.stepTop}>
-                    {editMode && (
-                      <Switch
-                        value={step.enabled}
-                        onValueChange={() => toggleStep(step.id)}
-                        trackColor={{ false: theme.colors.border, true: step.color + '80' }}
-                        thumbColor={step.enabled ? step.color : theme.colors.textMuted}
-                        style={{ marginRight: 10, transform: [{ scaleX: 0.85 }, { scaleY: 0.85 }] }}
-                      />
-                    )}
-
-                    <View style={[styles.iconCircle, { backgroundColor: step.color + '20' }]}>
-                      <Ionicons name={step.icon} size={18} color={step.color} />
-                    </View>
-
-                    <View style={styles.stepTextCol}>
-                      {!editMode && <Text style={styles.stepTime}>{formatTime(time)}</Text>}
-                      <Text style={[styles.stepTitle, !step.enabled && { color: theme.colors.textMuted }]}>
-                        {step.title}
-                      </Text>
-                    </View>
-
-                    {editMode ? (
-                      <View style={styles.editActions}>
-                        <TouchableOpacity
-                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 4 }}
-                          onPress={() => openEdit(step)}
-                        >
-                          <Ionicons name="pencil-outline" size={18} color={theme.colors.textSecondary} />
-                        </TouchableOpacity>
-                        {!step.isDefault && (
-                          <TouchableOpacity
-                            hitSlop={{ top: 8, bottom: 8, left: 4, right: 8 }}
-                            onPress={() => handleDeleteStep(step)}
-                          >
-                            <Ionicons name="trash-outline" size={18} color="#f87171" />
-                          </TouchableOpacity>
-                        )}
-                      </View>
-                    ) : (
-                      isScheduled
-                        ? <Ionicons name="checkmark-circle" size={20} color="#34d399" />
-                        : <Ionicons name="alarm-outline" size={18} color={theme.colors.textMuted} />
-                    )}
-                  </View>
-
-                  {!editMode && (
-                    <>
-                      <Text style={styles.stepDesc}>{step.description}</Text>
-                      {step.minutesBefore === 0 && (
-                        <View style={styles.bedtimeBadge}>
-                          <Text style={styles.bedtimeBadgeText}>⭐ Hora óptima para tu cronotipo</Text>
-                        </View>
-                      )}
-                    </>
-                  )}
-
-                  {editMode && (
-                    <Text style={[styles.stepDesc, { fontSize: 12, marginTop: 4 }, !step.enabled && { color: theme.colors.border }]}>
-                      {step.minutesBefore === 0 ? 'Al acostarse' : `${step.minutesBefore} min antes`}
-                      {step.isDefault ? '' : ' · personalizado'}
-                    </Text>
-                  )}
-                </TouchableOpacity>
-              </View>
-            </Animated.View>
-          );
-        })}
-
-        {/* Add step button in edit mode */}
+        {/* Añadir paso (en edit mode) */}
         {editMode && (
           <Animated.View entering={FadeInDown.delay(100).duration(300)}>
-            <TouchableOpacity style={styles.addStepBtn} onPress={openAdd}>
-              <Ionicons name="add-circle-outline" size={20} color="#818cf8" style={{ marginRight: 8 }} />
+            <Pressable
+              style={[
+                styles.addStepBtn,
+                {
+                  backgroundColor: `${theme.colors.accent[500]}14`,
+                  borderColor: `${theme.colors.accent[500]}44`,
+                },
+              ]}
+              onPress={openAdd}
+              accessibilityRole="button"
+            >
+              <Ionicons
+                name="add-circle-outline"
+                size={20}
+                color={theme.colors.accent[400]}
+              />
               <Text style={styles.addStepText}>Añadir paso personalizado</Text>
-            </TouchableOpacity>
+            </Pressable>
           </Animated.View>
         )}
 
-        <View style={{ height: 40 }} />
+        <View style={{ height: theme.spacing.huge }} />
       </ScrollView>
 
-      {/* Edit step modal */}
-      <EditStepModal
-        visible={editingStep !== null}
-        draft={draft}
-        isNew={isNewStep}
-        onChange={setDraft}
-        onSave={handleSaveDraft}
-        onCancel={() => setEditingStep(null)}
-      />
+      {/* BottomSheet de edición */}
+      <BottomSheetModal
+        ref={sheetRef}
+        snapPoints={snapPoints}
+        enableDynamicSizing={false}
+        keyboardBehavior="interactive"
+        keyboardBlurBehavior="restore"
+        backgroundStyle={{ backgroundColor: theme.colors.surface }}
+        handleIndicatorStyle={{ backgroundColor: theme.colors.textMuted }}
+        backdropComponent={renderBackdrop}
+        onDismiss={() => setEditingStep(null)}
+      >
+        <BottomSheetView style={styles.sheetContent}>
+          {editingStep && (
+            <>
+              <Text style={styles.sheetEyebrow}>
+                {isNewStep ? 'NUEVO PASO' : 'EDITAR PASO'}
+              </Text>
+
+              <View style={styles.field}>
+                <Text style={styles.fieldLabel}>Título</Text>
+                <BottomSheetTextInput
+                  style={styles.input}
+                  value={draft.title}
+                  onChangeText={(t) => setDraft((d) => ({ ...d, title: t }))}
+                  placeholder="Ej. Ducha relajante"
+                  placeholderTextColor={theme.colors.textMuted}
+                  maxLength={50}
+                />
+              </View>
+
+              <View style={styles.field}>
+                <Text style={styles.fieldLabel}>Descripción</Text>
+                <BottomSheetTextInput
+                  style={[styles.input, { height: 72, textAlignVertical: 'top' }]}
+                  value={draft.description}
+                  onChangeText={(t) =>
+                    setDraft((d) => ({ ...d, description: t }))
+                  }
+                  placeholder="Breve indicación de qué hacer"
+                  placeholderTextColor={theme.colors.textMuted}
+                  multiline
+                  maxLength={120}
+                />
+              </View>
+
+              <View style={styles.field}>
+                <Text style={styles.fieldLabel}>Minutos antes de acostarse</Text>
+                <View style={styles.minutesRow}>
+                  <Bumper
+                    direction="down"
+                    onPress={() =>
+                      setDraft((d) => ({
+                        ...d,
+                        minutesBefore: Math.max(0, d.minutesBefore - 5),
+                      }))
+                    }
+                    theme={theme}
+                  />
+                  <Text style={styles.minutesValue}>
+                    {draft.minutesBefore} min
+                  </Text>
+                  <Bumper
+                    direction="up"
+                    onPress={() =>
+                      setDraft((d) => ({
+                        ...d,
+                        minutesBefore: d.minutesBefore + 5,
+                      }))
+                    }
+                    theme={theme}
+                  />
+                </View>
+              </View>
+
+              <View style={styles.sheetCtaWrapper}>
+                <PrimaryCTA
+                  label={isNewStep ? 'Añadir paso' : 'Guardar cambios'}
+                  icon={isNewStep ? 'add-outline' : 'checkmark-outline'}
+                  onPress={handleSaveDraft}
+                />
+              </View>
+            </>
+          )}
+        </BottomSheetView>
+      </BottomSheetModal>
     </SafeAreaView>
   );
 };
 
-const createStyles = (theme: AppTheme) => StyleSheet.create({
-  container: { flex: 1, backgroundColor: theme.colors.background },
-  scroll: { flex: 1 },
-  scrollContent: { paddingHorizontal: 20, paddingTop: 64, paddingBottom: 40 },
-  header: { marginBottom: 20 },
-  headerRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
-  title: { color: theme.colors.textPrimary, fontSize: 26, fontWeight: '900', marginBottom: 4 },
-  subtitle: { color: theme.colors.textSecondary, fontSize: 13, lineHeight: 18 },
-  targetTime: { color: '#a78bfa', fontWeight: '700' },
-  refreshBtn: {
-    width: 36,
-    height: 36,
+// ─────────────────────────────────────────────
+// StepRow (uno por paso del timeline)
+// ─────────────────────────────────────────────
+const StepRow: FC<{
+  step: RoutineStep;
+  time: Date;
+  isScheduled: boolean;
+  isPast: boolean;
+  isLast: boolean;
+  editMode: boolean;
+  onToggle: () => void;
+  onPress: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+  theme: AppTheme;
+}> = ({
+  step,
+  time,
+  isScheduled,
+  isPast,
+  isLast,
+  editMode,
+  onToggle,
+  onPress,
+  onEdit,
+  onDelete,
+  theme,
+}) => {
+  const { animatedStyle, onPressIn, onPressOut } = usePressScale(0.98);
+
+  return (
+    <View style={rowStyles.row}>
+      {/* Timeline visual */}
+      {!editMode && (
+        <View style={rowStyles.timelineCol}>
+          <View style={[rowStyles.dot, { backgroundColor: step.color }]} />
+          {!isLast && (
+            <View style={[rowStyles.line, { backgroundColor: `${step.color}40` }]} />
+          )}
+        </View>
+      )}
+
+      <Animated.View style={[rowStyles.cardWrapper, animatedStyle]}>
+        <Pressable
+          onPress={onPress}
+          onPressIn={onPressIn}
+          onPressOut={onPressOut}
+          style={[
+            rowStyles.card,
+            {
+              backgroundColor: theme.colors.surface,
+              borderColor: isScheduled
+                ? theme.colors.accent[500]
+                : theme.colors.border,
+              borderWidth: isScheduled ? 1.5 : 1,
+              borderRadius: theme.radius.lg,
+              padding: theme.spacing.lg,
+              opacity: !step.enabled && editMode ? 0.55 : isPast && !editMode ? 0.55 : 1,
+              marginLeft: editMode ? 0 : 10,
+            },
+          ]}
+        >
+          <View style={rowStyles.top}>
+            {editMode && (
+              <Switch
+                value={step.enabled}
+                onValueChange={onToggle}
+                trackColor={{
+                  false: theme.colors.border,
+                  true: theme.colors.accent[500],
+                }}
+                thumbColor={theme.colors.white}
+                style={{
+                  marginRight: 8,
+                  transform: [{ scaleX: 0.85 }, { scaleY: 0.85 }],
+                }}
+              />
+            )}
+
+            <View
+              style={[
+                rowStyles.iconCircle,
+                { backgroundColor: `${step.color}24` },
+              ]}
+            >
+              <Ionicons name={step.icon} size={18} color={step.color} />
+            </View>
+
+            <View style={rowStyles.textCol}>
+              {!editMode && (
+                <Text
+                  style={[
+                    rowStyles.timeText,
+                    { color: theme.colors.textMuted, fontSize: theme.type.micro },
+                  ]}
+                >
+                  {formatTime(time)}
+                </Text>
+              )}
+              <Text
+                style={[
+                  rowStyles.titleText,
+                  {
+                    color: !step.enabled
+                      ? theme.colors.textMuted
+                      : theme.colors.textPrimary,
+                    fontSize: theme.type.bodyLarge,
+                  },
+                ]}
+              >
+                {step.title}
+              </Text>
+            </View>
+
+            {editMode ? (
+              <View style={rowStyles.editActions}>
+                <Pressable hitSlop={8} onPress={onEdit}>
+                  <Ionicons
+                    name="pencil-outline"
+                    size={18}
+                    color={theme.colors.textSecondary}
+                  />
+                </Pressable>
+                {!step.isDefault && (
+                  <Pressable hitSlop={8} onPress={onDelete}>
+                    <Ionicons
+                      name="trash-outline"
+                      size={18}
+                      color={theme.colors.danger}
+                    />
+                  </Pressable>
+                )}
+              </View>
+            ) : isScheduled ? (
+              <Ionicons
+                name="checkmark-circle"
+                size={20}
+                color={theme.colors.accent[400]}
+              />
+            ) : (
+              <Ionicons
+                name="alarm-outline"
+                size={18}
+                color={theme.colors.textMuted}
+              />
+            )}
+          </View>
+
+          {!editMode ? (
+            <>
+              <Text
+                style={[
+                  rowStyles.descText,
+                  { color: theme.colors.textSecondary, fontSize: theme.type.small },
+                ]}
+              >
+                {step.description}
+              </Text>
+              {step.minutesBefore === 0 && (
+                <View
+                  style={[
+                    rowStyles.bedtimeBadge,
+                    {
+                      backgroundColor: `${theme.colors.accent[500]}1F`,
+                      borderColor: `${theme.colors.accent[500]}55`,
+                    },
+                  ]}
+                >
+                  <Ionicons
+                    name="star"
+                    size={10}
+                    color={theme.colors.accent[300]}
+                  />
+                  <Text
+                    style={[
+                      rowStyles.bedtimeBadgeText,
+                      { color: theme.colors.accent[300] },
+                    ]}
+                  >
+                    Hora óptima
+                  </Text>
+                </View>
+              )}
+            </>
+          ) : (
+            <Text
+              style={[
+                rowStyles.descText,
+                {
+                  color: theme.colors.textMuted,
+                  fontSize: theme.type.small,
+                  marginTop: 4,
+                },
+              ]}
+            >
+              {step.minutesBefore === 0
+                ? 'Al acostarse'
+                : `${step.minutesBefore} min antes`}
+              {step.isDefault ? '' : ' · personalizado'}
+            </Text>
+          )}
+        </Pressable>
+      </Animated.View>
+    </View>
+  );
+};
+
+const rowStyles = StyleSheet.create({
+  row: { flexDirection: 'row', marginBottom: 10 },
+  timelineCol: {
+    width: 24,
     alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: theme.colors.surface,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    marginTop: 4,
+    paddingTop: 18,
   },
-  editModeBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: theme.colors.surface,
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    marginTop: 4,
-  },
-  editModeBtnActive: {
-    backgroundColor: '#10b981',
-    borderColor: '#10b981',
-  },
-  editModeBtnText: { color: theme.colors.textSecondary, fontSize: 13, fontWeight: '700' },
-  scheduleAllBtn: {
-    backgroundColor: '#10b981',
-    borderRadius: 999,
-    paddingVertical: 14,
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'center',
-    marginBottom: 28,
-    ...Platform.select({
-      ios: { shadowColor: '#10b981', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.4, shadowRadius: 8 },
-      android: { elevation: 6 },
-    }),
-  },
-  scheduleAllText: { color: '#022c22', fontSize: 15, fontWeight: '800' },
-  resetBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 10,
-    marginBottom: 20,
-  },
-  resetBtnText: { color: '#f87171', fontSize: 13, fontWeight: '600' },
-  stepRow: { flexDirection: 'row', marginBottom: 4 },
-  timelineCol: { width: 32, alignItems: 'center', paddingTop: 14 },
   dot: { width: 12, height: 12, borderRadius: 6 },
   line: { width: 2, flex: 1, marginTop: 4 },
-  stepCard: {
-    flex: 1,
-    backgroundColor: theme.colors.surface,
-    borderRadius: 14,
-    padding: 14,
-    marginBottom: 10,
-    marginLeft: 8,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-  },
-  stepCardEditMode: {
-    marginLeft: 0,
-  },
-  stepCardPast: { opacity: 0.45 },
-  stepCardScheduled: {
-    borderColor: '#34d39940',
-    backgroundColor: 'rgba(52,211,153,0.06)',
-  },
-  stepCardDisabled: {
-    opacity: 0.5,
-  },
-  stepTop: { flexDirection: 'row', alignItems: 'center', marginBottom: 6 },
+  cardWrapper: { flex: 1 },
+  card: { borderStyle: 'solid' },
+  top: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   iconCircle: {
     width: 36,
     height: 36,
     borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 10,
     flexShrink: 0,
   },
-  stepTextCol: { flex: 1 },
-  stepTime: { color: theme.colors.textSecondary, fontSize: 12, fontWeight: '600' },
-  stepTitle: { color: theme.colors.textPrimary, fontSize: 14, fontWeight: '700' },
-  stepDesc: { color: theme.colors.textMuted, fontSize: 13, lineHeight: 18 },
+  textCol: { flex: 1 },
+  timeText: {
+    fontWeight: '700',
+    letterSpacing: 0.5,
+    fontVariant: ['tabular-nums'],
+    marginBottom: 2,
+  },
+  titleText: { fontWeight: '700' },
+  descText: { lineHeight: 18, marginTop: 8 },
   editActions: { flexDirection: 'row', gap: 14, alignItems: 'center' },
   bedtimeBadge: {
-    marginTop: 8,
-    paddingVertical: 4,
+    marginTop: 10,
     paddingHorizontal: 10,
-    backgroundColor: 'rgba(167,139,250,0.15)',
+    paddingVertical: 4,
     borderRadius: 999,
     alignSelf: 'flex-start',
     borderWidth: 1,
-    borderColor: '#a78bfa40',
-  },
-  bedtimeBadgeText: { color: '#c4b5fd', fontSize: 11, fontWeight: '700' },
-  addStepBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 14,
-    backgroundColor: 'rgba(129,140,248,0.08)',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(129,140,248,0.2)',
-    borderStyle: 'dashed',
-    marginTop: 4,
+    gap: 4,
   },
-  addStepText: { color: '#818cf8', fontSize: 14, fontWeight: '700' },
+  bedtimeBadgeText: { fontSize: 11, fontWeight: '700', letterSpacing: 0.3 },
 });
+
+// ─────────────────────────────────────────────
+// Styles principales
+// ─────────────────────────────────────────────
+const createStyles = (theme: AppTheme) =>
+  StyleSheet.create({
+    container: { flex: 1, backgroundColor: theme.colors.background },
+    scroll: { flex: 1 },
+    scrollContent: {
+      paddingHorizontal: theme.spacing.xl,
+      paddingTop: theme.spacing.huge + theme.spacing.xxl,
+      paddingBottom: theme.spacing.huge,
+      gap: theme.spacing.lg,
+    },
+    hero: { gap: theme.spacing.sm },
+    heroTopRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
+    heroEyebrow: {
+      color: theme.colors.textMuted,
+      fontSize: theme.type.micro,
+      fontWeight: '700',
+      letterSpacing: 1.2,
+    },
+    heroClock: {
+      color: theme.colors.heroText,
+      fontSize: theme.type.title1,
+      fontWeight: '900',
+      letterSpacing: -1,
+      marginTop: 4,
+      fontVariant: ['tabular-nums'],
+    },
+    heroActions: {
+      flexDirection: 'row',
+      gap: theme.spacing.sm,
+      alignItems: 'center',
+      marginTop: 6,
+    },
+    iconBtn: {
+      width: 36,
+      height: 36,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: theme.colors.surface,
+      borderRadius: 999,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+    },
+    editToggle: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      backgroundColor: theme.colors.surface,
+      borderRadius: 999,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+    },
+    editToggleText: {
+      color: theme.colors.textSecondary,
+      fontSize: theme.type.small,
+      fontWeight: '700',
+    },
+    heroSubtitle: {
+      color: theme.colors.textSecondary,
+      fontSize: theme.type.body,
+      lineHeight: 20,
+      marginTop: theme.spacing.xs,
+    },
+    resetWrapper: { alignItems: 'center' },
+    resetBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      paddingVertical: 10,
+      paddingHorizontal: 14,
+    },
+    resetBtnText: {
+      color: theme.colors.danger,
+      fontSize: theme.type.small,
+      fontWeight: '700',
+    },
+    timeline: { gap: 0 },
+    addStepBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      paddingVertical: 14,
+      borderRadius: theme.radius.lg,
+      borderWidth: 1,
+      borderStyle: 'dashed',
+    },
+    addStepText: {
+      color: theme.colors.accent[400],
+      fontSize: theme.type.body,
+      fontWeight: '700',
+    },
+    // Sheet
+    sheetContent: {
+      paddingHorizontal: theme.spacing.xl,
+      paddingTop: theme.spacing.md,
+      paddingBottom: theme.spacing.xxxl,
+      gap: theme.spacing.lg,
+    },
+    sheetEyebrow: {
+      color: theme.colors.textMuted,
+      fontSize: theme.type.micro,
+      fontWeight: '700',
+      letterSpacing: 1.2,
+      textAlign: 'center',
+    },
+    field: { gap: 6 },
+    fieldLabel: {
+      color: theme.colors.textSecondary,
+      fontSize: theme.type.micro,
+      fontWeight: '700',
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
+    },
+    input: {
+      backgroundColor: theme.colors.surfaceElevated,
+      borderRadius: theme.radius.md,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      color: theme.colors.textPrimary,
+      fontSize: theme.type.bodyLarge,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+    },
+    minutesRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 16,
+      backgroundColor: theme.colors.surfaceElevated,
+      borderRadius: theme.radius.md,
+      paddingVertical: theme.spacing.sm,
+    },
+    minutesValue: {
+      color: theme.colors.textPrimary,
+      fontSize: theme.type.title3,
+      fontWeight: '800',
+      minWidth: 100,
+      textAlign: 'center',
+      fontVariant: ['tabular-nums'],
+    },
+    sheetCtaWrapper: { marginTop: 'auto' },
+  });
