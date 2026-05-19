@@ -1,27 +1,110 @@
-import React, { useState } from 'react';
+// src/screens/auth/SignUpScreen.tsx
+import React, { FC, useMemo, useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  TextInput,
-  TouchableOpacity,
   ActivityIndicator,
+  Dimensions,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+
 import type { RootStackParamList } from '../../../App';
 import { useAuth } from '../../context/AuthContext';
+import { AuthHero } from '../../components/AuthHero';
+import { FieldInput } from '../../components/FieldInput';
+import { PrimaryCTA } from '../../components/PrimaryCTA';
+import { usePressScale } from '../../hooks/usePressScale';
 import { useAppTheme } from '../../theme/ThemeProvider';
 import type { AppTheme } from '../../theme/theme';
+import type { Chronotype } from '../../domain/sleepProfile';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'SignUp'>;
-type Chronotype = 'morning' | 'intermediate' | 'night';
 
-export const SignUpScreen: React.FC<Props> = ({ navigation }) => {
+const { width, height } = Dimensions.get('window');
+const AMBIENT_DIAMETER = Math.max(width, height);
+
+const CHRONO_OPTIONS: Array<{
+  value: Chronotype;
+  label: string;
+  icon: keyof typeof Ionicons.glyphMap;
+}> = [
+  { value: 'morning', label: 'Matutino', icon: 'sunny-outline' },
+  { value: 'intermediate', label: 'Neutro', icon: 'partly-sunny-outline' },
+  { value: 'night', label: 'Nocturno', icon: 'moon-outline' },
+];
+
+// ─────────────────────────────────────────────
+// SegmentedChip (inline para cronotipo)
+// ─────────────────────────────────────────────
+const SegmentedChip: FC<{
+  label: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  active: boolean;
+  onPress: () => void;
+  theme: AppTheme;
+}> = ({ label, icon, active, onPress, theme }) => {
+  const { animatedStyle, onPressIn, onPressOut } = usePressScale(0.96);
+  return (
+    <Animated.View style={[{ flex: 1 }, animatedStyle]}>
+      <Pressable
+        onPress={onPress}
+        onPressIn={onPressIn}
+        onPressOut={onPressOut}
+        accessibilityRole="button"
+        accessibilityLabel={label}
+        style={[
+          segmentedStyles.chip,
+          active && { backgroundColor: theme.colors.accent[500] },
+        ]}
+      >
+        <Ionicons
+          name={icon}
+          size={15}
+          color={active ? theme.colors.white : theme.colors.textSecondary}
+        />
+        <Text
+          style={[
+            segmentedStyles.label,
+            {
+              color: active ? theme.colors.white : theme.colors.textSecondary,
+              fontSize: theme.type.small,
+            },
+          ]}
+        >
+          {label}
+        </Text>
+      </Pressable>
+    </Animated.View>
+  );
+};
+
+const segmentedStyles = StyleSheet.create({
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    borderRadius: 999,
+  },
+  label: { fontWeight: '700' },
+});
+
+// ─────────────────────────────────────────────
+// SignUpScreen
+// ─────────────────────────────────────────────
+export const SignUpScreen: FC<Props> = ({ navigation }) => {
   const { signUp } = useAuth();
   const { theme } = useAppTheme();
-  const styles = createStyles(theme);
+  const styles = useMemo(() => createStyles(theme), [theme]);
 
   const [displayName, setDisplayName] = useState('');
   const [email, setEmail] = useState('');
@@ -41,24 +124,21 @@ export const SignUpScreen: React.FC<Props> = ({ navigation }) => {
       setError('Completa todos los campos.');
       return;
     }
-
     if (displayName.trim().length < 2) {
       setError('Ingresa un nombre válido (mínimo 2 caracteres).');
       return;
     }
-
     if (password !== passwordConfirm) {
       setError('Las contraseñas no coinciden.');
       return;
     }
-
     if (password.length < 6) {
       setError('La contraseña debe tener al menos 6 caracteres.');
       return;
     }
 
     setLoading(true);
-    const { error } = await signUp({
+    const { error: signUpError } = await signUp({
       email: email.trim(),
       password,
       displayName: displayName.trim(),
@@ -66,8 +146,8 @@ export const SignUpScreen: React.FC<Props> = ({ navigation }) => {
     });
     setLoading(false);
 
-    if (error) {
-      setError(error);
+    if (signUpError) {
+      setError(signUpError);
       return;
     }
 
@@ -76,243 +156,316 @@ export const SignUpScreen: React.FC<Props> = ({ navigation }) => {
     );
   };
 
-  const goToSignIn = () => {
-    navigation.replace('SignIn');
-  };
+  const goToSignIn = () => navigation.replace('SignIn');
+  const linkScale = usePressScale(0.97);
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
-      <View style={styles.inner}>
-        <Text style={styles.title}>Crear cuenta</Text>
-        <Text style={styles.subtitle}>
-          Regístrate para guardar tu perfil de sueño y personalizar tu
-          experiencia desde el inicio.
-        </Text>
-
-        <TextInput
-          style={styles.input}
-          placeholder="Nombre para mostrar"
-          placeholderTextColor={theme.colors.textMuted}
-          autoCapitalize="words"
-          value={displayName}
-          onChangeText={setDisplayName}
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+      {/* Ambient glow */}
+      <View style={styles.ambient} pointerEvents="none">
+        <View
+          style={[
+            styles.ambientGlow,
+            {
+              backgroundColor: theme.colors.accent[600],
+              shadowColor: theme.colors.accent[600],
+            },
+          ]}
         />
-
-        <TextInput
-          style={styles.input}
-          placeholder="Correo electrónico"
-          placeholderTextColor={theme.colors.textMuted}
-          keyboardType="email-address"
-          autoCapitalize="none"
-          value={email}
-          onChangeText={setEmail}
-        />
-
-        <TextInput
-          style={styles.input}
-          placeholder="Contraseña"
-          placeholderTextColor={theme.colors.textMuted}
-          secureTextEntry
-          value={password}
-          onChangeText={setPassword}
-        />
-
-        <TextInput
-          style={styles.input}
-          placeholder="Confirmar contraseña"
-          placeholderTextColor={theme.colors.textMuted}
-          secureTextEntry
-          value={passwordConfirm}
-          onChangeText={setPasswordConfirm}
-        />
-
-        <Text style={styles.fieldLabel}>Cronotipo (recomendado)</Text>
-        <View style={styles.chronotypeRow}>
-          <TouchableOpacity
-            style={[
-              styles.chronotypeChip,
-              chronotype === 'morning' && styles.chronotypeChipActive,
-            ]}
-            onPress={() => setChronotype('morning')}
-          >
-            <Text
-              style={[
-                styles.chronotypeChipText,
-                chronotype === 'morning' && styles.chronotypeChipTextActive,
-              ]}
-            >
-              Matutino
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              styles.chronotypeChip,
-              chronotype === 'intermediate' && styles.chronotypeChipActive,
-            ]}
-            onPress={() => setChronotype('intermediate')}
-          >
-            <Text
-              style={[
-                styles.chronotypeChipText,
-                chronotype === 'intermediate' &&
-                  styles.chronotypeChipTextActive,
-              ]}
-            >
-              Intermedio
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              styles.chronotypeChip,
-              chronotype === 'night' && styles.chronotypeChipActive,
-            ]}
-            onPress={() => setChronotype('night')}
-          >
-            <Text
-              style={[
-                styles.chronotypeChipText,
-                chronotype === 'night' && styles.chronotypeChipTextActive,
-              ]}
-            >
-              Nocturno
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {error && <Text style={styles.errorText}>{error}</Text>}
-        {infoMessage && <Text style={styles.infoText}>{infoMessage}</Text>}
-
-        <TouchableOpacity
-          style={[styles.button, styles.buttonPrimary]}
-          onPress={handleSignUp}
-          disabled={loading}
-          activeOpacity={0.9}
-        >
-          {loading ? (
-            <ActivityIndicator color={theme.colors.white} />
-          ) : (
-            <Text style={styles.buttonTextPrimary}>Crear cuenta</Text>
-          )}
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.linkButton}
-          onPress={goToSignIn}
-          disabled={loading}
-        >
-          <Text style={styles.linkText}>
-            ¿Ya tienes cuenta?{' '}
-            <Text style={styles.linkTextHighlight}>Inicia sesión</Text>
-          </Text>
-        </TouchableOpacity>
       </View>
-    </KeyboardAvoidingView>
+
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <ScrollView
+          style={styles.flex}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          {/* Hero */}
+          <Animated.View entering={FadeInDown.duration(500)}>
+            <AuthHero icon="sparkles-outline" />
+          </Animated.View>
+
+          {/* Title */}
+          <Animated.View
+            entering={FadeInDown.delay(100).duration(500)}
+            style={styles.titleBlock}
+          >
+            <Text style={styles.eyebrow}>CREAR CUENTA</Text>
+            <Text style={styles.title}>Empieza a dormir mejor</Text>
+            <Text style={styles.subtitle}>
+              Regístrate para guardar tu perfil de sueño y personalizar tu
+              experiencia desde el inicio.
+            </Text>
+          </Animated.View>
+
+          {/* Form */}
+          <Animated.View
+            entering={FadeInUp.delay(180).duration(500)}
+            style={styles.form}
+          >
+            <FieldInput
+              label="Nombre para mostrar"
+              value={displayName}
+              onChangeText={setDisplayName}
+              placeholder="Tu nombre"
+              autoCapitalize="words"
+              large={false}
+            />
+            <FieldInput
+              label="Correo electrónico"
+              value={email}
+              onChangeText={setEmail}
+              placeholder="tu@email.com"
+              keyboardType="email-address"
+              autoCapitalize="none"
+              large={false}
+            />
+            <FieldInput
+              label="Contraseña"
+              value={password}
+              onChangeText={setPassword}
+              placeholder="Mínimo 6 caracteres"
+              secureTextEntry
+              showToggle
+              large={false}
+            />
+            <FieldInput
+              label="Confirmar contraseña"
+              value={passwordConfirm}
+              onChangeText={setPasswordConfirm}
+              placeholder="Repite la contraseña"
+              secureTextEntry
+              showToggle
+              large={false}
+            />
+          </Animated.View>
+
+          {/* Cronotipo */}
+          <Animated.View
+            entering={FadeInUp.delay(240).duration(500)}
+            style={styles.chronoSection}
+          >
+            <Text style={styles.sectionEyebrow}>CRONOTIPO (RECOMENDADO)</Text>
+            <View
+              style={[
+                styles.segmentedContainer,
+                {
+                  backgroundColor: theme.colors.surfaceElevated,
+                  borderColor: theme.colors.border,
+                  borderRadius: 999,
+                },
+              ]}
+            >
+              {CHRONO_OPTIONS.map((opt) => (
+                <SegmentedChip
+                  key={opt.value}
+                  label={opt.label}
+                  icon={opt.icon}
+                  active={chronotype === opt.value}
+                  onPress={() => setChronotype(opt.value)}
+                  theme={theme}
+                />
+              ))}
+            </View>
+          </Animated.View>
+
+          {/* Error */}
+          {error && (
+            <Animated.View entering={FadeInUp.duration(300)}>
+              <View
+                style={[
+                  styles.alertBox,
+                  {
+                    backgroundColor: `${theme.colors.danger}14`,
+                    borderColor: `${theme.colors.danger}40`,
+                    borderRadius: theme.radius.md,
+                  },
+                ]}
+              >
+                <Ionicons
+                  name="warning-outline"
+                  size={16}
+                  color={theme.colors.danger}
+                />
+                <Text
+                  style={[styles.alertText, { color: theme.colors.danger }]}
+                >
+                  {error}
+                </Text>
+              </View>
+            </Animated.View>
+          )}
+
+          {/* Info */}
+          {infoMessage && (
+            <Animated.View entering={FadeInUp.duration(300)}>
+              <View
+                style={[
+                  styles.alertBox,
+                  {
+                    backgroundColor: `${theme.colors.accent[500]}14`,
+                    borderColor: `${theme.colors.accent[500]}40`,
+                    borderRadius: theme.radius.md,
+                  },
+                ]}
+              >
+                <Ionicons
+                  name="checkmark-circle-outline"
+                  size={16}
+                  color={theme.colors.accent[400]}
+                />
+                <Text
+                  style={[
+                    styles.alertText,
+                    { color: theme.colors.accent[300] },
+                  ]}
+                >
+                  {infoMessage}
+                </Text>
+              </View>
+            </Animated.View>
+          )}
+
+          {/* CTA */}
+          <Animated.View entering={FadeInUp.delay(300).duration(500)}>
+            {loading ? (
+              <View style={styles.loadingWrapper}>
+                <ActivityIndicator color={theme.colors.accent[500]} />
+                <Text style={styles.loadingText}>Creando cuenta…</Text>
+              </View>
+            ) : (
+              <PrimaryCTA
+                label="Crear cuenta"
+                icon="person-add-outline"
+                onPress={handleSignUp}
+              />
+            )}
+          </Animated.View>
+
+          {/* Link a SignIn */}
+          <Animated.View
+            entering={FadeInUp.delay(380).duration(500)}
+            style={[styles.linkWrapper, linkScale.animatedStyle]}
+          >
+            <Pressable
+              onPress={goToSignIn}
+              onPressIn={linkScale.onPressIn}
+              onPressOut={linkScale.onPressOut}
+              disabled={loading}
+              accessibilityRole="button"
+            >
+              <Text style={styles.linkText}>
+                ¿Ya tienes cuenta?{' '}
+                <Text style={styles.linkTextHighlight}>Inicia sesión</Text>
+              </Text>
+            </Pressable>
+          </Animated.View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 };
 
-const createStyles = (theme: AppTheme) => StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.background,
-    justifyContent: 'center',
-    paddingHorizontal: 24,
-  },
-  inner: {
-    backgroundColor: theme.colors.surface,
-    padding: 24,
-    borderRadius: 24,
-  },
-  title: {
-    color: theme.colors.textPrimary,
-    fontSize: 24,
-    fontWeight: '800',
-    marginBottom: 8,
-  },
-  subtitle: {
-    color: theme.colors.textSecondary,
-    fontSize: 14,
-    marginBottom: 20,
-  },
-  input: {
-    backgroundColor: theme.colors.background,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    color: theme.colors.textPrimary,
-    marginBottom: 12,
-  },
-  fieldLabel: {
-    color: theme.colors.textSecondary,
-    fontSize: 13,
-    marginTop: 2,
-    marginBottom: 8,
-    fontWeight: '600',
-  },
-  chronotypeRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 12,
-  },
-  chronotypeChip: {
-    flex: 1,
-    backgroundColor: theme.colors.background,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    paddingVertical: 10,
-    alignItems: 'center',
-  },
-  chronotypeChipActive: {
-    backgroundColor: theme.colors.primary,
-    borderColor: theme.colors.primaryStrong,
-  },
-  chronotypeChipText: {
-    color: theme.colors.textSecondary,
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  chronotypeChipTextActive: {
-    color: theme.colors.white,
-  },
-  errorText: {
-    color: '#fca5a5',
-    fontSize: 13,
-    marginBottom: 8,
-  },
-  infoText: {
-    color: '#a5b4fc',
-    fontSize: 13,
-    marginBottom: 8,
-  },
-  button: {
-    paddingVertical: 12,
-    borderRadius: 999,
-    alignItems: 'center',
-    marginTop: 6,
-  },
-  buttonPrimary: {
-    backgroundColor: theme.colors.primary,
-  },
-  buttonTextPrimary: {
-    color: theme.colors.white,
-    fontWeight: '700',
-    fontSize: 15,
-  },
-  linkButton: {
-    marginTop: 18,
-    alignItems: 'center',
-  },
-  linkText: {
-    color: theme.colors.textSecondary,
-    fontSize: 13,
-  },
-  linkTextHighlight: {
-    color: theme.colors.textPrimary,
-    fontWeight: '600',
-  },
-});
+const createStyles = (theme: AppTheme) =>
+  StyleSheet.create({
+    container: { flex: 1, backgroundColor: theme.colors.background },
+    flex: { flex: 1 },
+    ambient: {
+      ...StyleSheet.absoluteFillObject,
+      overflow: 'hidden',
+    },
+    ambientGlow: {
+      position: 'absolute',
+      top: -AMBIENT_DIAMETER * 0.45,
+      left: (width - AMBIENT_DIAMETER) / 2,
+      width: AMBIENT_DIAMETER,
+      height: AMBIENT_DIAMETER,
+      borderRadius: AMBIENT_DIAMETER / 2,
+      opacity: 0.22,
+      shadowOffset: { width: 0, height: 0 },
+      shadowOpacity: 0.5,
+      shadowRadius: 200,
+    },
+    scrollContent: {
+      flexGrow: 1,
+      justifyContent: 'center',
+      paddingHorizontal: theme.spacing.xl,
+      paddingVertical: theme.spacing.huge,
+      gap: theme.spacing.lg,
+    },
+    titleBlock: { alignItems: 'center', gap: 4, marginTop: theme.spacing.md },
+    eyebrow: {
+      color: theme.colors.textMuted,
+      fontSize: theme.type.micro,
+      fontWeight: '700',
+      letterSpacing: 1.2,
+    },
+    title: {
+      color: theme.colors.textPrimary,
+      fontSize: theme.type.title1,
+      fontWeight: '900',
+      letterSpacing: -0.5,
+      marginTop: 6,
+      textAlign: 'center',
+    },
+    subtitle: {
+      color: theme.colors.textSecondary,
+      fontSize: theme.type.body,
+      lineHeight: 20,
+      marginTop: 6,
+      textAlign: 'center',
+      paddingHorizontal: theme.spacing.md,
+    },
+    form: { gap: theme.spacing.sm, marginTop: theme.spacing.md },
+    chronoSection: { gap: theme.spacing.sm, marginTop: theme.spacing.xs },
+    sectionEyebrow: {
+      color: theme.colors.textMuted,
+      fontSize: theme.type.micro,
+      fontWeight: '700',
+      letterSpacing: 1.2,
+    },
+    segmentedContainer: {
+      flexDirection: 'row',
+      padding: 4,
+      borderWidth: 1,
+    },
+    alertBox: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      padding: theme.spacing.md,
+      borderWidth: 1,
+    },
+    alertText: {
+      fontSize: theme.type.small,
+      fontWeight: '600',
+      flex: 1,
+      lineHeight: 18,
+    },
+    loadingWrapper: {
+      height: 64,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 10,
+    },
+    loadingText: {
+      color: theme.colors.textSecondary,
+      fontSize: theme.type.body,
+      fontWeight: '700',
+    },
+    linkWrapper: { alignItems: 'center', marginTop: theme.spacing.md },
+    linkText: {
+      color: theme.colors.textSecondary,
+      fontSize: theme.type.body,
+      textAlign: 'center',
+    },
+    linkTextHighlight: {
+      color: theme.colors.accent[400],
+      fontWeight: '800',
+    },
+  });

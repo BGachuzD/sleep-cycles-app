@@ -1,26 +1,30 @@
 // src/screens/NotificationsManagerScreen.tsx
-import React, { useEffect, useState } from 'react';
+import React, { FC, useCallback, useMemo, useState } from 'react';
 import {
-  View,
-  Text,
-  TouchableOpacity,
+  ActivityIndicator,
+  Alert,
+  Pressable,
   ScrollView,
   StyleSheet,
-  ActivityIndicator,
+  Text,
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import * as Notifications from 'expo-notifications';
 import { useFocusEffect } from '@react-navigation/native';
 
-import {
-  listScheduledNotifications,
-  cancelNotification,
-  cancelAllNotifications,
-} from '../notifications/scheduler';
-import { formatTime } from '../utils/sleep';
+import { GradientBackground } from '../components/GradientBackground';
 import { FloatingDrawerButton } from '../components/FloatingDrawerButton';
 import { FloatingHomeButton } from '../components/FloatingHomeButton';
+import { usePressScale } from '../hooks/usePressScale';
+import {
+  cancelAllNotifications,
+  cancelNotification,
+  listScheduledNotifications,
+} from '../notifications/scheduler';
+import { formatTime } from '../utils/sleep';
 import { useAppTheme } from '../theme/ThemeProvider';
 import type { AppTheme } from '../theme/theme';
 
@@ -35,255 +39,495 @@ function getTriggerDate(trigger: NotificationRequest['trigger']): Date | null {
   return rawDate instanceof Date ? rawDate : new Date(rawDate);
 }
 
-export const NotificationsManagerScreen = () => {
+function formatRelativeDate(date: Date): string {
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const target = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const diffMs = target.getTime() - today.getTime();
+  const diffDays = Math.round(diffMs / (24 * 60 * 60 * 1000));
+
+  if (diffDays === 0) return 'hoy';
+  if (diffDays === 1) return 'mañana';
+  if (diffDays === -1) return 'ayer';
+  if (diffDays > 1 && diffDays <= 6) {
+    return date.toLocaleDateString('es-MX', { weekday: 'long' });
+  }
+  return date.toLocaleDateString('es-MX', {
+    day: '2-digit',
+    month: 'short',
+  });
+}
+
+// ─────────────────────────────────────────────
+// NotificationCard
+// ─────────────────────────────────────────────
+const NotificationCard: FC<{
+  request: NotificationRequest;
+  onCancel: () => void;
+  theme: AppTheme;
+}> = ({ request, onCancel, theme }) => {
+  const trash = usePressScale(0.85);
+  const triggerDate = getTriggerDate(request.trigger);
+  const timeString = triggerDate ? formatTime(triggerDate) : '—';
+  const relativeString = triggerDate ? formatRelativeDate(triggerDate) : 'sin fecha';
+  const isPast = triggerDate ? triggerDate.getTime() < Date.now() : false;
+
+  const title = request.content?.title ?? 'Recordatorio';
+  const body = request.content?.body ?? 'Sin descripción';
+
+  return (
+    <View
+      style={[
+        cardStyles.card,
+        {
+          backgroundColor: theme.colors.surface,
+          borderColor: theme.colors.border,
+          borderRadius: theme.radius.xl,
+          padding: theme.spacing.lg,
+          opacity: isPast ? 0.6 : 1,
+        },
+      ]}
+    >
+      <View style={cardStyles.row}>
+        <View
+          style={[
+            cardStyles.iconCircle,
+            { backgroundColor: `${theme.colors.accent[500]}1F` },
+          ]}
+        >
+          <Ionicons
+            name="alarm-outline"
+            size={20}
+            color={theme.colors.accent[400]}
+          />
+        </View>
+
+        <View style={cardStyles.titleCol}>
+          <Text
+            style={[
+              cardStyles.title,
+              { color: theme.colors.textPrimary, fontSize: theme.type.bodyLarge },
+            ]}
+            numberOfLines={2}
+          >
+            {title}
+          </Text>
+          <Text
+            style={[
+              cardStyles.body,
+              { color: theme.colors.textSecondary, fontSize: theme.type.small },
+            ]}
+            numberOfLines={2}
+          >
+            {body}
+          </Text>
+        </View>
+
+        <Animated.View style={trash.animatedStyle}>
+          <Pressable
+            onPress={onCancel}
+            onPressIn={trash.onPressIn}
+            onPressOut={trash.onPressOut}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="Cancelar alerta"
+            style={[
+              cardStyles.trashBtn,
+              {
+                backgroundColor: `${theme.colors.danger}14`,
+                borderColor: `${theme.colors.danger}33`,
+              },
+            ]}
+          >
+            <Ionicons
+              name="trash-outline"
+              size={16}
+              color={theme.colors.danger}
+            />
+          </Pressable>
+        </Animated.View>
+      </View>
+
+      <View
+        style={[
+          cardStyles.timeRow,
+          {
+            backgroundColor: theme.colors.surfaceElevated,
+            borderRadius: theme.radius.md,
+          },
+        ]}
+      >
+        <View style={cardStyles.timeLeft}>
+          <Text
+            style={[
+              cardStyles.timeLabel,
+              { color: theme.colors.textMuted, fontSize: theme.type.micro },
+            ]}
+          >
+            DISPARO
+          </Text>
+          <Text
+            style={[
+              cardStyles.timeValue,
+              { color: theme.colors.heroText, fontSize: theme.type.title3 },
+            ]}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.7}
+          >
+            {timeString}
+          </Text>
+        </View>
+        <View
+          style={[
+            cardStyles.dateChip,
+            {
+              backgroundColor: `${theme.colors.accent[500]}1F`,
+              borderColor: `${theme.colors.accent[500]}55`,
+              borderRadius: 999,
+            },
+          ]}
+        >
+          <Ionicons
+            name="calendar-outline"
+            size={12}
+            color={theme.colors.accent[400]}
+          />
+          <Text
+            style={[
+              cardStyles.dateChipText,
+              { color: theme.colors.accent[300], fontSize: theme.type.caption },
+            ]}
+          >
+            {relativeString}
+          </Text>
+        </View>
+      </View>
+    </View>
+  );
+};
+
+const cardStyles = StyleSheet.create({
+  card: { borderWidth: 1, gap: 12 },
+  row: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
+  iconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  titleCol: { flex: 1, gap: 2 },
+  title: { fontWeight: '800' },
+  body: { lineHeight: 18 },
+  trashBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 999,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+  },
+  timeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    gap: 12,
+  },
+  timeLeft: { flex: 1, gap: 2 },
+  timeLabel: {
+    fontWeight: '700',
+    letterSpacing: 1,
+  },
+  timeValue: {
+    fontWeight: '900',
+    fontVariant: ['tabular-nums'],
+    letterSpacing: -0.5,
+  },
+  dateChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderWidth: 1,
+  },
+  dateChipText: {
+    fontWeight: '700',
+    letterSpacing: 0.3,
+    textTransform: 'lowercase',
+  },
+});
+
+// ─────────────────────────────────────────────
+// NotificationsManagerScreen
+// ─────────────────────────────────────────────
+export const NotificationsManagerScreen: FC = () => {
   const { theme } = useAppTheme();
-  const styles = createStyles(theme);
+  const styles = useMemo(() => createStyles(theme), [theme]);
 
   const [items, setItems] = useState<NotificationRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setIsLoading(true);
     const scheduled = await listScheduledNotifications();
+    // ordenar por fecha de disparo ascendente
+    scheduled.sort((a, b) => {
+      const da = getTriggerDate(a.trigger)?.getTime() ?? Number.MAX_SAFE_INTEGER;
+      const db = getTriggerDate(b.trigger)?.getTime() ?? Number.MAX_SAFE_INTEGER;
+      return da - db;
+    });
     setItems(scheduled);
     setIsLoading(false);
-  };
-
-  useEffect(() => {
-    load();
   }, []);
 
   useFocusEffect(
-    React.useCallback(() => {
+    useCallback(() => {
       load();
-    }, []),
+    }, [load]),
   );
 
-  const handleCancel = async (id: string) => {
-    await cancelNotification(id);
-    load();
-  };
+  const handleCancel = useCallback(
+    (request: NotificationRequest) => {
+      const title = request.content?.title ?? 'Recordatorio';
+      Alert.alert(
+        'Cancelar alerta',
+        `¿Cancelar "${title}"?`,
+        [
+          { text: 'Conservar', style: 'cancel' },
+          {
+            text: 'Cancelar alerta',
+            style: 'destructive',
+            onPress: async () => {
+              await cancelNotification(request.identifier);
+              load();
+            },
+          },
+        ],
+      );
+    },
+    [load],
+  );
 
-  const handleCancelAll = async () => {
-    await cancelAllNotifications();
-    load();
-  };
+  const handleCancelAll = useCallback(() => {
+    Alert.alert(
+      'Cancelar todas',
+      `Se cancelarán ${items.length} alertas programadas. ¿Continuar?`,
+      [
+        { text: 'Conservar', style: 'cancel' },
+        {
+          text: 'Cancelar todas',
+          style: 'destructive',
+          onPress: async () => {
+            await cancelAllNotifications();
+            load();
+          },
+        },
+      ],
+    );
+  }, [items.length, load]);
+
+  const refresh = usePressScale(0.9);
 
   return (
-    <SafeAreaView style={styles.screen} edges={['top', 'bottom']}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+      <GradientBackground />
       <FloatingDrawerButton insideSafeArea />
       <FloatingHomeButton insideSafeArea />
-      <View style={styles.container}>
-        <Text style={styles.title}>Gestión de Alertas</Text>
 
-        {isLoading && (
-          <ActivityIndicator
-            size="large"
-            color={theme.colors.info}
-            style={{ marginTop: 50 }}
-          />
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Hero */}
+        <Animated.View entering={FadeInDown.duration(500)} style={styles.hero}>
+          <View style={styles.heroTopRow}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.heroEyebrow}>ALERTAS PROGRAMADAS</Text>
+              <Text style={styles.heroTitle}>
+                {isLoading
+                  ? 'Cargando…'
+                  : items.length === 0
+                    ? 'Sin alertas'
+                    : `${items.length} ${items.length === 1 ? 'alerta activa' : 'alertas activas'}`}
+              </Text>
+              <Text style={styles.heroSubtitle}>
+                Recordatorios y alarmas inteligentes que disparará la app.
+              </Text>
+            </View>
+            <Animated.View style={refresh.animatedStyle}>
+              <Pressable
+                onPress={load}
+                onPressIn={refresh.onPressIn}
+                onPressOut={refresh.onPressOut}
+                disabled={isLoading}
+                hitSlop={8}
+                style={styles.refreshBtn}
+                accessibilityRole="button"
+                accessibilityLabel="Refrescar alertas"
+              >
+                {isLoading ? (
+                  <ActivityIndicator
+                    size="small"
+                    color={theme.colors.accent[400]}
+                  />
+                ) : (
+                  <Ionicons
+                    name="refresh-outline"
+                    size={18}
+                    color={theme.colors.accent[400]}
+                  />
+                )}
+              </Pressable>
+            </Animated.View>
+          </View>
+        </Animated.View>
+
+        {/* Empty state */}
+        {!isLoading && items.length === 0 && (
+          <Animated.View entering={FadeInUp.delay(80).duration(500)}>
+            <View style={styles.emptyBox}>
+              <Ionicons
+                name="notifications-off-outline"
+                size={36}
+                color={theme.colors.textMuted}
+              />
+              <Text style={styles.emptyText}>
+                No tienes alarmas ni recordatorios de sueño pendientes.
+                Programa una desde "Dormir ahora", "Despertar a" o tu rutina.
+              </Text>
+            </View>
+          </Animated.View>
         )}
 
-        {!isLoading && items.length === 0 && (
-          <View style={styles.emptyState}>
-            <Ionicons
-              name="notifications-off-outline"
-              size={50}
-              color={theme.colors.textMuted}
-            />
-            <Text style={styles.noText}>
-              No tienes alarmas ni recordatorios de sueño pendientes.
-            </Text>
+        {/* Lista */}
+        {items.length > 0 && (
+          <View style={styles.list}>
+            {items.map((request, index) => (
+              <Animated.View
+                key={request.identifier}
+                entering={FadeInUp.delay(80 + index * 40).duration(400)}
+              >
+                <NotificationCard
+                  request={request}
+                  onCancel={() => handleCancel(request)}
+                  theme={theme}
+                />
+              </Animated.View>
+            ))}
           </View>
         )}
 
-        <ScrollView contentContainerStyle={styles.scrollViewContent}>
-          {items.map((n) => {
-            const id = n.identifier;
-            const triggerDate = getTriggerDate(n.trigger);
-
-            const timeString = triggerDate ? formatTime(triggerDate) : 'N/A';
-            const dateString = triggerDate
-              ? triggerDate.toLocaleDateString()
-              : 'N/A';
-
-            return (
-              <View key={id} style={styles.itemContainer}>
-                <View style={styles.itemHeader}>
-                  <Ionicons
-                    name="alarm-outline"
-                    size={24}
-                    color={theme.colors.info}
-                    style={styles.itemIcon}
-                  />
-                  <View style={styles.itemTitleGroup}>
-                    <Text style={styles.itemTitle}>
-                      {n.content?.title || 'Recordatorio'}
-                    </Text>
-                    <Text style={styles.itemBody}>
-                      {n.content?.body || 'Sin descripción'}
-                    </Text>
-                  </View>
-                </View>
-
-                <View style={styles.timeContainer}>
-                  <Text style={styles.timeLabel}>DISPARO:</Text>
-                  <Text style={styles.timeValue}>{timeString}</Text>
-                  <Text style={styles.dateText}>el {dateString}</Text>
-                </View>
-
-                <TouchableOpacity
-                  onPress={() => handleCancel(id)}
-                  style={styles.itemButton}
-                >
-                  <Ionicons
-                    name="close-circle-outline"
-                    size={18}
-                    color={theme.colors.white}
-                  />
-                  <Text style={styles.itemButtonText}>Cancelar Alerta</Text>
-                </TouchableOpacity>
-              </View>
-            );
-          })}
-
-          {items.length > 0 && (
-            <TouchableOpacity
+        {/* Cancel all */}
+        {items.length > 0 && (
+          <Animated.View entering={FadeInUp.delay(200).duration(400)}>
+            <Pressable
               onPress={handleCancelAll}
-              style={styles.cancelAllButton}
+              style={[
+                styles.cancelAllBtn,
+                {
+                  borderColor: `${theme.colors.danger}55`,
+                  backgroundColor: `${theme.colors.danger}0F`,
+                  borderRadius: theme.radius.lg,
+                },
+              ]}
+              accessibilityRole="button"
             >
-              <Ionicons name="trash-outline" size={20} color={theme.colors.white} />
+              <Ionicons
+                name="trash-outline"
+                size={16}
+                color={theme.colors.danger}
+              />
               <Text style={styles.cancelAllText}>
-                Cancelar todas las notificaciones ({items.length})
+                Cancelar todas ({items.length})
               </Text>
-            </TouchableOpacity>
-          )}
+            </Pressable>
+          </Animated.View>
+        )}
 
-          <View style={{ height: 100 }} />
-        </ScrollView>
-      </View>
+        <View style={{ height: theme.spacing.huge }} />
+      </ScrollView>
     </SafeAreaView>
   );
 };
 
-const createStyles = (theme: AppTheme) => StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: theme.colors.background,
-  },
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.background,
-    paddingHorizontal: 10,
-    paddingTop: 64,
-  },
-  scrollViewContent: {
-    paddingBottom: 20,
-  },
-  title: {
-    color: theme.colors.textPrimary,
-    fontSize: 26,
-    fontWeight: '900',
-    marginBottom: 20,
-    textAlign: 'center',
-  },
-  emptyState: {
-    alignItems: 'center',
-    marginTop: 50,
-    padding: 20,
-    backgroundColor: theme.colors.surface,
-    borderRadius: 12,
-  },
-  noText: {
-    color: theme.colors.textSecondary,
-    fontSize: 16,
-    marginTop: 15,
-    textAlign: 'center',
-  },
-  itemContainer: {
-    backgroundColor: theme.colors.surface,
-    padding: 16,
-    borderRadius: 16,
-    marginBottom: 16,
-    borderLeftWidth: 4,
-    borderLeftColor: theme.colors.info,
-  },
-  itemHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  itemIcon: {
-    marginRight: 10,
-  },
-  itemTitleGroup: {
-    flex: 1,
-  },
-  itemTitle: {
-    color: theme.colors.textPrimary,
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  itemBody: {
-    color: theme.colors.textSecondary,
-    fontSize: 14,
-    marginTop: 2,
-  },
-  timeContainer: {
-    backgroundColor: theme.colors.surfaceElevated,
-    padding: 10,
-    borderRadius: 8,
-    marginTop: 10,
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    justifyContent: 'space-between',
-  },
-  timeLabel: {
-    color: theme.colors.textSecondary,
-    fontSize: 12,
-    fontWeight: '600',
-    marginRight: 10,
-  },
-  timeValue: {
-    color: theme.colors.textPrimary,
-    fontSize: 24,
-    fontWeight: '800',
-    flex: 1,
-  },
-  dateText: {
-    color: theme.colors.textSecondary,
-    fontSize: 14,
-  },
-  itemButton: {
-    marginTop: 15,
-    backgroundColor: theme.colors.danger,
-    paddingVertical: 10,
-    borderRadius: 8,
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  itemButtonText: {
-    color: theme.colors.white,
-    fontWeight: '700',
-    fontSize: 14,
-  },
-  cancelAllButton: {
-    marginTop: 30,
-    backgroundColor: theme.colors.surfaceElevated,
-    paddingVertical: 14,
-    borderRadius: 10,
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 10,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-  },
-  cancelAllText: {
-    color: theme.colors.textPrimary,
-    fontWeight: '700',
-    fontSize: 15,
-  },
-});
+const createStyles = (theme: AppTheme) =>
+  StyleSheet.create({
+    container: { flex: 1, backgroundColor: theme.colors.background },
+    scroll: { flex: 1 },
+    scrollContent: {
+      paddingHorizontal: theme.spacing.xl,
+      paddingTop: theme.spacing.huge + theme.spacing.xxl,
+      paddingBottom: theme.spacing.huge,
+      gap: theme.spacing.lg,
+    },
+    hero: { gap: 4 },
+    heroTopRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
+    heroEyebrow: {
+      color: theme.colors.textMuted,
+      fontSize: theme.type.micro,
+      fontWeight: '700',
+      letterSpacing: 1.2,
+    },
+    heroTitle: {
+      color: theme.colors.textPrimary,
+      fontSize: theme.type.title2,
+      fontWeight: '900',
+      letterSpacing: -0.5,
+      marginTop: 4,
+    },
+    heroSubtitle: {
+      color: theme.colors.textSecondary,
+      fontSize: theme.type.body,
+      lineHeight: 20,
+      marginTop: 6,
+    },
+    refreshBtn: {
+      width: 36,
+      height: 36,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: theme.colors.surface,
+      borderRadius: 999,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      marginTop: 6,
+    },
+    emptyBox: {
+      alignItems: 'center',
+      gap: 12,
+      paddingVertical: theme.spacing.huge,
+      paddingHorizontal: theme.spacing.xxl,
+      backgroundColor: theme.colors.surface,
+      borderRadius: theme.radius.xl,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+    },
+    emptyText: {
+      color: theme.colors.textMuted,
+      fontSize: theme.type.small,
+      textAlign: 'center',
+      lineHeight: 18,
+    },
+    list: { gap: theme.spacing.md },
+    cancelAllBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      paddingVertical: theme.spacing.md,
+      borderWidth: 1,
+      marginTop: theme.spacing.sm,
+    },
+    cancelAllText: {
+      color: theme.colors.danger,
+      fontSize: theme.type.body,
+      fontWeight: '800',
+      letterSpacing: 0.3,
+    },
+  });

@@ -1,85 +1,249 @@
-import React, { FC, useMemo, useState, useEffect } from 'react';
+// src/screens/SleepProfileScreen.tsx
+import React, { FC, useEffect, useMemo, useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  TextInput,
-  TouchableOpacity,
   ActivityIndicator,
+  Alert,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
   ScrollView,
-  Dimensions,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
 } from 'react-native';
-import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import type { RootStackParamList } from '../../App';
-
-import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { DrawerActions, useNavigation } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
+import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
+import type { RootStackParamList } from '../../App';
 import { GradientBackground } from '../components/GradientBackground';
-import type { Gender, SleepProfile, Chronotype } from '../domain/sleepProfile';
-import {
-  calculateBMI,
-  categorizeBMI,
-  buildDerivedProfile,
-  getOptimalSleepWindow,
-} from '../domain/sleepProfile';
+import { FloatingDrawerButton } from '../components/FloatingDrawerButton';
+import { FloatingHomeButton } from '../components/FloatingHomeButton';
+import { PrimaryCTA } from '../components/PrimaryCTA';
+import { FieldInput } from '../components/FieldInput';
+import { usePressScale } from '../hooks/usePressScale';
 import { useAuth } from '../context/AuthContext';
 import { useSleepProfileContext } from '../context/SleepProfileContext';
+import type {
+  Chronotype,
+  Gender,
+  SleepProfile,
+} from '../domain/sleepProfile';
+import {
+  buildDerivedProfile,
+  calculateBMI,
+  categorizeBMI,
+  getOptimalSleepWindow,
+} from '../domain/sleepProfile';
 import { useAppTheme } from '../theme/ThemeProvider';
 import type { AppTheme } from '../theme/theme';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'SleepProfile'>;
 
-const { height } = Dimensions.get('window');
-
-const DataRow: FC<{
+// ─────────────────────────────────────────────
+// Opciones de segmented control
+// ─────────────────────────────────────────────
+const GENDER_OPTIONS: Array<{
+  value: Gender;
   label: string;
-  value: string;
   icon: keyof typeof Ionicons.glyphMap;
-}> = ({ label, value, icon }) => {
-  const { theme } = useAppTheme();
-  const dataRowStyles = createDataRowStyles(theme);
+}> = [
+  { value: 'male', label: 'Masculino', icon: 'man-outline' },
+  { value: 'female', label: 'Femenino', icon: 'woman-outline' },
+  { value: 'other', label: 'Otro', icon: 'person-outline' },
+];
 
+const CHRONO_OPTIONS: Array<{
+  value: Chronotype;
+  label: string;
+  icon: keyof typeof Ionicons.glyphMap;
+}> = [
+  { value: 'morning', label: 'Matutino', icon: 'sunny-outline' },
+  { value: 'intermediate', label: 'Neutro', icon: 'partly-sunny-outline' },
+  { value: 'night', label: 'Nocturno', icon: 'moon-outline' },
+];
+
+const BMI_LABEL: Record<string, string> = {
+  underweight: 'Bajo peso',
+  normal: 'Normal',
+  overweight: 'Sobrepeso',
+  obese: 'Obesidad',
+};
+
+// ─────────────────────────────────────────────
+// SegmentedChips genérico
+// ─────────────────────────────────────────────
+function SegmentedChips<T extends string>({
+  options,
+  value,
+  onChange,
+  theme,
+}: {
+  options: Array<{ value: T; label: string; icon: keyof typeof Ionicons.glyphMap }>;
+  value: T;
+  onChange: (v: T) => void;
+  theme: AppTheme;
+}) {
   return (
-    <View style={dataRowStyles.row}>
-      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-        <Ionicons name={icon} size={16} color={theme.colors.textSecondary} style={dataRowStyles.icon} />
-        <Text style={dataRowStyles.label}>{label}</Text>
-      </View>
-      <Text style={dataRowStyles.value}>{value}</Text>
+    <View
+      style={[
+        segmentedStyles.container,
+        {
+          backgroundColor: theme.colors.surfaceElevated,
+          borderColor: theme.colors.border,
+          borderRadius: 999,
+        },
+      ]}
+    >
+      {options.map((opt) => {
+        const active = value === opt.value;
+        return (
+          <SegmentedChip
+            key={opt.value}
+            label={opt.label}
+            icon={opt.icon}
+            active={active}
+            onPress={() => onChange(opt.value)}
+            theme={theme}
+          />
+        );
+      })}
     </View>
+  );
+}
+
+const SegmentedChip: FC<{
+  label: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  active: boolean;
+  onPress: () => void;
+  theme: AppTheme;
+}> = ({ label, icon, active, onPress, theme }) => {
+  const { animatedStyle, onPressIn, onPressOut } = usePressScale(0.96);
+  return (
+    <Animated.View style={[{ flex: 1 }, animatedStyle]}>
+      <Pressable
+        onPress={onPress}
+        onPressIn={onPressIn}
+        onPressOut={onPressOut}
+        accessibilityRole="button"
+        accessibilityLabel={label}
+        style={[
+          segmentedStyles.chip,
+          active && {
+            backgroundColor: theme.colors.accent[500],
+          },
+        ]}
+      >
+        <Ionicons
+          name={icon}
+          size={15}
+          color={active ? theme.colors.white : theme.colors.textSecondary}
+        />
+        <Text
+          style={[
+            segmentedStyles.label,
+            {
+              color: active ? theme.colors.white : theme.colors.textSecondary,
+              fontSize: theme.type.small,
+            },
+          ]}
+        >
+          {label}
+        </Text>
+      </Pressable>
+    </Animated.View>
   );
 };
 
-const createDataRowStyles = (theme: AppTheme) => StyleSheet.create({
+const segmentedStyles = StyleSheet.create({
+  container: {
+    flexDirection: 'row',
+    padding: 4,
+    borderWidth: 1,
+  },
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    borderRadius: 999,
+  },
+  label: { fontWeight: '700' },
+});
+
+// ─────────────────────────────────────────────
+// DataRow para cards de info
+// ─────────────────────────────────────────────
+const DataRow: FC<{
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  value: string;
+  theme: AppTheme;
+  last?: boolean;
+}> = ({ icon, label, value, theme, last }) => (
+  <View
+    style={[
+      dataRowStyles.row,
+      !last && {
+        borderBottomWidth: StyleSheet.hairlineWidth,
+        borderBottomColor: theme.colors.border,
+      },
+    ]}
+  >
+    <View style={dataRowStyles.left}>
+      <Ionicons name={icon} size={16} color={theme.colors.textMuted} />
+      <Text
+        style={[
+          dataRowStyles.label,
+          { color: theme.colors.textSecondary, fontSize: theme.type.body },
+        ]}
+      >
+        {label}
+      </Text>
+    </View>
+    <Text
+      style={[
+        dataRowStyles.value,
+        { color: theme.colors.textPrimary, fontSize: theme.type.body },
+      ]}
+    >
+      {value}
+    </Text>
+  </View>
+);
+
+const dataRowStyles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 10,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: theme.colors.border,
+    paddingVertical: 12,
   },
-  icon: { marginRight: 8, opacity: 0.8 },
-  label: { color: theme.colors.textSecondary, fontSize: 14 },
-  value: { color: '#c7d2fe', fontWeight: '700', fontSize: 14 },
+  left: { flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 },
+  label: { fontWeight: '500' },
+  value: { fontWeight: '800', fontVariant: ['tabular-nums'] },
 });
 
+// ─────────────────────────────────────────────
+// SleepProfileScreen
+// ─────────────────────────────────────────────
 export const SleepProfileScreen: FC<Props> = ({ navigation, route }) => {
   const rootNavigation = useNavigation();
   const { profile, loading, saveProfile } = useSleepProfileContext();
-  const { signOut } = useAuth();
+  const { signOut, user } = useAuth();
   const { theme } = useAppTheme();
-  const styles = createStyles(theme);
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const isForceSetup = route.params?.forceSetup === true;
+  const displayName = user?.user_metadata?.display_name as string | undefined;
 
-  const { user } = useAuth();
   const [age, setAge] = useState('');
   const [weight, setWeight] = useState('');
-  const [height, setHeight] = useState('');
+  const [heightStr, setHeightStr] = useState('');
   const [gender, setGender] = useState<Gender>('male');
   const [chronotype, setChronotype] = useState<Chronotype>('intermediate');
   const [saving, setSaving] = useState(false);
@@ -89,7 +253,7 @@ export const SleepProfileScreen: FC<Props> = ({ navigation, route }) => {
     if (profile) {
       setAge(String(profile.age));
       setWeight(String(profile.weightKg));
-      setHeight(String(profile.heightCm));
+      setHeightStr(String(profile.heightCm));
       setGender(profile.gender);
       setChronotype(profile.chronotype ?? metaChronotype ?? 'intermediate');
     } else if (metaChronotype) {
@@ -100,19 +264,27 @@ export const SleepProfileScreen: FC<Props> = ({ navigation, route }) => {
   const validationError = useMemo(() => {
     const ageNum = Number(age);
     const weightNum = Number(weight);
-    const heightNum = Number(height);
+    const heightNum = Number(heightStr);
 
-    if (!age || !weight || !height) return 'Por favor, completa todos los campos.';
-    if (isNaN(ageNum) || ageNum < 1 || ageNum > 120) return 'La edad debe ser un número válido.';
+    if (!age || !weight || !heightStr) return 'Por favor, completa todos los campos.';
+    if (isNaN(ageNum) || ageNum < 1 || ageNum > 120) return 'La edad debe ser un número válido (1-120).';
     if (isNaN(weightNum) || weightNum <= 0) return 'El peso debe ser mayor a 0.';
     if (isNaN(heightNum) || heightNum <= 0) return 'La altura debe ser mayor a 0.';
     return null;
-  }, [age, weight, height]);
+  }, [age, weight, heightStr]);
 
   const parsedProfile: SleepProfile | null = useMemo(() => {
     if (validationError) return null;
-    return { age: Number(age), weightKg: Number(weight), heightCm: Number(height), gender, chronotype };
-  }, [age, weight, height, gender, chronotype, validationError]);
+    return {
+      age: Number(age),
+      weightKg: Number(weight),
+      heightCm: Number(heightStr),
+      gender,
+      chronotype,
+      wakeHour: profile?.wakeHour,
+      wakeMinute: profile?.wakeMinute,
+    };
+  }, [age, weight, heightStr, gender, chronotype, validationError, profile?.wakeHour, profile?.wakeMinute]);
 
   const derived = useMemo(() => {
     if (!parsedProfile) return null;
@@ -133,27 +305,29 @@ export const SleepProfileScreen: FC<Props> = ({ navigation, route }) => {
     setSaving(false);
   };
 
-  const isValid = Boolean(parsedProfile) && !validationError;
-
-  const handleLogout = () => signOut();
-  const handleOpenDrawer = () => rootNavigation.dispatch(DrawerActions.openDrawer());
-  const handleGoHome = () => (rootNavigation as any).navigate('Home');
-
-  const getGenderIcon = (g: Gender) => {
-    switch (g) {
-      case 'male': return 'man';
-      case 'female': return 'woman';
-      default: return 'happy';
-    }
+  const handleLogout = () => {
+    Alert.alert('Cerrar sesión', '¿Quieres cerrar tu sesión actual?', [
+      { text: 'Cancelar', style: 'cancel' },
+      { text: 'Cerrar sesión', style: 'destructive', onPress: () => signOut() },
+    ]);
   };
+
+  const handleDeleteAccount = () => {
+    (rootNavigation as any).navigate('DeleteAccount');
+  };
+
+  const isValid = Boolean(parsedProfile) && !validationError;
+  const optimalWindow = parsedProfile?.chronotype
+    ? getOptimalSleepWindow(parsedProfile.chronotype)
+    : null;
 
   if (loading) {
     return (
       <View style={styles.container}>
         <GradientBackground />
         <View style={styles.loadingCenter}>
-          <ActivityIndicator color={theme.colors.primaryStrong} size="large" />
-          <Text style={styles.loadingText}>Cargando perfil...</Text>
+          <ActivityIndicator color={theme.colors.accent[500]} size="large" />
+          <Text style={styles.loadingText}>Cargando perfil…</Text>
         </View>
       </View>
     );
@@ -161,365 +335,474 @@ export const SleepProfileScreen: FC<Props> = ({ navigation, route }) => {
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-      <View style={styles.flex}>
-        <GradientBackground />
+      <GradientBackground />
+      {!isForceSetup && <FloatingDrawerButton insideSafeArea />}
+      {!isForceSetup && <FloatingHomeButton insideSafeArea />}
 
-        <KeyboardAvoidingView
-          style={styles.flex}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : -height * 0.15}
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
         >
-          <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-            <View style={styles.topActions}>
-              {!isForceSetup ? (
-                <TouchableOpacity onPress={handleGoHome} style={styles.topActionButton} activeOpacity={0.7}>
-                  <Ionicons name="home-outline" size={18} color={theme.colors.textPrimary} />
-                </TouchableOpacity>
-              ) : (
-                <View style={styles.topActionPlaceholder} />
-              )}
+          {/* Hero */}
+          <Animated.View entering={FadeInDown.duration(500)} style={styles.hero}>
+            <Text style={styles.heroEyebrow}>TU PERFIL</Text>
+            <Text style={styles.heroTitle}>
+              {displayName ? `Hola, ${displayName}` : 'Datos personales'}
+            </Text>
+            <Text style={styles.heroSubtitle}>
+              Ajustamos ciclos, latencia y eficiencia con base en tu edad, IMC y
+              cronotipo.
+            </Text>
+          </Animated.View>
 
-              {!isForceSetup ? (
-                <TouchableOpacity onPress={handleOpenDrawer} style={styles.topActionButton} activeOpacity={0.7}>
-                  <Ionicons name="menu" size={20} color={theme.colors.textPrimary} />
-                </TouchableOpacity>
-              ) : (
-                <View style={styles.topActionPlaceholder} />
-              )}
-            </View>
-
-            <View style={styles.headerRow}>
-              <Text style={styles.headerTitle}>Tu Perfil</Text>
-              {!isForceSetup && (
-                <TouchableOpacity onPress={handleLogout} style={styles.logoutButton} activeOpacity={0.7}>
-                  <Ionicons name="log-out-outline" size={18} color={theme.colors.textSecondary} style={{ marginRight: 6 }} />
-                  <Text style={styles.logoutText}>Cerrar Sesión</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-
-            {isForceSetup && (
-              <View style={styles.infoBanner}>
-                <Ionicons name="information-circle-outline" size={18} color="#93c5fd" style={{ marginRight: 8 }} />
+          {/* Info banner (force setup) */}
+          {isForceSetup && (
+            <Animated.View entering={FadeInUp.delay(60).duration(400)}>
+              <View
+                style={[
+                  styles.infoBanner,
+                  {
+                    backgroundColor: `${theme.colors.accent[500]}14`,
+                    borderColor: `${theme.colors.accent[500]}40`,
+                    borderRadius: theme.radius.lg,
+                  },
+                ]}
+              >
+                <Ionicons
+                  name="information-circle-outline"
+                  size={16}
+                  color={theme.colors.accent[400]}
+                  style={{ marginTop: 1 }}
+                />
                 <Text style={styles.infoBannerText}>
-                  Completa tu perfil para obtener recomendaciones personalizadas antes de continuar.
+                  Completa tu perfil para obtener recomendaciones
+                  personalizadas antes de continuar.
                 </Text>
               </View>
-            )}
+            </Animated.View>
+          )}
 
-            {/* Datos básicos */}
-            <View style={styles.sectionHeader}>
-              <Ionicons name="person-circle-outline" size={20} color={theme.colors.textPrimary} />
-              <Text style={styles.sectionTitle}>Datos Personales</Text>
-            </View>
-
-            <View style={styles.row}>
-              <View style={styles.inputCard}>
-                <Text style={styles.label}>Edad (años)</Text>
-                <TextInput
+          {/* Section: datos personales */}
+          <Animated.View entering={FadeInUp.delay(80).duration(500)}>
+            <Text style={styles.sectionEyebrow}>DATOS PERSONALES</Text>
+            <View style={styles.fieldsRow}>
+              <View style={{ flex: 1 }}>
+                <FieldInput
+                  label="Edad"
                   value={age}
                   onChangeText={setAge}
+                  placeholder="30"
                   keyboardType="number-pad"
-                  placeholder="Ej. 30"
-                  placeholderTextColor={theme.colors.textMuted}
-                  style={styles.input}
                 />
               </View>
-              <View style={styles.inputCard}>
-                <Text style={styles.label}>Peso (kg)</Text>
-                <TextInput
+              <View style={{ flex: 1 }}>
+                <FieldInput
+                  label="Peso (kg)"
                   value={weight}
                   onChangeText={setWeight}
+                  placeholder="70.5"
                   keyboardType="numeric"
-                  placeholder="Ej. 70.5"
-                  placeholderTextColor={theme.colors.textMuted}
-                  style={styles.input}
                 />
               </View>
             </View>
-            <View style={styles.row}>
-              <View style={styles.inputCard}>
-                <Text style={styles.label}>Altura (cm)</Text>
-                <TextInput
-                  value={height}
-                  onChangeText={setHeight}
+            <View style={styles.fieldsRow}>
+              <View style={{ flex: 1 }}>
+                <FieldInput
+                  label="Altura (cm)"
+                  value={heightStr}
+                  onChangeText={setHeightStr}
+                  placeholder="175"
                   keyboardType="numeric"
-                  placeholder="Ej. 175"
-                  placeholderTextColor={theme.colors.textMuted}
-                  style={styles.input}
                 />
               </View>
+              <View style={{ flex: 1 }} />
             </View>
+          </Animated.View>
 
-            <Text style={styles.label}>Género biológico</Text>
-            <View style={styles.genderRowContainer}>
-              {(['male', 'female', 'other'] as Gender[]).map((g) => (
-                <TouchableOpacity
-                  key={g}
-                  style={[styles.genderChip, gender === g && styles.genderChipActive]}
-                  onPress={() => setGender(g)}
-                >
-                  <Ionicons name={getGenderIcon(g)} size={18} color={gender === g ? theme.colors.background : theme.colors.textSecondary} />
-                  <Text style={[styles.genderChipText, gender === g && styles.genderChipTextActive]}>
-                    {g === 'male' ? 'Masculino' : g === 'female' ? 'Femenino' : 'Otro'}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+          {/* Section: género */}
+          <Animated.View entering={FadeInUp.delay(140).duration(500)} style={styles.section}>
+            <Text style={styles.sectionEyebrow}>GÉNERO BIOLÓGICO</Text>
+            <SegmentedChips
+              options={GENDER_OPTIONS}
+              value={gender}
+              onChange={setGender}
+              theme={theme}
+            />
+          </Animated.View>
 
-            <Text style={styles.label}>Cronotipo</Text>
-            <View style={styles.genderRowContainer}>
-              {([
-                { value: 'morning', label: 'Matutino', icon: 'sunny-outline' },
-                { value: 'intermediate', label: 'Neutro', icon: 'partly-sunny-outline' },
-                { value: 'night', label: 'Nocturno', icon: 'moon-outline' },
-              ] as { value: Chronotype; label: string; icon: keyof typeof Ionicons.glyphMap }[]).map((c) => (
-                <TouchableOpacity
-                  key={c.value}
-                  style={[styles.genderChip, chronotype === c.value && styles.chronotypeChipActive]}
-                  onPress={() => setChronotype(c.value)}
-                >
-                  <Ionicons name={c.icon} size={16} color={chronotype === c.value ? theme.colors.background : theme.colors.textSecondary} />
-                  <Text style={[styles.genderChipText, chronotype === c.value && styles.genderChipTextActive]}>
-                    {c.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-            {parsedProfile?.chronotype && (
-              <Text style={styles.chronotypeHint}>
-                Ventana óptima para dormir: {getOptimalSleepWindow(parsedProfile.chronotype).bedtimeStart} – {getOptimalSleepWindow(parsedProfile.chronotype).bedtimeEnd}
+          {/* Section: cronotipo */}
+          <Animated.View entering={FadeInUp.delay(200).duration(500)} style={styles.section}>
+            <Text style={styles.sectionEyebrow}>CRONOTIPO</Text>
+            <SegmentedChips
+              options={CHRONO_OPTIONS}
+              value={chronotype}
+              onChange={setChronotype}
+              theme={theme}
+            />
+            {optimalWindow && (
+              <Text style={styles.chronoHint}>
+                Ventana óptima para dormir:{' '}
+                <Text style={styles.chronoHintStrong}>
+                  {optimalWindow.bedtimeStart} – {optimalWindow.bedtimeEnd}
+                </Text>
               </Text>
             )}
+          </Animated.View>
 
-            {validationError && (
-              <View style={styles.errorBox}>
-                <Ionicons name="warning-outline" size={18} color="#fca5a5" style={{ marginRight: 8 }} />
+          {/* Validation error */}
+          {validationError && (
+            <Animated.View entering={FadeInUp.duration(300)}>
+              <View
+                style={[
+                  styles.errorBox,
+                  {
+                    backgroundColor: `${theme.colors.danger}14`,
+                    borderColor: `${theme.colors.danger}40`,
+                    borderRadius: theme.radius.md,
+                  },
+                ]}
+              >
+                <Ionicons
+                  name="warning-outline"
+                  size={16}
+                  color={theme.colors.danger}
+                />
                 <Text style={styles.errorText}>{validationError}</Text>
               </View>
-            )}
+            </Animated.View>
+          )}
 
-            {bmiInfo && (
-              <View style={styles.card}>
-                <View style={styles.cardHeader}>
-                  <Ionicons name="scale-outline" size={20} color={theme.colors.textPrimary} />
-                  <Text style={styles.cardTitle}>Índice de Masa Corporal</Text>
+          {/* BMI card */}
+          {bmiInfo && (
+            <Animated.View entering={FadeInUp.delay(260).duration(500)}>
+              <Text style={styles.sectionEyebrow}>ÍNDICE DE MASA CORPORAL</Text>
+              <View
+                style={[
+                  styles.card,
+                  {
+                    backgroundColor: theme.colors.surface,
+                    borderColor: theme.colors.border,
+                    borderRadius: theme.radius.xl,
+                  },
+                ]}
+              >
+                <Text style={styles.bmiValue}>{bmiInfo.bmi.toFixed(1)}</Text>
+                <View style={styles.bmiBadgeWrapper}>
+                  <View
+                    style={[
+                      styles.bmiBadge,
+                      {
+                        backgroundColor: `${theme.colors.accent[500]}1F`,
+                        borderColor: `${theme.colors.accent[500]}55`,
+                        borderRadius: 999,
+                      },
+                    ]}
+                  >
+                    <Text style={styles.bmiBadgeText}>
+                      {BMI_LABEL[bmiInfo.cat] ?? bmiInfo.cat}
+                    </Text>
+                  </View>
                 </View>
-                <Text style={styles.cardHighlightBig}>{bmiInfo.bmi.toFixed(1)}</Text>
-                <Text style={styles.cardLine}>
-                  Clasificación: <Text style={styles.cardCategory}>{bmiInfo.cat}</Text>
-                </Text>
               </View>
-            )}
+            </Animated.View>
+          )}
 
-            {derived && (
-              <View style={styles.card}>
-                <View style={styles.cardHeader}>
-                  <Ionicons name="moon-outline" size={20} color={theme.colors.textPrimary} />
-                  <Text style={styles.cardTitle}>Parámetros de Sueño Derivados</Text>
-                </View>
-                <DataRow label="Longitud de Ciclo" value={`${derived.adjustedCycleMinutes} min`} icon="sync-outline" />
-                <DataRow label="Eficiencia Estimada" value={`${(derived.sleepEfficiency * 100).toFixed(0)} %`} icon="analytics-outline" />
-                <DataRow label="Latencia para Dormir" value={`${derived.latencyMinutes} min`} icon="time-outline" />
+          {/* Derived params */}
+          {derived && (
+            <Animated.View entering={FadeInUp.delay(320).duration(500)}>
+              <Text style={styles.sectionEyebrow}>PARÁMETROS DERIVADOS</Text>
+              <View
+                style={[
+                  styles.card,
+                  {
+                    backgroundColor: theme.colors.surface,
+                    borderColor: theme.colors.border,
+                    borderRadius: theme.radius.xl,
+                    paddingVertical: theme.spacing.sm,
+                    paddingHorizontal: theme.spacing.lg,
+                  },
+                ]}
+              >
+                <DataRow
+                  icon="sync-outline"
+                  label="Longitud de ciclo"
+                  value={`${derived.adjustedCycleMinutes} min`}
+                  theme={theme}
+                />
+                <DataRow
+                  icon="analytics-outline"
+                  label="Eficiencia estimada"
+                  value={`${(derived.sleepEfficiency * 100).toFixed(0)}%`}
+                  theme={theme}
+                />
+                <DataRow
+                  icon="time-outline"
+                  label="Latencia para dormir"
+                  value={`${derived.latencyMinutes} min`}
+                  theme={theme}
+                  last
+                />
               </View>
-            )}
+            </Animated.View>
+          )}
 
-            {derived && (
-              <View style={styles.card}>
-                <View style={styles.cardHeader}>
-                  <Ionicons name="book-outline" size={20} color={theme.colors.textPrimary} />
-                  <Text style={styles.cardTitle}>¿Cómo se usa tu perfil?</Text>
-                </View>
-                <Text style={styles.cardLine}>
-                  Ajustamos ciclos, latencia y eficiencia estimada con base en edad, IMC y género para recomendar horas más realistas.
-                </Text>
-              </View>
-            )}
-
-            {!isForceSetup && (
-              <TouchableOpacity onPress={() => navigation.navigate('Notifications')} style={styles.notificationsButton}>
-                <Ionicons name="notifications-outline" size={18} color={theme.colors.textPrimary} style={{ marginRight: 8 }} />
-                <Text style={styles.notificationsButtonText}>Ver mis Recordatorios</Text>
-              </TouchableOpacity>
-            )}
-            {!isForceSetup && (
-              <TouchableOpacity onPress={() => (rootNavigation as any).navigate('DeleteAccount')} style={styles.deleteAccountButton}>
-                <Ionicons name="trash-outline" size={18} color={theme.colors.danger} style={{ marginRight: 8 }} />
-                <Text style={styles.deleteAccountButtonText}>Eliminar cuenta</Text>
-              </TouchableOpacity>
-            )}
-          </ScrollView>
-
-          {/* Footer fijo */}
-          <View style={styles.footer}>
-            <TouchableOpacity
-              disabled={!isValid || saving}
-              onPress={handleSave}
-              activeOpacity={0.8}
-              style={[styles.saveButton, (!isValid || saving) && styles.saveButtonDisabled]}
+          {/* Acciones secundarias (solo si no force setup) */}
+          {!isForceSetup && (
+            <Animated.View
+              entering={FadeInUp.delay(380).duration(500)}
+              style={styles.secondaryActions}
             >
-              {saving ? (
-                <ActivityIndicator color={theme.colors.background} />
-              ) : (
-                <>
-                  <Ionicons name="cloud-upload-outline" size={20} color={theme.colors.background} style={{ marginRight: 8 }} />
-                  <Text style={styles.saveButtonText}>Guardar Perfil</Text>
-                </>
-              )}
-            </TouchableOpacity>
-          </View>
-        </KeyboardAvoidingView>
-      </View>
+              <SecondaryLink
+                icon="notifications-outline"
+                label="Ver mis recordatorios"
+                onPress={() => navigation.navigate('Notifications')}
+                theme={theme}
+              />
+              <SecondaryLink
+                icon="log-out-outline"
+                label="Cerrar sesión"
+                onPress={handleLogout}
+                theme={theme}
+              />
+              <SecondaryLink
+                icon="trash-outline"
+                label="Eliminar cuenta"
+                onPress={handleDeleteAccount}
+                destructive
+                theme={theme}
+              />
+            </Animated.View>
+          )}
+        </ScrollView>
+
+        {/* Footer fijo */}
+        <View
+          style={[
+            styles.footer,
+            {
+              backgroundColor:
+                theme.name === 'dark'
+                  ? 'rgba(2,6,23,0.95)'
+                  : 'rgba(248,250,252,0.95)',
+              borderTopColor: theme.colors.border,
+            },
+          ]}
+        >
+          {saving ? (
+            <View style={styles.savingWrapper}>
+              <ActivityIndicator color={theme.colors.accent[500]} />
+              <Text style={styles.savingText}>Guardando…</Text>
+            </View>
+          ) : (
+            <PrimaryCTA
+              label={isForceSetup ? 'Comenzar' : 'Guardar perfil'}
+              icon="cloud-upload-outline"
+              onPress={handleSave}
+              trailingIcon={isForceSetup ? 'arrow-forward' : 'checkmark-outline'}
+            />
+          )}
+        </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };
 
-const PADDING_H = 24;
+// ─────────────────────────────────────────────
+// SecondaryLink (link discreto en sección de acciones)
+// ─────────────────────────────────────────────
+const SecondaryLink: FC<{
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  onPress: () => void;
+  destructive?: boolean;
+  theme: AppTheme;
+}> = ({ icon, label, onPress, destructive, theme }) => {
+  const { animatedStyle, onPressIn, onPressOut } = usePressScale(0.97);
+  const color = destructive ? theme.colors.danger : theme.colors.textSecondary;
+  return (
+    <Animated.View style={animatedStyle}>
+      <Pressable
+        onPress={onPress}
+        onPressIn={onPressIn}
+        onPressOut={onPressOut}
+        accessibilityRole="button"
+        style={[
+          linkStyles.row,
+          {
+            backgroundColor: theme.colors.surface,
+            borderColor: destructive
+              ? `${theme.colors.danger}33`
+              : theme.colors.border,
+            borderRadius: theme.radius.lg,
+          },
+        ]}
+      >
+        <Ionicons name={icon} size={18} color={color} />
+        <Text
+          style={[
+            linkStyles.label,
+            { color, fontSize: theme.type.body },
+          ]}
+        >
+          {label}
+        </Text>
+        <Ionicons name="chevron-forward" size={16} color={color} />
+      </Pressable>
+    </Animated.View>
+  );
+};
 
-const createStyles = (theme: AppTheme) => StyleSheet.create({
-  flex: { flex: 1 },
-  container: { flex: 1, backgroundColor: theme.colors.background },
-  loadingCenter: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  loadingText: { color: theme.colors.textSecondary, marginTop: 10, fontSize: 15 },
-  content: { paddingHorizontal: PADDING_H, paddingTop: 20, paddingBottom: 90 },
-  topActions: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
-  topActionButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 999,
-    backgroundColor: theme.colors.surface,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  topActionPlaceholder: { width: 36, height: 36 },
-  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 30 },
-  headerTitle: { color: theme.colors.textPrimary, fontSize: 28, fontWeight: '900' },
-  logoutButton: { flexDirection: 'row', alignItems: 'center', paddingVertical: 4, paddingHorizontal: 10, borderRadius: 999 },
-  logoutText: { color: theme.colors.textSecondary, fontSize: 14, fontWeight: '600' },
-  sectionHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 16, marginTop: 25 },
-  infoBanner: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginBottom: 10,
-    padding: 10,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    backgroundColor: 'rgba(30,64,175,0.15)',
-  },
-  infoBannerText: { color: '#bfdbfe', fontSize: 13, flex: 1 },
-  sectionTitle: { color: theme.colors.textPrimary, fontSize: 17, fontWeight: '700', marginLeft: 8 },
-  row: { flexDirection: 'row', gap: 16, marginBottom: 0 },
-  inputCard: {
-    flex: 1,
-    backgroundColor: theme.colors.surface,
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-  },
-  label: { color: theme.colors.textSecondary, fontSize: 13, marginBottom: 6, fontWeight: '600' },
-  input: { paddingVertical: 4, paddingHorizontal: 0, color: theme.colors.textPrimary, fontSize: 18, fontWeight: '700' },
-  genderRowContainer: {
-    flexDirection: 'row',
-    backgroundColor: theme.colors.surface,
-    borderRadius: 999,
-    padding: 4,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-  },
-  genderChip: {
-    flex: 1,
+const linkStyles = StyleSheet.create({
+  row: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 10,
-    borderRadius: 999,
-  },
-  genderChipActive: { backgroundColor: theme.colors.primaryStrong },
-  chronotypeChipActive: { backgroundColor: '#8b5cf6' },
-  chronotypeHint: { color: '#a78bfa', fontSize: 12, textAlign: 'center', marginTop: -12, marginBottom: 16 },
-  genderChipText: { color: theme.colors.textSecondary, fontSize: 13, marginLeft: 4 },
-  genderChipTextActive: { color: theme.colors.background, fontWeight: '700' },
-  card: {
-    backgroundColor: theme.colors.surface,
-    borderRadius: 12,
-    padding: 18,
-    marginTop: 8,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-    paddingBottom: 8,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: theme.colors.border,
-  },
-  cardTitle: { color: theme.colors.textPrimary, fontSize: 15, fontWeight: '700', marginLeft: 8 },
-  cardHighlightBig: { color: '#a5b4fc', fontSize: 24, fontWeight: '900', marginTop: 8, marginBottom: 4 },
-  cardLine: { color: theme.colors.textSecondary, fontSize: 14, marginBottom: 2 },
-  cardCategory: { fontWeight: '700', color: '#4ade80' },
-  errorBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 12,
-    borderRadius: 10,
-    backgroundColor: 'rgba(239, 68, 68, 0.15)',
-    borderWidth: 1,
-    borderColor: '#fca5a5',
-    marginBottom: 16,
-    marginTop: 8,
-  },
-  errorText: { color: '#fca5a5', fontSize: 14, flex: 1 },
-  notificationsButton: {
+    gap: 12,
     paddingVertical: 14,
-    borderRadius: 999,
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'center',
-    marginTop: 12,
-    backgroundColor: theme.colors.surfaceElevated,
-  },
-  notificationsButtonText: { color: theme.colors.textPrimary, fontWeight: '600', fontSize: 15 },
-  deleteAccountButton: {
-    paddingVertical: 14,
-    borderRadius: 999,
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'center',
-    marginTop: 12,
-    backgroundColor: 'rgba(248,113,113,0.08)',
+    paddingHorizontal: 16,
     borderWidth: 1,
-    borderColor: 'rgba(248,113,113,0.3)',
   },
-  deleteAccountButtonText: { color: theme.colors.danger, fontWeight: '600', fontSize: 15 },
-  footer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    paddingHorizontal: PADDING_H,
-    paddingTop: 10,
-    paddingBottom: Platform.OS === 'ios' ? 10 : 20,
-    backgroundColor: theme.name === 'dark' ? 'rgba(2,6,23,0.95)' : 'rgba(248,250,252,0.95)',
-    borderTopWidth: 1,
-    borderColor: theme.colors.border,
-  },
-  saveButton: {
-    backgroundColor: '#10b981',
-    paddingVertical: 16,
-    borderRadius: 999,
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'center',
-  },
-  saveButtonDisabled: { opacity: 0.4 },
-  saveButtonText: { color: theme.colors.background, fontSize: 16, fontWeight: '800' },
+  label: { fontWeight: '700', flex: 1 },
 });
+
+// ─────────────────────────────────────────────
+// Styles
+// ─────────────────────────────────────────────
+const createStyles = (theme: AppTheme) =>
+  StyleSheet.create({
+    container: { flex: 1, backgroundColor: theme.colors.background },
+    flex: { flex: 1 },
+    loadingCenter: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+    loadingText: {
+      color: theme.colors.textSecondary,
+      marginTop: 12,
+      fontSize: theme.type.body,
+    },
+    scrollContent: {
+      paddingHorizontal: theme.spacing.xl,
+      paddingTop: theme.spacing.huge + theme.spacing.xxl,
+      paddingBottom: 120, // espacio para el footer fijo
+      gap: theme.spacing.lg,
+    },
+    hero: { gap: 4 },
+    heroEyebrow: {
+      color: theme.colors.textMuted,
+      fontSize: theme.type.micro,
+      fontWeight: '700',
+      letterSpacing: 1.2,
+    },
+    heroTitle: {
+      color: theme.colors.textPrimary,
+      fontSize: theme.type.title2,
+      fontWeight: '900',
+      letterSpacing: -0.5,
+      marginTop: 4,
+    },
+    heroSubtitle: {
+      color: theme.colors.textSecondary,
+      fontSize: theme.type.body,
+      lineHeight: 20,
+      marginTop: 6,
+    },
+    infoBanner: {
+      flexDirection: 'row',
+      gap: 10,
+      padding: theme.spacing.md,
+      borderWidth: 1,
+    },
+    infoBannerText: {
+      flex: 1,
+      color: theme.colors.textSecondary,
+      fontSize: theme.type.small,
+      lineHeight: 18,
+    },
+    section: { gap: theme.spacing.sm },
+    sectionEyebrow: {
+      color: theme.colors.textMuted,
+      fontSize: theme.type.micro,
+      fontWeight: '700',
+      letterSpacing: 1.2,
+      marginBottom: 8,
+    },
+    fieldsRow: {
+      flexDirection: 'row',
+      gap: theme.spacing.md,
+      marginBottom: theme.spacing.sm,
+    },
+    chronoHint: {
+      color: theme.colors.textSecondary,
+      fontSize: theme.type.small,
+      textAlign: 'center',
+      marginTop: 6,
+    },
+    chronoHintStrong: {
+      color: theme.colors.accent[300],
+      fontWeight: '800',
+      fontVariant: ['tabular-nums'],
+    },
+    errorBox: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      padding: theme.spacing.md,
+      borderWidth: 1,
+    },
+    errorText: {
+      color: theme.colors.danger,
+      fontSize: theme.type.small,
+      fontWeight: '600',
+      flex: 1,
+    },
+    card: {
+      padding: theme.spacing.lg,
+      borderWidth: 1,
+    },
+    bmiValue: {
+      color: theme.colors.heroText,
+      fontSize: theme.type.display,
+      fontWeight: '900',
+      letterSpacing: -2,
+      fontVariant: ['tabular-nums'],
+      textAlign: 'center',
+    },
+    bmiBadgeWrapper: { alignItems: 'center', marginTop: 6 },
+    bmiBadge: {
+      paddingHorizontal: 12,
+      paddingVertical: 5,
+      borderWidth: 1,
+    },
+    bmiBadgeText: {
+      color: theme.colors.accent[300],
+      fontSize: theme.type.caption,
+      fontWeight: '800',
+      letterSpacing: 0.5,
+      textTransform: 'uppercase',
+    },
+    secondaryActions: { gap: theme.spacing.sm, marginTop: theme.spacing.md },
+    footer: {
+      position: 'absolute',
+      bottom: 0,
+      left: 0,
+      right: 0,
+      paddingHorizontal: theme.spacing.xl,
+      paddingTop: theme.spacing.md,
+      paddingBottom: Platform.OS === 'ios' ? theme.spacing.lg : theme.spacing.lg,
+      borderTopWidth: 1,
+    },
+    savingWrapper: {
+      height: 64,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 10,
+    },
+    savingText: {
+      color: theme.colors.textSecondary,
+      fontSize: theme.type.body,
+      fontWeight: '700',
+    },
+  });
