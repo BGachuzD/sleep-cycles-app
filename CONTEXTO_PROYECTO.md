@@ -8,10 +8,13 @@ Aplicación móvil en React Native (Expo) para optimizar ciclos de sueño. Inclu
 - notificaciones locales inteligentes (alarma de despertar con 3 disparos),
 - registro diario de sueño con historial,
 - rutina pre-sueño personalizable,
-- estadísticas,
-- onboarding + autenticación con Supabase.
+- estadísticas con gráficos y anillos de cumplimiento,
+- siestas inteligentes con alarma por ventana,
+- gestión de alertas programadas,
+- onboarding cinematográfico + autenticación con Supabase,
+- gestión de tema (light/dark/auto) persistente.
 
-**Estado actual:** Fase 1 (estabilización + migraciones SQL) completa. Fase 2 (rediseño visual) en progreso — 6 de ~9 pantallas con el nuevo lenguaje (Home, SleepNow, WakeAt, SleepRoutine, SleepLog, Onboarding).
+**Estado actual:** Fase 1 (estabilización + migraciones SQL) y **Fase 2 (rediseño visual) completas**. Todas las pantallas usan el nuevo lenguaje violeta refinado + motion físico tipo iOS nativo. Lista para Fase 3.
 
 ## Stack Técnico
 
@@ -23,6 +26,7 @@ Aplicación móvil en React Native (Expo) para optimizar ciclos de sueño. Inclu
 - Backend/Auth: `@supabase/supabase-js 2.86+`
 - Notificaciones: `expo-notifications 0.32` (locales, no push). Límite iOS: 64 notificaciones programadas.
 - UI/animaciones: `react-native-reanimated 4.1` + `react-native-worklets 0.5`, `expo-linear-gradient 15`
+- Gráficos: `react-native-svg 15.12` (anillos de cumplimiento, sparklines)
 - Bottom sheets: `@gorhom/bottom-sheet 5.2`
 - UUIDs: `uuid 14` + `react-native-get-random-values`
 - Sin NativeWind ni Tailwind — `StyleSheet.create` + `createStyles(theme)`
@@ -37,7 +41,7 @@ Aplicación móvil en React Native (Expo) para optimizar ciclos de sueño. Inclu
 - **Capa de servicios I/O**: `src/services/sleepProfileService.ts`, `sleepLogService.ts`, `sleepRoutineService.ts` (encapsulan toda la interacción con Supabase)
 - Dominio/lógica de sueño: `src/domain/*` (sleepProfile, sleepEngine, sleepLog, sleepRoutine — funciones puras)
 - Notificaciones: `src/notifications/scheduler.ts`
-- **Componentes compartidos UI**: `src/components/PrimaryCTA.tsx`, `Bumper.tsx`, `GradientBackground.tsx`, `FloatingDrawerButton.tsx`, `FloatingHomeButton.tsx`
+- **Componentes compartidos UI**: `src/components/PrimaryCTA.tsx`, `Bumper.tsx`, `FieldInput.tsx`, `AuthHero.tsx`, `GradientBackground.tsx`, `FloatingDrawerButton.tsx`, `FloatingHomeButton.tsx`
 - **Hooks compartidos UI**: `src/hooks/usePressScale.ts` (spring scale "iOS feel" reutilizable)
 - Tipos: `src/types/*`
 - Tema y tokens: `src/theme/*`
@@ -48,10 +52,10 @@ Aplicación móvil en React Native (Expo) para optimizar ciclos de sueño. Inclu
 ### Filosofía
 
 - **Paleta:** violetas refinados (indigo dominante) — `accent.50/300/400/500/600/700`. Menos colores accent que el diseño anterior. Cada paleta tiene tokens semánticos para `success` (verde), `warning` (ámbar) y `danger` (rojo) usados solo donde la semántica lo exige (feelings del log, acciones destructivas, alertas de rango inválido).
-- **Densidad:** distinta por pantalla — Home balanceada, SleepNow/WakeAt aireadas, SleepRoutine en timeline densa, SleepLog form compacto, Onboarding cinematográfico.
+- **Densidad:** distinta por pantalla — Home balanceada, SleepNow/WakeAt aireadas, SleepRoutine en timeline densa, SleepLog form compacto, Stats rica (anillos + sparklines), Onboarding cinematográfico.
 - **Motion:** físico tipo iOS nativo (springs, swipes, sheets con gestos). `usePressScale` con configuración `mass: 0.4, damping: 14, stiffness: 220` para casi todos los Pressables. Excepción: el **Onboarding** lleva motion cinematográfico (parallax + entries escalonados + glow respirante + partículas orbitando).
 - **Tipografía:** sin custom font; usa system con weights (en iOS resuelve a SF Pro Display). El "reloj hero" usa `fontVariant: ['tabular-nums']`, `letterSpacing: -2`, `weight: '800'`.
-- **Sin emojis** en pantallas funcionales (SleepLog, etc.). El onboarding usa Ionicons grandes (no emojis tampoco) dentro de composiciones violeta + glow + partículas.
+- **Sin emojis** en pantallas funcionales. El onboarding usa Ionicons grandes (no emojis tampoco) dentro de composiciones violeta + glow + partículas.
 
 ### Tokens (`src/theme/theme.ts`)
 
@@ -59,27 +63,30 @@ Aplicación móvil en React Native (Expo) para optimizar ciclos de sueño. Inclu
 - `radius`: sm(8) md(12) lg(16) xl(20) xxl(28) full(999)
 - `type`: caption(11) micro(12) small(13) body(14) bodyLarge(15) subhead(17) title3(22) title2(28) title1(34) display(52) hero(64)
 - `colors.accent`: escala indigo completa (`50/300/400/500/600/700`)
-- `colors.heroText`: token semántico para relojes/displays gigantes. En **light** es `accent[700]` (#4338ca violeta oscuro). En **dark** es `textPrimary` (#e5e7eb blanco/gris claro). Aplica a HomeScreen, SleepNow, WakeAt, SleepRoutine, SleepLog (form), Onboarding (slide hora).
+- `colors.heroText`: token semántico para relojes/displays gigantes. En **light** es `accent[700]` (#4338ca violeta oscuro). En **dark** es `textPrimary` (#e5e7eb blanco/gris claro).
 - `colors.success/warning/danger/info`: para semánticos no-violeta.
 
 ### Componentes compartidos
 
-- **`PrimaryCTA`** (`src/components/PrimaryCTA.tsx`) — botón gradient violeta full-width 64px con icono leading + label + chevron trailing. Props: `label`, `icon`, `onPress`, `trailingIcon?` (default `chevron-forward`). Spring scale al press. Sombra de marca con `accent[600]`. Usado en Home (CTA contextual), sheets de SleepNow/WakeAt (programar alarma/recordatorio), SleepRoutine (programar rutina + guardar paso), SleepLog (guardar/actualizar noche), Onboarding (Empezar).
-- **`Bumper`** (`src/components/Bumper.tsx`) — botón circular con spring scale (0.85), bg `accent[500]` al 10%, icono `accent[400]`. Props: `icon`, `onPress`, `size?`, `iconSize?`, `accessibilityLabel?`. Usado en WakeAt (picker hora ±1h/±15m), SleepRoutine (minutos antes ±5), SleepLog (time picker ±15m), Onboarding (slide hora).
-- **`GradientBackground`** — fondo común. Reescrito en Fase 2: un círculo violeta gigante (max(width,height)) arriba con shadow blur 200, opacity 35%, escala 0.95↔1.05 respirando cada 8s con easing senoidal. Reemplazó las 100 estrellas + luna SVG previas. Funciona en dark y light.
+- **`PrimaryCTA`** (`src/components/PrimaryCTA.tsx`) — botón gradient violeta full-width 64px con icono leading + label + chevron trailing. Props: `label`, `icon`, `onPress`, `trailingIcon?`. Spring scale al press. Sombra de marca con `accent[600]`. Usado en Home, sheets de SleepNow/WakeAt/Nap, SleepRoutine, SleepLog, Onboarding, SignIn, SignUp, SleepProfile.
+- **`Bumper`** (`src/components/Bumper.tsx`) — botón circular con spring scale (0.85), bg `accent[500]` al 10%, icono `accent[400]`. Props: `icon`, `onPress`, `size?`, `iconSize?`, `accessibilityLabel?`. Usado en WakeAt, SleepRoutine, SleepLog, Onboarding.
+- **`FieldInput`** (`src/components/FieldInput.tsx`) — Card con label uppercase + TextInput con focus state violeta (border `accent[500]` 1.5px al focus). Soporta `secureTextEntry` + `showToggle` (eye icon para passwords). Prop `large` para variar tipografía (subhead 17pt bold vs body 14pt regular). Usado en SleepProfile, SignIn, SignUp.
+- **`AuthHero`** (`src/components/AuthHero.tsx`) — Composición violeta (glow respirante + anillo + círculo con gradient e icono blanco) de 116px. Usado en SignIn y SignUp.
+- **`GradientBackground`** — fondo común. Círculo violeta gigante arriba con shadow blur 200, opacity 35%, escala 0.95↔1.05 respirando cada 8s con easing senoidal.
 - **`FloatingDrawerButton`** (esquina superior derecha) y **`FloatingHomeButton`** (esquina superior izquierda en screens distintas a Home).
 
 ### Hooks compartidos
 
-- **`usePressScale`** (`src/hooks/usePressScale.ts`) — devuelve `{ animatedStyle, onPressIn, onPressOut }` para aplicar a cualquier Pressable y obtener el efecto "se hunde" iOS-nativo. Configuración default 0.97; los Bumpers usan 0.85.
+- **`usePressScale`** (`src/hooks/usePressScale.ts`) — devuelve `{ animatedStyle, onPressIn, onPressOut }`. Configuración default 0.97; los Bumpers usan 0.85; CTAs grandes usan 0.96.
 
 ### Patrones visuales recurrentes
 
-- **Hero pattern:** eyebrow uppercase `caption`/`micro` + reloj/título gigante violeta + subtítulo dinámico.
+- **Hero pattern:** eyebrow uppercase `caption`/`micro` + reloj/título gigante violeta (`heroText`) + subtítulo dinámico.
 - **Card recommended:** borde `accent[500]` 1.5px (vs border default 1px).
 - **AnchorCard / OptionCard:** card con eyebrow + headline + subline + CTA inline, spring scale al tap.
 - **Bottom sheet (gorhom):** `snapPoints: ['62%' a '78%']`, `enableDynamicSizing: false`, backdrop con `pressBehavior: 'close'`. Drag y swipe-to-dismiss gratis. Para forms se usa `BottomSheetTextInput` con `keyboardBehavior: 'interactive'`.
 - **Bug fix bottom sheet vacío:** `openSheet()` solo hace `setSelectedOption(option)`; un `useEffect` separado llama `sheetRef.current?.present()` cuando cambia el state — evita el flash con data nula en la primera apertura.
+- **Ambient glow en pantallas standalone:** SignIn, SignUp y Onboarding tienen un círculo violeta gigante arriba (max(width,height)) con shadowRadius 200px y opacity 22-25%. Mismo patrón que `GradientBackground` pero standalone (no requiere el componente porque esas pantallas no llevan el resto del chrome).
 
 ## Flujo de Navegación Actual
 
@@ -93,7 +100,7 @@ Aplicación móvil en React Native (Expo) para optimizar ciclos de sueño. Inclu
 ### Drawer
 
 - Posición: **lado derecho** (`drawerPosition: 'right'`)
-- Pantallas incluidas: `Home`, `SleepNow`, `WakeAt`, `Nap`, `SleepLog`, `Stats`, `SleepRoutine`, `SleepProfile`, `Notifications`
+- Pantallas incluidas: `Home`, `SleepNow`, `WakeAt`, `Nap`, `SleepLog`, `Stats`, `SleepRoutine`, `SleepProfile`, `Settings`, `Notifications`
 
 ## Autenticación y Perfil de Usuario
 
@@ -217,7 +224,7 @@ La tabla legacy `profiles` **ya no se usa** (fallback eliminado del código en F
 - ✅ Código muerto eliminado: `AuthOnboardingBridge.tsx` y `src/types/WakeTimeOptions.ts`
 - ✅ `supabase/functions` excluido del tsconfig de la app móvil
 
-### Fase 2 — Rediseño visual (🚧 EN PROGRESO)
+### Fase 2 — Rediseño visual (✅ COMPLETA)
 
 Decisiones de dirección (acordadas):
 
@@ -227,7 +234,7 @@ Decisiones de dirección (acordadas):
 - HomeScreen como ancla del lenguaje visual
 - Onboarding es la excepción "cinematográfica"
 
-Pantallas redibujadas:
+Pantallas redibujadas (todas):
 
 - ✅ **HomeScreen** — hero (greeting + reloj 52pt) + PrimaryCTA contextual + AnchorCard única por contexto + grid 2×2 atajos + resumen semanal compacto
 - ✅ **SleepNowScreen** — auto-cálculo, lista jerárquica con `OptionCard`, BottomSheet de detalle con estrellas + "duérmete a las" + "despertarás en" + texto educativo por número de ciclos
@@ -235,21 +242,19 @@ Pantallas redibujadas:
 - ✅ **SleepRoutineScreen** — hero + PrimaryCTA "Programar rutina", timeline conservando `step.color` único por paso, edit mode con switch + iconos, BottomSheet de edición con `BottomSheetTextInput`
 - ✅ **SleepLogScreen** — hero + form compacto con TimeColumns (Bumpers ±15m), preview violeta, `FeelingChip` con iconos meteorológicos (cloud/partly-sunny/sunny) + colores semánticos rojo/ámbar/verde, historial con `HistoryCard`
 - ✅ **OnboardingScreen** — 5 slides con `HeroComposition` (capas violeta + icono Ionicons + 6 partículas orbitando + glow respirante), parallax horizontal, entries escalonados, `SlideShell` con ScrollView por slide para evitar overflow en pantallas chicas
+- ✅ **StatsScreen** — densidad rica: hero KPI con avgHours en violeta gigante + anillo SVG de cumplimiento semanal (con gradient violeta) + sparkline SVG de tendencia 14 días + compact stats row (racha/mejor/ciclos prom) + week bar chart violeta vs danger + lista de entries refinada con feeling pills
+- ✅ **NapScreen** — hero + 4 NapCards con colores únicos por tipo (success/warning/accent500/accent700), BottomSheet con detalles + tip + CTA programar, refresh automático del `wakeEta` cada minuto
+- ✅ **NotificationsManagerScreen** — hero con count dinámico, NotificationCards con icon violeta + hora gigante + chip de fecha relativa (hoy/mañana/ayer/lunes/15 may), cancel individual y masivo con confirmación
+- ✅ **SleepProfileScreen** — hero con saludo (Hola, {nombre}), `FieldInput` reutilizable con focus state violeta, `SegmentedChips` para gender y chronotype, BMI value en heroText, parámetros derivados en card, `SecondaryLink` list para ver recordatorios/cerrar sesión/eliminar cuenta, PrimaryCTA en footer fijo
+- ✅ **SettingsScreen** — Premium hero card con gradient violeta (placeholder hasta RevenueCat en Fase 3), preview del tema activo, `ThemeOption` cards refinadas, `LinkRow` para Sitio web / Términos / Privacidad (URLs placeholder `sleepcycles.app/*` que se actualizan cuando exista la landing)
+- ✅ **SignInScreen** — `AuthHero` con icono `moon-outline` + ambient glow violeta + form con `FieldInput` (email + password con eye toggle) + PrimaryCTA "Iniciar sesión" + link a registro
+- ✅ **SignUpScreen** — `AuthHero` con icono `sparkles-outline` + form completo (nombre/email/2x password con toggle) + `SegmentedChip` para cronotipo + alertas error/info con bloques contextuales + PrimaryCTA "Crear cuenta"
 
-Pendientes en Fase 2:
+### Fase 3 — Producción y monetización (⏳ PRÓXIMA)
 
-- ⏳ **StatsScreen** — densidad rica (sparklines, anillos, dashboards). Será la próxima.
-- ⏳ **NapScreen**
-- ⏳ **SleepProfileScreen** (form de edición)
-- ⏳ **SettingsScreen** (parcialmente migrada a theme provider)
-- ⏳ **SignInScreen / SignUpScreen** (auth)
-- ⏳ **NotificationsManagerScreen**
-
-### Fase 3 — Producción y monetización
-
-- Recuperación de contraseña
-- Integración RevenueCat
-- Tests de dominio (`src/domain/*`)
+- Recuperación de contraseña (flow `Forgot password` con `supabase.auth.resetPasswordForEmail` y pantalla de reset)
+- Integración RevenueCat (sustituir el `Alert.alert('Próximamente')` del Premium card por un paywall real)
+- Tests de dominio (`src/domain/sleepProfile`, `sleepEngine`, `sleepLog`)
 
 ### Fase 4 — Lanzamiento
 
@@ -261,10 +266,21 @@ Pendientes en Fase 2:
 - **Idioma:** todo en español (es-MX). El usuario es BGachuzD, dev solo del proyecto.
 - **Paleta:** violetas refinados, menos accents.
 - **Motion:** físico iOS nativo (excepto onboarding que es cinematográfico).
-- **Sin emojis** en pantallas funcionales (SleepLog, SleepRoutine card del feeling, etc.). Reemplazados por iconos Ionicons (meteorológicos para los feelings: cloud/partly-sunny/sunny).
-- **Colores únicos por paso** en la rutina (naranja, ámbar, esmeralda) — se conservan en dot+icono; el chrome es violeta. Mismo principio podría aplicarse a otros casos donde la diferenciación visual ayuda.
+- **Sin emojis** en pantallas funcionales. Reemplazados por iconos Ionicons (meteorológicos para los feelings: cloud/partly-sunny/sunny).
+- **Colores únicos por elemento cuando suma info:** pasos de rutina (naranja/ámbar/esmeralda) en dot+icono; tipos de siesta (success/warning/accent500/accent700) — chrome y CTA siempre violeta.
 - **Formato hora:** 12h con `a.m./p.m.` (preferencia explícita del usuario). Si el texto no cabe (caso `12:00 p.m.` en columnas estrechas), usar `numberOfLines={1}` + `adjustsFontSizeToFit` + `minimumFontScale: 0.65` para reducir dinámicamente.
 - **Reloj hero:** violeta `accent[700]` en light, `textPrimary` en dark (vía token `heroText`).
+- **Settings sin info técnica:** quitada la sección "Acerca de" (versión SDK, etc.) — el usuario prefiere mostrar links a Premium, landing, términos y privacidad.
+
+## URLs externas (placeholders)
+
+Definidas como constantes al inicio de `SettingsScreen.tsx`:
+
+- `LANDING_URL = 'https://sleepcycles.app'`
+- `PRIVACY_URL = 'https://sleepcycles.app/privacy'`
+- `TERMS_URL = 'https://sleepcycles.app/terms'`
+
+Actualizar cuando exista la landing definitiva.
 
 ## Scripts disponibles
 
@@ -277,12 +293,13 @@ Pendientes en Fase 2:
 
 1. **Tests unitarios** del dominio (`sleepProfile`, `sleepEngine`) y `scheduler` — Fase 3.
 2. **CI** (typecheck/lint/tests) para evitar regresiones — Fase 3.
-3. **Recuperación de contraseña** — Fase 3.
-4. **RevenueCat** — Fase 3.
+3. **Recuperación de contraseña** — Fase 3 (siguiente paso).
+4. **RevenueCat** + paywall conectado al Premium card — Fase 3.
 5. **Edge Function `delete-account`** — código pre-existente en `supabase/functions/`, no testeada visualmente desde el rediseño.
-6. **Pantallas pendientes de Fase 2** — ver lista arriba.
-7. **Dependencia `@types/uuid`** marcada como deprecated por pnpm (uuid v14 trae tipos propios). Se puede quitar con `pnpm remove -D @types/uuid` sin romper nada.
+6. **Ruta `DeleteAccount`** referenciada en `SleepProfileScreen.tsx` con cast `as any` — verificar que esté declarada en `AppDrawerNavigator` para que el botón funcione.
+7. **URLs legales** son placeholders — actualizar al lanzar la landing.
+8. **Dependencia `@types/uuid`** marcada como deprecated por pnpm (uuid v14 trae tipos propios). Se puede quitar con `pnpm remove -D @types/uuid` sin romper nada.
 
 ---
 
-_Documento actualizado el 2026-05-17 — refleja el cierre de Fase 1 y el progreso de Fase 2._
+_Documento actualizado al cierre de Fase 2. Refleja todas las pantallas rediseñadas, los componentes compartidos extraídos (PrimaryCTA, Bumper, FieldInput, AuthHero, usePressScale) y las decisiones UX acordadas con el usuario._

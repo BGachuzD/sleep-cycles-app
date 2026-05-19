@@ -27,6 +27,7 @@ import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { useOnboardingFlag } from './src/hooks/useOnboardingFlag';
 import { SignInScreen } from './src/screens/auth/SignInScreen';
 import { SignUpScreen } from './src/screens/auth/SignUpScreen';
+import { ForgotPasswordScreen } from './src/screens/auth/ForgotPasswordScreen';
 import { NotificationsManagerScreen } from './src/screens/NotificationsManagerScreen';
 import { OnboardingProvider } from './src/context/OnboardingContext';
 import { useSleepProfileContext } from './src/context/SleepProfileContext';
@@ -42,6 +43,7 @@ export type RootStackParamList = {
   Notifications: undefined;
   SignIn: undefined;
   SignUp: undefined;
+  ForgotPassword: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -106,6 +108,7 @@ function RootNavigator() {
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         <Stack.Screen name="SignIn" component={SignInScreen} />
         <Stack.Screen name="SignUp" component={SignUpScreen} />
+        <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
       </Stack.Navigator>
     );
   }

@@ -22,6 +22,7 @@ type AuthContextValue = {
   }) => Promise<{ error?: string }>;
   signOut: () => Promise<void>;
   deleteAccount: () => Promise<{ error?: string }>;
+  resetPassword: (email: string) => Promise<{ error?: string }>;
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -143,6 +144,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return {};
   };
 
+  const resetPassword: AuthContextValue['resetPassword'] = async (email) => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email);
+    if (error) {
+      console.warn('resetPassword error', error);
+      return { error: error.message };
+    }
+    return {};
+  };
+
   const value: AuthContextValue = {
     user: session?.user ?? null,
     session,
@@ -151,6 +161,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     signUp,
     signOut,
     deleteAccount,
+    resetPassword,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -53,7 +53,9 @@ export const SignInScreen: FC<Props> = ({ navigation }) => {
   };
 
   const goToSignUp = () => navigation.replace('SignUp');
+  const goToForgotPassword = () => navigation.navigate('ForgotPassword');
   const linkScale = usePressScale(0.97);
+  const forgotScale = usePressScale(0.97);
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
@@ -145,8 +147,25 @@ export const SignInScreen: FC<Props> = ({ navigation }) => {
             </Animated.View>
           )}
 
+          {/* Forgot password link */}
+          <Animated.View
+            entering={FadeInUp.delay(220).duration(500)}
+            style={[styles.forgotWrapper, forgotScale.animatedStyle]}
+          >
+            <Pressable
+              onPress={goToForgotPassword}
+              onPressIn={forgotScale.onPressIn}
+              onPressOut={forgotScale.onPressOut}
+              disabled={loading}
+              accessibilityRole="button"
+              accessibilityLabel="Recuperar contraseña"
+            >
+              <Text style={styles.forgotText}>¿Olvidaste tu contraseña?</Text>
+            </Pressable>
+          </Animated.View>
+
           {/* CTA */}
-          <Animated.View entering={FadeInUp.delay(240).duration(500)}>
+          <Animated.View entering={FadeInUp.delay(260).duration(500)}>
             {loading ? (
               <View style={styles.loadingWrapper}>
                 <ActivityIndicator color={theme.colors.accent[500]} />
@@ -270,5 +289,11 @@ const createStyles = (theme: AppTheme) =>
     linkTextHighlight: {
       color: theme.colors.accent[400],
       fontWeight: '800',
+    },
+    forgotWrapper: { alignSelf: 'flex-end', marginTop: -theme.spacing.xs },
+    forgotText: {
+      color: theme.colors.accent[400],
+      fontSize: theme.type.small,
+      fontWeight: '700',
     },
   });
