@@ -1,5 +1,12 @@
 // src/screens/SleepLogScreen.tsx
-import React, { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  FC,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -32,6 +39,7 @@ import { useSleepProfileContext } from '../context/SleepProfileContext';
 import { getAdjustedCycleLengthMinutes } from '../domain/sleepProfile';
 import { useAppTheme } from '../theme/ThemeProvider';
 import type { AppTheme } from '../theme/theme';
+import { FloatingHomeButton } from '../components/FloatingHomeButton';
 
 // ─────────────────────────────────────────────
 // Feelings: 1 Mal · 2 Regular · 3 Excelente
@@ -41,7 +49,11 @@ type FeelingLevel = 1 | 2 | 3;
 
 const FEELINGS: Record<
   FeelingLevel,
-  { icon: keyof typeof Ionicons.glyphMap; label: string; colorKey: 'danger' | 'warning' | 'success' }
+  {
+    icon: keyof typeof Ionicons.glyphMap;
+    label: string;
+    colorKey: 'danger' | 'warning' | 'success';
+  }
 > = {
   1: { icon: 'cloud-outline', label: 'Mal', colorKey: 'danger' },
   2: { icon: 'partly-sunny-outline', label: 'Regular', colorKey: 'warning' },
@@ -166,7 +178,9 @@ const FeelingChip: FC<{
         style={[
           feelingStyles.chip,
           {
-            backgroundColor: active ? `${color}1F` : theme.colors.surfaceElevated,
+            backgroundColor: active
+              ? `${color}1F`
+              : theme.colors.surfaceElevated,
             borderColor: active ? color : theme.colors.border,
             borderWidth: active ? 1.5 : 1,
             borderRadius: theme.radius.md,
@@ -229,7 +243,9 @@ const HistoryCard: FC<{
         {
           backgroundColor: theme.colors.surface,
           borderRadius: theme.radius.lg,
-          borderColor: isEditing ? theme.colors.accent[500] : theme.colors.border,
+          borderColor: isEditing
+            ? theme.colors.accent[500]
+            : theme.colors.border,
           borderWidth: isEditing ? 1.5 : 1,
           paddingVertical: theme.spacing.md,
           paddingHorizontal: theme.spacing.lg,
@@ -277,11 +293,17 @@ const HistoryCard: FC<{
             <Ionicons
               name="pencil-outline"
               size={16}
-              color={isEditing ? theme.colors.accent[400] : theme.colors.textMuted}
+              color={
+                isEditing ? theme.colors.accent[400] : theme.colors.textMuted
+              }
             />
           </Pressable>
           <Pressable hitSlop={8} onPress={onDelete}>
-            <Ionicons name="trash-outline" size={16} color={theme.colors.textMuted} />
+            <Ionicons
+              name="trash-outline"
+              size={16}
+              color={theme.colors.textMuted}
+            />
           </Pressable>
         </View>
       </View>
@@ -438,6 +460,7 @@ export const SleepLogScreen: FC = () => {
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <GradientBackground />
       <FloatingDrawerButton insideSafeArea />
+      <FloatingHomeButton insideSafeArea />
 
       <ScrollView
         ref={scrollRef}
@@ -535,7 +558,9 @@ export const SleepLogScreen: FC = () => {
                 size={14}
                 color={theme.colors.danger}
               />
-              <Text style={[styles.previewText, { color: theme.colors.danger }]}>
+              <Text
+                style={[styles.previewText, { color: theme.colors.danger }]}
+              >
                 Rango inválido — revisa las horas
               </Text>
             </View>
@@ -559,7 +584,9 @@ export const SleepLogScreen: FC = () => {
           <View style={styles.submitWrapper}>
             <PrimaryCTA
               label={editingEntry ? 'Actualizar registro' : 'Guardar noche'}
-              icon={editingEntry ? 'checkmark-done-outline' : 'checkmark-outline'}
+              icon={
+                editingEntry ? 'checkmark-done-outline' : 'checkmark-outline'
+              }
               onPress={handleSave}
             />
           </View>
@@ -614,7 +641,9 @@ export const SleepLogScreen: FC = () => {
               return (
                 <Animated.View
                   key={entry.id}
-                  entering={FadeInUp.delay(index * 40).springify().damping(14)}
+                  entering={FadeInUp.delay(index * 40)
+                    .springify()
+                    .damping(14)}
                 >
                   <HistoryCard
                     entry={entry}
