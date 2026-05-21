@@ -1,7 +1,8 @@
 // src/screens/StatsScreen.tsx
-import React, { FC, useMemo } from 'react';
+import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -13,11 +14,16 @@ import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { useNavigation } from '@react-navigation/native';
 import Svg, { Circle, Polyline, Defs, LinearGradient, Stop } from 'react-native-svg';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import 'react-native-get-random-values';
+import { v4 as uuidv4 } from 'uuid';
 
 import { GradientBackground } from '../components/GradientBackground';
 import { FloatingDrawerButton } from '../components/FloatingDrawerButton';
 import { FloatingHomeButton } from '../components/FloatingHomeButton';
 import { PrimaryCTA } from '../components/PrimaryCTA';
+import { HealthKitBanner } from '../components/HealthKitBanner';
+import { useHealthKit } from '../hooks/useHealthKit';
 import { useSleepLogContext } from '../context/SleepLogContext';
 import { useSleepProfileContext } from '../context/SleepProfileContext';
 import {
@@ -354,8 +360,9 @@ const compactStyles = StyleSheet.create({
 const EntryRow: FC<{
   entry: SleepLogEntry;
   cycleMins: number;
+  isFromHealthKit: boolean;
   theme: AppTheme;
-}> = ({ entry, cycleMins, theme }) => {
+}> = ({ entry, cycleMins, isFromHealthKit, theme }) => {
   const mins = computeSleepMinutes(entry);
   const cycles = computeCompleteCycles(mins, cycleMins);
   const bedDate = new Date(entry.bedTimeISO);
@@ -386,14 +393,41 @@ const EntryRow: FC<{
         ]}
       />
       <View style={entryStyles.content}>
-        <Text
-          style={[
-            entryStyles.date,
-            { color: theme.colors.textMuted, fontSize: theme.type.caption },
-          ]}
-        >
-          {entry.date}
-        </Text>
+        <View style={entryStyles.dateRow}>
+          <Text
+            style={[
+              entryStyles.date,
+              { color: theme.colors.textMuted, fontSize: theme.type.caption },
+            ]}
+          >
+            {entry.date}
+          </Text>
+          {isFromHealthKit && (
+            <View
+              style={[
+                entryStyles.sourceBadge,
+                {
+                  backgroundColor: `${theme.colors.success}1F`,
+                  borderColor: `${theme.colors.success}55`,
+                },
+              ]}
+            >
+              <Ionicons
+                name="heart"
+                size={8}
+                color={theme.colors.success}
+              />
+              <Text
+                style={[
+                  entryStyles.sourceBadgeText,
+                  { color: theme.colors.success },
+                ]}
+              >
+                Salud
+              </Text>
+            </View>
+          )}
+        </View>
         <Text
           style={[
             entryStyles.times,
@@ -446,7 +480,23 @@ const entryStyles = StyleSheet.create({
   },
   dot: { width: 10, height: 10, borderRadius: 5 },
   content: { flex: 1 },
-  date: { fontWeight: '700', letterSpacing: 0.3, marginBottom: 2 },
+  dateRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 },
+  date: { fontWeight: '700', letterSpacing: 0.3 },
+  sourceBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+  sourceBadgeText: {
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
+  },
   times: { fontWeight: '700', fontVariant: ['tabular-nums'] },
   right: { alignItems: 'flex-end' },
   duration: { fontWeight: '800', fontVariant: ['tabular-nums'] },
@@ -461,15 +511,23 @@ const entryStyles = StyleSheet.create({
   },
 });
 
+// Keys persistentes para HealthKit en Stats
+const HK_BANNER_DISMISSED_KEY = 'healthkit:banner_dismissed';
+const HK_HISTORICAL_SYNCED_KEY = 'healthkit:historical_synced';
+
 // ─────────────────────────────────────────────
 // StatsScreen
 // ─────────────────────────────────────────────
 export const StatsScreen: FC = () => {
-  const { entries, loading, refresh } = useSleepLogContext();
+  const { entries, loading, addEntry, refresh } = useSleepLogContext();
   const { profile } = useSleepProfileContext();
   const { theme } = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const navigation = useNavigation();
+
+  const hk = useHealthKit();
+  const [hkBannerDismissed, setHkBannerDismissed] = useState(false);
+  const [isSyncingHistorical, setIsSyncingHistorical] = useState(false);
 
   const cycleMins = getAdjustedCycleLengthMinutes(profile?.age ?? 30);
   const stats = useMemo(
@@ -492,6 +550,106 @@ export const StatsScreen: FC = () => {
     return recent.map((e) => computeSleepMinutes(e) / 60);
   }, [entries]);
 
+  // Cargar flag de dismiss del banner al mount
+  useEffect(() => {
+    AsyncStorage.getItem(HK_BANNER_DISMISSED_KEY).then((v) => {
+      if (v === 'true') setHkBannerDismissed(true);
+    });
+  }, []);
+
+  /**
+   * Sincronización histórica: una sola vez por dispositivo, importa hasta
+   * 30 días atrás desde HealthKit creando entries en sleep_log para los
+   * días que el usuario no tiene ya registrados localmente.
+   */
+  const syncHistoricalData = useCallback(async () => {
+    if (!hk.isAuthorized) return;
+    try {
+      const alreadySynced = await AsyncStorage.getItem(HK_HISTORICAL_SYNCED_KEY);
+      if (alreadySynced === 'true') return;
+
+      setIsSyncingHistorical(true);
+
+      // Rango: 30 días atrás (excluyendo hoy para no chocar con auto-populate del log)
+      const end = new Date();
+      end.setDate(end.getDate() - 1);
+      const start = new Date();
+      start.setDate(start.getDate() - 30);
+      const fmt = (d: Date) => {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${day}`;
+      };
+
+      const hkEntries = await hk.fetchForRange(fmt(start), fmt(end));
+      const existingDates = new Set(entries.map((e) => e.date));
+
+      let imported = 0;
+      const importedIds: string[] = [];
+      for (const hkEntry of hkEntries) {
+        if (existingDates.has(hkEntry.date)) continue;
+        const newId = uuidv4();
+        await addEntry({
+          id: newId,
+          date: hkEntry.date,
+          bedTimeISO: hkEntry.bedTime,
+          wakeTimeISO: hkEntry.wakeTime,
+          feeling: 2, // neutral — HealthKit no nos da sensación al despertar
+        });
+        importedIds.push(newId);
+        imported++;
+      }
+
+      if (importedIds.length > 0) {
+        await hk.markManyImported(importedIds);
+      }
+
+      await AsyncStorage.setItem(HK_HISTORICAL_SYNCED_KEY, 'true');
+
+      if (imported > 0) {
+        Alert.alert(
+          'Sincronización completa',
+          `${imported} ${imported === 1 ? 'noche importada' : 'noches importadas'} de Salud.`,
+        );
+      }
+    } catch (err) {
+      console.error('[Stats] syncHistoricalData failed', err);
+    } finally {
+      setIsSyncingHistorical(false);
+    }
+  }, [hk, entries, addEntry]);
+
+  // Disparar sync histórico la primera vez que el usuario está autorizado
+  useEffect(() => {
+    if (hk.isAuthorized && !hk.isLoading) {
+      syncHistoricalData();
+    }
+  }, [hk.isAuthorized, hk.isLoading, syncHistoricalData]);
+
+  const handleConnectHK = useCallback(async () => {
+    const granted = await hk.requestPermissions();
+    if (!granted) {
+      Alert.alert(
+        'Permiso no concedido',
+        'Puedes activarlo más tarde desde Ajustes → Salud → Mimebien.',
+      );
+    }
+    // Si concede, el useEffect de arriba dispara syncHistoricalData
+  }, [hk]);
+
+  const handleDismissBanner = useCallback(async () => {
+    setHkBannerDismissed(true);
+    try {
+      await AsyncStorage.setItem(HK_BANNER_DISMISSED_KEY, 'true');
+    } catch (err) {
+      console.warn('Could not persist banner dismiss', err);
+    }
+  }, []);
+
+  const showHkBanner =
+    hk.isAvailable && !hk.isAuthorized && !hk.isLoading && !hkBannerDismissed;
+
   // Empty state
   if (entries.length === 0) {
     return (
@@ -512,6 +670,13 @@ export const StatsScreen: FC = () => {
               Registra tu sueño en el diario para empezar a ver tu evolución.
             </Text>
           </Animated.View>
+
+          {showHkBanner && (
+            <HealthKitBanner
+              onConnect={handleConnectHK}
+              onDismiss={handleDismissBanner}
+            />
+          )}
 
           <Animated.View entering={FadeInUp.delay(80).duration(500)}>
             <View style={styles.emptyBox}>
@@ -549,6 +714,38 @@ export const StatsScreen: FC = () => {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+        {/* HealthKit banner */}
+        {showHkBanner && (
+          <HealthKitBanner
+            onConnect={handleConnectHK}
+            onDismiss={handleDismissBanner}
+          />
+        )}
+
+        {/* Sync histórico en curso */}
+        {isSyncingHistorical && (
+          <View
+            style={[
+              styles.syncBox,
+              {
+                backgroundColor: `${theme.colors.accent[500]}14`,
+                borderColor: `${theme.colors.accent[500]}40`,
+                borderRadius: theme.radius.lg,
+              },
+            ]}
+          >
+            <ActivityIndicator size="small" color={theme.colors.accent[400]} />
+            <Text
+              style={[
+                styles.syncText,
+                { color: theme.colors.accent[300] },
+              ]}
+            >
+              Importando datos de Salud…
+            </Text>
+          </View>
+        )}
+
         {/* Hero KPI */}
         <Animated.View entering={FadeInDown.duration(500)} style={styles.hero}>
           <View style={styles.heroTopRow}>
@@ -753,6 +950,7 @@ export const StatsScreen: FC = () => {
                 <EntryRow
                   entry={entry}
                   cycleMins={cycleMins}
+                  isFromHealthKit={hk.isImported(entry.id)}
                   theme={theme}
                 />
               </Animated.View>
@@ -944,4 +1142,16 @@ const createStyles = (theme: AppTheme) =>
       lineHeight: 18,
     },
     emptyCta: { marginTop: theme.spacing.lg },
+    syncBox: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      paddingVertical: theme.spacing.md,
+      paddingHorizontal: theme.spacing.lg,
+      borderWidth: 1,
+    },
+    syncText: {
+      fontSize: theme.type.small,
+      fontWeight: '700',
+    },
   });

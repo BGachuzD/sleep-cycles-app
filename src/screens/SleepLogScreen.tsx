@@ -19,6 +19,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import 'react-native-get-random-values';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -26,7 +27,9 @@ import { GradientBackground } from '../components/GradientBackground';
 import { FloatingDrawerButton } from '../components/FloatingDrawerButton';
 import { Bumper } from '../components/Bumper';
 import { PrimaryCTA } from '../components/PrimaryCTA';
+import { HealthKitBanner } from '../components/HealthKitBanner';
 import { usePressScale } from '../hooks/usePressScale';
+import { useHealthKit } from '../hooks/useHealthKit';
 import { useSleepLogContext } from '../context/SleepLogContext';
 import {
   computeSleepMinutes,
@@ -225,10 +228,19 @@ const HistoryCard: FC<{
   entry: SleepLogEntry;
   cycleMins: number;
   isEditing: boolean;
+  isFromHealthKit: boolean;
   onEdit: () => void;
   onDelete: () => void;
   theme: AppTheme;
-}> = ({ entry, cycleMins, isEditing, onEdit, onDelete, theme }) => {
+}> = ({
+  entry,
+  cycleMins,
+  isEditing,
+  isFromHealthKit,
+  onEdit,
+  onDelete,
+  theme,
+}) => {
   const mins = computeSleepMinutes(entry);
   const cycles = computeCompleteCycles(mins, cycleMins);
   const info = FEELINGS[entry.feeling];
@@ -253,14 +265,41 @@ const HistoryCard: FC<{
       ]}
     >
       <View style={historyStyles.left}>
-        <Text
-          style={[
-            historyStyles.date,
-            { color: theme.colors.textMuted, fontSize: theme.type.caption },
-          ]}
-        >
-          {entry.date}
-        </Text>
+        <View style={historyStyles.dateRow}>
+          <Text
+            style={[
+              historyStyles.date,
+              { color: theme.colors.textMuted, fontSize: theme.type.caption },
+            ]}
+          >
+            {entry.date}
+          </Text>
+          {isFromHealthKit && (
+            <View
+              style={[
+                historyStyles.sourceBadge,
+                {
+                  backgroundColor: `${theme.colors.success}1F`,
+                  borderColor: `${theme.colors.success}55`,
+                },
+              ]}
+            >
+              <Ionicons
+                name="heart"
+                size={9}
+                color={theme.colors.success}
+              />
+              <Text
+                style={[
+                  historyStyles.sourceBadgeText,
+                  { color: theme.colors.success },
+                ]}
+              >
+                Salud
+              </Text>
+            </View>
+          )}
+        </View>
         <Text
           style={[
             historyStyles.time,
@@ -318,7 +357,23 @@ const historyStyles = StyleSheet.create({
     alignItems: 'center',
   },
   left: { flex: 1, marginRight: 8 },
-  date: { fontWeight: '700', letterSpacing: 0.3, marginBottom: 2 },
+  dateRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 },
+  date: { fontWeight: '700', letterSpacing: 0.3 },
+  sourceBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+  sourceBadgeText: {
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
+  },
   time: { fontWeight: '700', fontVariant: ['tabular-nums'] },
   detail: { marginTop: 2 },
   right: { alignItems: 'center', gap: 8 },
@@ -333,6 +388,9 @@ const historyStyles = StyleSheet.create({
   actions: { flexDirection: 'row', gap: 12, alignItems: 'center' },
 });
 
+// Key persistente para que el banner no reaparezca tras dismiss en la sesión.
+const HK_BANNER_DISMISSED_KEY = 'healthkit:banner_dismissed';
+
 // ─────────────────────────────────────────────
 // SleepLogScreen
 // ─────────────────────────────────────────────
@@ -343,6 +401,11 @@ export const SleepLogScreen: FC = () => {
   const { theme } = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const scrollRef = useRef<ScrollView>(null);
+
+  const hk = useHealthKit();
+  const [hkBannerDismissed, setHkBannerDismissed] = useState(false);
+  const [autoPopulatedFromHK, setAutoPopulatedFromHK] = useState(false);
+  const [hasUserEdited, setHasUserEdited] = useState(false);
 
   const cycleMins = getAdjustedCycleLengthMinutes(profile?.age ?? 30);
   const { bed: initialBed, wake: initialWake } = useMemo(
@@ -355,11 +418,40 @@ export const SleepLogScreen: FC = () => {
   const [feeling, setFeeling] = useState<FeelingLevel>(2);
   const [editingEntry, setEditingEntry] = useState<SleepLogEntry | null>(null);
 
+  // Carga el flag de dismiss del banner (persistido para no reaparecer mientras
+  // viva el proceso de la app — al reabrir reaparece).
+  useEffect(() => {
+    AsyncStorage.getItem(HK_BANNER_DISMISSED_KEY).then((v) => {
+      if (v === 'true') setHkBannerDismissed(true);
+    });
+  }, []);
+
+  // Auto-poblar desde HealthKit cuando hay permisos, no estamos editando y
+  // el usuario aún no tocó los campos manualmente.
+  useEffect(() => {
+    if (!hk.isAuthorized || hk.isLoading || editingEntry || hasUserEdited) {
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const hkEntry = await hk.fetchForDate(todayDateString());
+      if (cancelled || !hkEntry) return;
+      setBedTime(new Date(hkEntry.bedTime));
+      setWakeTime(new Date(hkEntry.wakeTime));
+      setAutoPopulatedFromHK(true);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [hk, editingEntry, hasUserEdited]);
+
   useEffect(() => {
     if (editingEntry) {
       setBedTime(new Date(editingEntry.bedTimeISO));
       setWakeTime(new Date(editingEntry.wakeTimeISO));
       setFeeling(editingEntry.feeling);
+      setAutoPopulatedFromHK(false);
+      setHasUserEdited(false);
       scrollRef.current?.scrollTo({ y: 0, animated: true });
     }
   }, [editingEntry]);
@@ -370,15 +462,43 @@ export const SleepLogScreen: FC = () => {
     setBedTime(bed);
     setWakeTime(wake);
     setFeeling(2);
+    setAutoPopulatedFromHK(false);
+    setHasUserEdited(false);
   }, []);
 
   const adjustBed = useCallback((delta: number) => {
     setBedTime((prev) => new Date(prev.getTime() + delta * 60_000));
+    setHasUserEdited(true);
+    setAutoPopulatedFromHK(false);
   }, []);
 
   const adjustWake = useCallback((delta: number) => {
     setWakeTime((prev) => new Date(prev.getTime() + delta * 60_000));
+    setHasUserEdited(true);
+    setAutoPopulatedFromHK(false);
   }, []);
+
+  const handleConnectHK = useCallback(async () => {
+    const granted = await hk.requestPermissions();
+    if (!granted) {
+      Alert.alert(
+        'Permiso no concedido',
+        'Puedes activarlo más tarde desde Ajustes → Salud → Mimebien.',
+      );
+    }
+  }, [hk]);
+
+  const handleDismissBanner = useCallback(async () => {
+    setHkBannerDismissed(true);
+    try {
+      await AsyncStorage.setItem(HK_BANNER_DISMISSED_KEY, 'true');
+    } catch (err) {
+      console.warn('Could not persist banner dismiss', err);
+    }
+  }, []);
+
+  const showHkBanner =
+    hk.isAvailable && !hk.isAuthorized && !hk.isLoading && !hkBannerDismissed;
 
   const previewMinutes = useMemo(
     () =>
@@ -419,14 +539,21 @@ export const SleepLogScreen: FC = () => {
       setEditingEntry(null);
       Alert.alert('Actualizado', 'Tu registro ha sido actualizado.');
     } else {
+      const newId = uuidv4();
       const entry: SleepLogEntry = {
-        id: uuidv4(),
+        id: newId,
         date: todayDateString(),
         bedTimeISO: bedTime.toISOString(),
         wakeTimeISO: wakeTime.toISOString(),
         feeling,
       };
       await addEntry(entry);
+      // Si los valores vinieron de HealthKit, marca el id para el badge.
+      if (autoPopulatedFromHK) {
+        await hk.markImported(newId);
+      }
+      setAutoPopulatedFromHK(false);
+      setHasUserEdited(false);
       Alert.alert('Guardado', 'Tu sueño quedó registrado.');
     }
   }, [
@@ -437,6 +564,8 @@ export const SleepLogScreen: FC = () => {
     feeling,
     addEntry,
     updateEntry,
+    autoPopulatedFromHK,
+    hk,
   ]);
 
   const handleDelete = useCallback(
@@ -482,6 +611,14 @@ export const SleepLogScreen: FC = () => {
           </Text>
         </Animated.View>
 
+        {/* HealthKit banner */}
+        {showHkBanner && (
+          <HealthKitBanner
+            onConnect={handleConnectHK}
+            onDismiss={handleDismissBanner}
+          />
+        )}
+
         {/* Form */}
         <Animated.View
           entering={FadeInDown.delay(80).duration(500)}
@@ -493,6 +630,33 @@ export const SleepLogScreen: FC = () => {
             },
           ]}
         >
+          {/* Importado de Salud — solo cuando los valores vienen de HK */}
+          {autoPopulatedFromHK && (
+            <View
+              style={[
+                styles.importedBadge,
+                {
+                  backgroundColor: `${theme.colors.success}14`,
+                  borderColor: `${theme.colors.success}40`,
+                },
+              ]}
+            >
+              <Ionicons
+                name="cloud-done-outline"
+                size={14}
+                color={theme.colors.success}
+              />
+              <Text
+                style={[
+                  styles.importedBadgeText,
+                  { color: theme.colors.success },
+                ]}
+              >
+                Importado de Salud
+              </Text>
+            </View>
+          )}
+
           {/* Time pickers */}
           <View style={styles.timeRow}>
             <TimeColumn
@@ -649,6 +813,7 @@ export const SleepLogScreen: FC = () => {
                     entry={entry}
                     cycleMins={cycleMins}
                     isEditing={isEditing}
+                    isFromHealthKit={hk.isImported(entry.id)}
                     onEdit={() =>
                       isEditing ? cancelEdit() : setEditingEntry(entry)
                     }
@@ -773,4 +938,19 @@ const createStyles = (theme: AppTheme) =>
       fontSize: theme.type.small,
     },
     historyList: { gap: theme.spacing.sm },
+    importedBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      alignSelf: 'flex-start',
+      gap: 6,
+      paddingVertical: 5,
+      paddingHorizontal: theme.spacing.sm,
+      borderRadius: 999,
+      borderWidth: 1,
+    },
+    importedBadgeText: {
+      fontSize: theme.type.caption,
+      fontWeight: '800',
+      letterSpacing: 0.4,
+    },
   });

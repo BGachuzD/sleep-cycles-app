@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "mimebien",
-    "slug": "mimebien",
+    "slug": "sleep-cycles-app",
     "scheme": "mimebien",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -39,7 +39,12 @@
       "bundleIdentifier": "com.bgachuzd.mimebien",
       "infoPlist": {
         "NSUserNotificationsUsageDescription": "Esta app utiliza notificaciones para recordarte cuándo dormir o despertar según tus ciclos de sueño.",
+        "NSHealthShareUsageDescription": "Mimebien lee tus registros de sueño del app Salud para completar tu diario automáticamente. Tus datos nunca salen de tu dispositivo.",
+        "NSHealthUpdateUsageDescription": "Mimebien puede guardar tus registros manuales en Salud para que tengas todo centralizado.",
         "ITSAppUsesNonExemptEncryption": false
+      },
+      "entitlements": {
+        "com.apple.developer.healthkit": true
       }
     },
     "extra": {
