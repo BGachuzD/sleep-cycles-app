@@ -5,7 +5,7 @@ import 'react-native-url-polyfill/auto';
 import 'react-native-get-random-values';
 
 import { useEffect } from 'react';
-import { ActivityIndicator, Platform, View } from 'react-native';
+import { ActivityIndicator, Linking, Platform, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import {
   NavigationContainer,
@@ -28,7 +28,9 @@ import { useOnboardingFlag } from './src/hooks/useOnboardingFlag';
 import { SignInScreen } from './src/screens/auth/SignInScreen';
 import { SignUpScreen } from './src/screens/auth/SignUpScreen';
 import { ForgotPasswordScreen } from './src/screens/auth/ForgotPasswordScreen';
+import { ResetPasswordScreen } from './src/screens/auth/ResetPasswordScreen';
 import { NotificationsManagerScreen } from './src/screens/NotificationsManagerScreen';
+import { supabase } from './src/lib/supabaseClient';
 import { OnboardingProvider } from './src/context/OnboardingContext';
 import { useSleepProfileContext } from './src/context/SleepProfileContext';
 import { SleepLogProvider } from './src/context/SleepLogContext';
@@ -44,7 +46,30 @@ export type RootStackParamList = {
   SignIn: undefined;
   SignUp: undefined;
   ForgotPassword: undefined;
+  ResetPassword: undefined;
 };
+
+/**
+ * Parsea los tokens de un deep link de Supabase. Supabase los pone en el
+ * URL fragment (#) tras `redirectTo` en `resetPasswordForEmail`.
+ *
+ * Ej: mimebien://reset-password#access_token=XXX&refresh_token=YYY&type=recovery
+ */
+function parseSupabaseDeepLink(url: string): {
+  accessToken?: string;
+  refreshToken?: string;
+  type?: string;
+} {
+  const hashIndex = url.indexOf('#');
+  if (hashIndex === -1) return {};
+  const hash = url.substring(hashIndex + 1);
+  const params = new URLSearchParams(hash);
+  return {
+    accessToken: params.get('access_token') ?? undefined,
+    refreshToken: params.get('refresh_token') ?? undefined,
+    type: params.get('type') ?? undefined,
+  };
+}
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -58,7 +83,12 @@ Notifications.setNotificationHandler({
 });
 
 function RootNavigator() {
-  const { user, loading: authLoading } = useAuth();
+  const {
+    user,
+    loading: authLoading,
+    isInPasswordRecovery,
+    enterPasswordRecovery,
+  } = useAuth();
   const { hasSeen } = useOnboardingFlag();
   const { profile, loading: profileLoading } = useSleepProfileContext();
   const { theme } = useAppTheme();
@@ -88,6 +118,37 @@ function RootNavigator() {
     })();
   }, []);
 
+  // ─────────────────────────────────────────────
+  // Deep link listener: captura URLs del esquema `mimebien://` y, si vienen
+  // con tokens de Supabase (recuperación de contraseña), establece la sesión
+  // y marca el flujo de recovery para que el navigator muestre ResetPassword
+  // en vez del flujo normal.
+  // ─────────────────────────────────────────────
+  useEffect(() => {
+    const handleUrl = async (url: string | null) => {
+      if (!url) return;
+      const { accessToken, refreshToken, type } = parseSupabaseDeepLink(url);
+      if (type === 'recovery' && accessToken && refreshToken) {
+        const { error } = await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken,
+        });
+        if (error) {
+          console.warn('setSession from deep link failed', error);
+          return;
+        }
+        enterPasswordRecovery();
+      }
+    };
+
+    // App ya abierta cuando llega el link
+    const sub = Linking.addEventListener('url', ({ url }) => handleUrl(url));
+    // App cerrada y se abre desde el link
+    Linking.getInitialURL().then(handleUrl);
+
+    return () => sub.remove();
+  }, [enterPasswordRecovery]);
+
   if (authLoading || hasSeen === null || profileLoading) {
     return (
       <View
@@ -100,6 +161,17 @@ function RootNavigator() {
       >
         <ActivityIndicator color={theme.colors.textPrimary} />
       </View>
+    );
+  }
+
+  // Flujo de recuperación de contraseña: tiene prioridad sobre todo lo demás.
+  // El usuario acaba de tap en el enlace del correo, la sesión está establecida
+  // pero queremos forzarlo a definir nueva contraseña antes de continuar.
+  if (isInPasswordRecovery) {
+    return (
+      <Stack.Navigator screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
+      </Stack.Navigator>
     );
   }
 
