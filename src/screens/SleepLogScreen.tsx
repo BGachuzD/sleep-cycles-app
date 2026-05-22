@@ -115,7 +115,7 @@ const TimeColumn: FC<{
     </Text>
     <Bumper
       icon="chevron-up"
-      onPress={() => onAdjust(15)}
+      onPress={() => onAdjust(5)}
       size={32}
       iconSize={18}
       accessibilityLabel={`Subir 15 min: ${label}`}
@@ -133,7 +133,7 @@ const TimeColumn: FC<{
     </Text>
     <Bumper
       icon="chevron-down"
-      onPress={() => onAdjust(-15)}
+      onPress={() => onAdjust(-5)}
       size={32}
       iconSize={18}
       accessibilityLabel={`Bajar 15 min: ${label}`}
@@ -284,11 +284,7 @@ const HistoryCard: FC<{
                 },
               ]}
             >
-              <Ionicons
-                name="heart"
-                size={9}
-                color={theme.colors.success}
-              />
+              <Ionicons name="heart" size={9} color={theme.colors.success} />
               <Text
                 style={[
                   historyStyles.sourceBadgeText,
@@ -357,7 +353,12 @@ const historyStyles = StyleSheet.create({
     alignItems: 'center',
   },
   left: { flex: 1, marginRight: 8 },
-  dateRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 },
+  dateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 2,
+  },
   date: { fontWeight: '700', letterSpacing: 0.3 },
   sourceBadge: {
     flexDirection: 'row',
