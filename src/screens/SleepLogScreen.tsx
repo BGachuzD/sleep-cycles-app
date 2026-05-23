@@ -19,7 +19,6 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import 'react-native-get-random-values';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -389,9 +388,6 @@ const historyStyles = StyleSheet.create({
   actions: { flexDirection: 'row', gap: 12, alignItems: 'center' },
 });
 
-// Key persistente para que el banner no reaparezca tras dismiss en la sesión.
-const HK_BANNER_DISMISSED_KEY = 'healthkit:banner_dismissed';
-
 // ─────────────────────────────────────────────
 // SleepLogScreen
 // ─────────────────────────────────────────────
@@ -404,7 +400,6 @@ export const SleepLogScreen: FC = () => {
   const scrollRef = useRef<ScrollView>(null);
 
   const hk = useHealthKit();
-  const [hkBannerDismissed, setHkBannerDismissed] = useState(false);
   const [autoPopulatedFromHK, setAutoPopulatedFromHK] = useState(false);
   const [hasUserEdited, setHasUserEdited] = useState(false);
 
@@ -418,14 +413,6 @@ export const SleepLogScreen: FC = () => {
   const [wakeTime, setWakeTime] = useState<Date>(initialWake);
   const [feeling, setFeeling] = useState<FeelingLevel>(2);
   const [editingEntry, setEditingEntry] = useState<SleepLogEntry | null>(null);
-
-  // Carga el flag de dismiss del banner (persistido para no reaparecer mientras
-  // viva el proceso de la app — al reabrir reaparece).
-  useEffect(() => {
-    AsyncStorage.getItem(HK_BANNER_DISMISSED_KEY).then((v) => {
-      if (v === 'true') setHkBannerDismissed(true);
-    });
-  }, []);
 
   // Auto-poblar desde HealthKit cuando hay permisos, no estamos editando y
   // el usuario aún no tocó los campos manualmente.
@@ -489,17 +476,11 @@ export const SleepLogScreen: FC = () => {
     }
   }, [hk]);
 
-  const handleDismissBanner = useCallback(async () => {
-    setHkBannerDismissed(true);
-    try {
-      await AsyncStorage.setItem(HK_BANNER_DISMISSED_KEY, 'true');
-    } catch (err) {
-      console.warn('Could not persist banner dismiss', err);
-    }
-  }, []);
-
   const showHkBanner =
-    hk.isAvailable && !hk.isAuthorized && !hk.isLoading && !hkBannerDismissed;
+    hk.isAvailable &&
+    !hk.isAuthorized &&
+    !hk.isLoading &&
+    !hk.isBannerDismissed;
 
   const previewMinutes = useMemo(
     () =>
@@ -616,7 +597,7 @@ export const SleepLogScreen: FC = () => {
         {showHkBanner && (
           <HealthKitBanner
             onConnect={handleConnectHK}
-            onDismiss={handleDismissBanner}
+            onDismiss={hk.dismissBanner}
           />
         )}
 

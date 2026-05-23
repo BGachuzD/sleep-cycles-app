@@ -511,8 +511,8 @@ const entryStyles = StyleSheet.create({
   },
 });
 
-// Keys persistentes para HealthKit en Stats
-const HK_BANNER_DISMISSED_KEY = 'healthkit:banner_dismissed';
+// Key persistente para el flag de sync histórico (la del banner ahora vive
+// dentro del HealthKitProvider, compartida globalmente).
 const HK_HISTORICAL_SYNCED_KEY = 'healthkit:historical_synced';
 
 // ─────────────────────────────────────────────
@@ -526,7 +526,6 @@ export const StatsScreen: FC = () => {
   const navigation = useNavigation();
 
   const hk = useHealthKit();
-  const [hkBannerDismissed, setHkBannerDismissed] = useState(false);
   const [isSyncingHistorical, setIsSyncingHistorical] = useState(false);
 
   const cycleMins = getAdjustedCycleLengthMinutes(profile?.age ?? 30);
@@ -549,13 +548,6 @@ export const StatsScreen: FC = () => {
     const recent = entries.slice(0, 14).reverse();
     return recent.map((e) => computeSleepMinutes(e) / 60);
   }, [entries]);
-
-  // Cargar flag de dismiss del banner al mount
-  useEffect(() => {
-    AsyncStorage.getItem(HK_BANNER_DISMISSED_KEY).then((v) => {
-      if (v === 'true') setHkBannerDismissed(true);
-    });
-  }, []);
 
   /**
    * Sincronización histórica: una sola vez por dispositivo, importa hasta
@@ -638,17 +630,11 @@ export const StatsScreen: FC = () => {
     // Si concede, el useEffect de arriba dispara syncHistoricalData
   }, [hk]);
 
-  const handleDismissBanner = useCallback(async () => {
-    setHkBannerDismissed(true);
-    try {
-      await AsyncStorage.setItem(HK_BANNER_DISMISSED_KEY, 'true');
-    } catch (err) {
-      console.warn('Could not persist banner dismiss', err);
-    }
-  }, []);
-
   const showHkBanner =
-    hk.isAvailable && !hk.isAuthorized && !hk.isLoading && !hkBannerDismissed;
+    hk.isAvailable &&
+    !hk.isAuthorized &&
+    !hk.isLoading &&
+    !hk.isBannerDismissed;
 
   // Empty state
   if (entries.length === 0) {
@@ -674,7 +660,7 @@ export const StatsScreen: FC = () => {
           {showHkBanner && (
             <HealthKitBanner
               onConnect={handleConnectHK}
-              onDismiss={handleDismissBanner}
+              onDismiss={hk.dismissBanner}
             />
           )}
 
@@ -718,7 +704,7 @@ export const StatsScreen: FC = () => {
         {showHkBanner && (
           <HealthKitBanner
             onConnect={handleConnectHK}
-            onDismiss={handleDismissBanner}
+            onDismiss={hk.dismissBanner}
           />
         )}
 

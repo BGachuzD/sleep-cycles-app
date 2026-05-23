@@ -35,6 +35,7 @@ import { OnboardingProvider } from './src/context/OnboardingContext';
 import { useSleepProfileContext } from './src/context/SleepProfileContext';
 import { SleepLogProvider } from './src/context/SleepLogContext';
 import { SleepRoutineProvider } from './src/context/SleepRoutineContext';
+import { HealthKitProvider } from './src/hooks/useHealthKit';
 import { ThemeProvider, useAppTheme } from './src/theme/ThemeProvider';
 
 export type RootStackParamList = {
@@ -263,9 +264,11 @@ export default function App() {
             <SleepProfileProvider>
               <SleepLogProvider>
                 <SleepRoutineProvider>
-                  <BottomSheetModalProvider>
-                    <AppNavigation />
-                  </BottomSheetModalProvider>
+                  <HealthKitProvider>
+                    <BottomSheetModalProvider>
+                      <AppNavigation />
+                    </BottomSheetModalProvider>
+                  </HealthKitProvider>
                 </SleepRoutineProvider>
               </SleepLogProvider>
             </SleepProfileProvider>
