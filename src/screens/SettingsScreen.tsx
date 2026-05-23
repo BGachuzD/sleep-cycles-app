@@ -23,9 +23,9 @@ import { resolveAutoThemeByHour } from '../theme/theme';
 import type { AppTheme, ThemeMode } from '../theme/theme';
 
 // URLs placeholder — actualizar cuando exista la landing definitiva.
-const LANDING_URL = 'https://sleepcycles.app';
-const PRIVACY_URL = 'https://sleepcycles.app/privacy';
-const TERMS_URL = 'https://sleepcycles.app/terms';
+const LANDING_URL = 'https://mimebien.com';
+const PRIVACY_URL = 'https://mimebien.com/privacy';
+const TERMS_URL = 'https://mimebien.com/terms';
 
 // ─────────────────────────────────────────────
 // ThemeOption
