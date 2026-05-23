@@ -255,8 +255,7 @@ export const SettingsScreen: FC = () => {
     },
   ];
 
-  const resolvedFromAuto =
-    mode === 'auto' ? resolveAutoThemeByHour() : null;
+  const resolvedFromAuto = mode === 'auto' ? resolveAutoThemeByHour() : null;
   const activeThemeName = theme.name === 'dark' ? 'Oscuro' : 'Claro';
 
   const openExternal = (url: string) => {
@@ -359,7 +358,9 @@ export const SettingsScreen: FC = () => {
                     size={12}
                     color={theme.colors.white}
                   />
-                  <Text style={styles.premiumPillText}>Historial ilimitado</Text>
+                  <Text style={styles.premiumPillText}>
+                    Historial ilimitado
+                  </Text>
                 </View>
               </View>
             </LinearGradient>
@@ -425,7 +426,7 @@ export const SettingsScreen: FC = () => {
             <LinkRow
               icon="globe-outline"
               label="Sitio web"
-              hint="sleepcycles.app"
+              hint="mimebien.com"
               external
               onPress={() => openExternal(LANDING_URL)}
               theme={theme}
