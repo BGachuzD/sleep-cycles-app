@@ -19,6 +19,7 @@ import { FloatingDrawerButton } from '../components/FloatingDrawerButton';
 import { FloatingHomeButton } from '../components/FloatingHomeButton';
 import { usePressScale } from '../hooks/usePressScale';
 import { useHealthKit } from '../hooks/useHealthKit';
+import { useOnboardingFlag } from '../hooks/useOnboardingFlag';
 import { useAppTheme } from '../theme/ThemeProvider';
 import { resolveAutoThemeByHour } from '../theme/theme';
 import type { AppTheme, ThemeMode } from '../theme/theme';
@@ -637,6 +638,24 @@ const hkStyles = StyleSheet.create({
 export const SettingsScreen: FC = () => {
   const { theme, mode, setMode } = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const { resetOnboarding } = useOnboardingFlag();
+
+  // Al resetear el flag, el navigator raíz muestra el recorrido de nuevo.
+  const handleReplayTour = () => {
+    Alert.alert(
+      'Ver recorrido',
+      'Volverás a ver la introducción de la app. Tu perfil y tus registros no se tocan.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Ver recorrido',
+          onPress: () => {
+            resetOnboarding().catch(() => {});
+          },
+        },
+      ],
+    );
+  };
 
   const themeOptions: Array<{
     value: ThemeMode;
@@ -832,6 +851,20 @@ export const SettingsScreen: FC = () => {
         <Animated.View entering={FadeInUp.delay(220).duration(500)}>
           <Text style={styles.sectionEyebrow}>CONEXIONES</Text>
           <HealthKitCard theme={theme} />
+        </Animated.View>
+
+        {/* Sección Ayuda */}
+        <Animated.View entering={FadeInUp.delay(240).duration(500)}>
+          <Text style={styles.sectionEyebrow}>AYUDA</Text>
+          <View style={styles.optionsList}>
+            <LinkRow
+              icon="map-outline"
+              label="Ver recorrido de la app"
+              hint="Repasa cómo funciona Mimebien"
+              onPress={handleReplayTour}
+              theme={theme}
+            />
+          </View>
         </Animated.View>
 
         {/* Sección Legal y enlaces */}

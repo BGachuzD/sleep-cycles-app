@@ -448,7 +448,7 @@ export const SleepProfileScreen: FC<Props> = ({ navigation, route }) => {
               <Text style={styles.chronoHint}>
                 Ventana óptima para dormir:{' '}
                 <Text style={styles.chronoHintStrong}>
-                  {optimalWindow.bedtimeStart} – {optimalWindow.bedtimeEnd}
+                  {optimalWindow.bedtimeStart} a {optimalWindow.bedtimeEnd}
                 </Text>
               </Text>
             )}

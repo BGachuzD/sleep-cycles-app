@@ -27,7 +27,7 @@ import Animated, {
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import type { RootStackParamList } from '../../App';
-import { Bumper } from '../components/Bumper';
+import { WheelTimePicker } from '../components/WheelTimePicker';
 import { PrimaryCTA } from '../components/PrimaryCTA';
 import { usePressScale } from '../hooks/usePressScale';
 import { useOnboardingFlag } from '../hooks/useOnboardingFlag';
@@ -42,7 +42,6 @@ import type { AppTheme } from '../theme/theme';
 type Props = NativeStackScreenProps<RootStackParamList, 'Onboarding'>;
 
 const { width, height } = Dimensions.get('window');
-const TOTAL_SLIDES = 5;
 const HERO_DIAMETER = Math.min(width * 0.46, 180);
 
 // ─────────────────────────────────────────────
@@ -360,7 +359,7 @@ const SlideWelcome: FC<{
     <HeroComposition icon="moon-outline" scrollX={scrollX} index={index} theme={theme} />
     <SlideTextLayer
       title="Mejores despertares"
-      description="Calculamos las horas exactas para que despiertes al final de un ciclo de sueño ligero — no desde lo más profundo."
+      description="Calculamos las horas exactas para que despiertes al final de un ciclo de sueño ligero, no desde lo más profundo."
       scrollX={scrollX}
       index={index}
       theme={theme}
@@ -486,23 +485,300 @@ const cyclesStyles = StyleSheet.create({
   },
 });
 
+// ─────────────────────────────────────────────
+// SlideHowItWorks: recorrido de las pantallas clave
+// ─────────────────────────────────────────────
+const TOUR_ITEMS: Array<{
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  desc: string;
+}> = [
+  {
+    icon: 'moon-outline',
+    label: 'Dormir ahora',
+    desc: 'Si te acuestas ya, te decimos a qué horas conviene despertar.',
+  },
+  {
+    icon: 'alarm-outline',
+    label: 'Despertar a las',
+    desc: 'Eliges tu hora de despertar y calculamos cuándo acostarte.',
+  },
+  {
+    icon: 'journal-outline',
+    label: 'Diario de sueño',
+    desc: 'Registra cómo dormiste y cómo te sentiste al despertar.',
+  },
+  {
+    icon: 'stats-chart-outline',
+    label: 'Estadísticas',
+    desc: 'Mira tu progreso, tu racha y tus tendencias de descanso.',
+  },
+];
+
+const SlideHowItWorks: FC<{
+  scrollX: SharedValue<number>;
+  index: number;
+  theme: AppTheme;
+}> = ({ scrollX, index, theme }) => {
+  const listStyle = useAnimatedStyle(() => {
+    const inputRange = [(index - 1) * width, index * width, (index + 1) * width];
+    return {
+      transform: [
+        {
+          translateY: interpolate(
+            scrollX.value,
+            inputRange,
+            [40, 0, 40],
+            Extrapolation.CLAMP,
+          ),
+        },
+      ],
+      opacity: interpolate(
+        scrollX.value,
+        inputRange,
+        [0, 1, 0],
+        Extrapolation.CLAMP,
+      ),
+    };
+  });
+
+  return (
+    <SlideShell>
+      <HeroComposition icon="map-outline" scrollX={scrollX} index={index} theme={theme} />
+      <SlideTextLayer
+        title="Tu kit para dormir mejor"
+        description="Dos calculadoras, un diario y tus estadísticas. Todo gira alrededor de tus ciclos."
+        scrollX={scrollX}
+        index={index}
+        theme={theme}
+      />
+      <Animated.View style={[tourStyles.list, listStyle]}>
+        {TOUR_ITEMS.map((item) => (
+          <View
+            key={item.label}
+            style={[
+              tourStyles.row,
+              {
+                backgroundColor: theme.colors.surface,
+                borderColor: theme.colors.border,
+                borderRadius: theme.radius.lg,
+              },
+            ]}
+          >
+            <View
+              style={[
+                tourStyles.iconCircle,
+                { backgroundColor: `${theme.colors.accent[500]}1F` },
+              ]}
+            >
+              <Ionicons
+                name={item.icon}
+                size={18}
+                color={theme.colors.accent[400]}
+              />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text
+                style={[
+                  tourStyles.label,
+                  {
+                    color: theme.colors.textPrimary,
+                    fontSize: theme.type.bodyLarge,
+                  },
+                ]}
+              >
+                {item.label}
+              </Text>
+              <Text
+                style={[
+                  tourStyles.desc,
+                  { color: theme.colors.textMuted, fontSize: theme.type.small },
+                ]}
+              >
+                {item.desc}
+              </Text>
+            </View>
+          </View>
+        ))}
+      </Animated.View>
+    </SlideShell>
+  );
+};
+
+const tourStyles = StyleSheet.create({
+  list: {
+    paddingHorizontal: 28,
+    marginTop: 20,
+    gap: 10,
+    alignSelf: 'stretch',
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 10,
+    gap: 12,
+    borderWidth: 1,
+  },
+  iconCircle: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  label: { fontWeight: '700' },
+  desc: { lineHeight: 16, marginTop: 2 },
+});
+
+// ─────────────────────────────────────────────
+// SlideApprox: expectativas honestas sobre las horas sugeridas
+// ─────────────────────────────────────────────
+const SlideApprox: FC<{
+  scrollX: SharedValue<number>;
+  index: number;
+  theme: AppTheme;
+}> = ({ scrollX, index, theme }) => {
+  const cardStyle = useAnimatedStyle(() => {
+    const inputRange = [(index - 1) * width, index * width, (index + 1) * width];
+    return {
+      transform: [
+        {
+          translateY: interpolate(
+            scrollX.value,
+            inputRange,
+            [40, 0, 40],
+            Extrapolation.CLAMP,
+          ),
+        },
+      ],
+      opacity: interpolate(
+        scrollX.value,
+        inputRange,
+        [0, 1, 0],
+        Extrapolation.CLAMP,
+      ),
+    };
+  });
+
+  return (
+    <SlideShell>
+      <HeroComposition icon="telescope-outline" scrollX={scrollX} index={index} theme={theme} />
+      <SlideTextLayer
+        title="Horas aproximadas, resultados reales"
+        description="Cada sugerencia es una aproximación pensada para que despiertes en fase ligera, no una promesa exacta. Síguelas con constancia y registra cómo te sientes: la meta es que notes la diferencia al despertar."
+        scrollX={scrollX}
+        index={index}
+        theme={theme}
+      />
+      <Animated.View
+        style={[
+          approxStyles.card,
+          {
+            backgroundColor: theme.colors.surface,
+            borderColor: theme.colors.accent[500],
+            borderRadius: theme.radius.xl,
+          },
+          cardStyle,
+        ]}
+      >
+        <View style={{ flex: 1, gap: 2 }}>
+          <Text
+            style={[
+              approxStyles.time,
+              { color: theme.colors.textPrimary, fontSize: theme.type.title3 },
+            ]}
+          >
+            8:55 p.m.
+          </Text>
+          <Text
+            style={[
+              approxStyles.cycles,
+              { color: theme.colors.textMuted, fontSize: theme.type.caption },
+            ]}
+          >
+            5 CICLOS · 7 h 30 min
+          </Text>
+        </View>
+        <View style={approxStyles.right}>
+          <View style={approxStyles.stars}>
+            {[1, 2, 3, 4, 5].map((i) => (
+              <Ionicons
+                key={i}
+                name="star"
+                size={12}
+                color={theme.colors.accent[400]}
+              />
+            ))}
+          </View>
+          <View
+            style={[
+              approxStyles.badge,
+              {
+                backgroundColor: `${theme.colors.accent[500]}1F`,
+                borderColor: `${theme.colors.accent[500]}55`,
+              },
+            ]}
+          >
+            <Text
+              style={[
+                approxStyles.badgeText,
+                { color: theme.colors.accent[300] },
+              ]}
+            >
+              ÓPTIMO
+            </Text>
+          </View>
+        </View>
+      </Animated.View>
+      <Text
+        style={[
+          approxStyles.hint,
+          { color: theme.colors.textMuted, fontSize: theme.type.caption },
+        ]}
+      >
+        Las estrellas indican qué tan reparadora es cada opción.
+      </Text>
+    </SlideShell>
+  );
+};
+
+const approxStyles = StyleSheet.create({
+  card: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginHorizontal: 28,
+    marginTop: 28,
+    padding: 18,
+    borderWidth: 1.5,
+    alignSelf: 'stretch',
+  },
+  time: { fontWeight: '900', letterSpacing: -0.5, fontVariant: ['tabular-nums'] },
+  cycles: { fontWeight: '700', letterSpacing: 0.5 },
+  right: { alignItems: 'flex-end', gap: 8 },
+  stars: { flexDirection: 'row', gap: 2 },
+  badge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+  badgeText: { fontSize: 10, fontWeight: '800', letterSpacing: 0.5 },
+  hint: {
+    textAlign: 'center',
+    marginTop: 12,
+    paddingHorizontal: 40,
+    fontWeight: '600',
+  },
+});
+
 const SlideWakeTime: FC<{
   scrollX: SharedValue<number>;
   index: number;
-  wakeHour: number;
-  wakeMinute: number;
-  onAdjustHour: (delta: number) => void;
-  onAdjustMinute: (delta: number) => void;
+  value: Date;
+  onChange: (date: Date) => void;
   theme: AppTheme;
-}> = ({
-  scrollX,
-  index,
-  wakeHour,
-  wakeMinute,
-  onAdjustHour,
-  onAdjustMinute,
-  theme,
-}) => {
+}> = ({ scrollX, index, value, onChange, theme }) => {
   const pickerStyle = useAnimatedStyle(() => {
     const inputRange = [(index - 1) * width, index * width, (index + 1) * width];
     return {
@@ -525,9 +801,6 @@ const SlideWakeTime: FC<{
     };
   });
 
-  const hh = String(wakeHour).padStart(2, '0');
-  const mm = String(wakeMinute).padStart(2, '0');
-
   return (
     <SlideShell>
       <HeroComposition icon="alarm-outline" scrollX={scrollX} index={index} theme={theme} />
@@ -538,80 +811,17 @@ const SlideWakeTime: FC<{
         index={index}
         theme={theme}
       />
-      <Animated.View style={[wakeStyles.row, pickerStyle]}>
-        <View style={wakeStyles.column}>
-          <Bumper
-            icon="chevron-up"
-            onPress={() => onAdjustHour(1)}
-            accessibilityLabel="Subir hora"
-          />
-          <Text
-            style={[
-              wakeStyles.value,
-              { color: theme.colors.heroText, fontSize: theme.type.display },
-            ]}
-          >
-            {hh}
-          </Text>
-          <Bumper
-            icon="chevron-down"
-            onPress={() => onAdjustHour(-1)}
-            accessibilityLabel="Bajar hora"
-          />
-        </View>
-        <Text
-          style={[
-            wakeStyles.separator,
-            { color: theme.colors.heroText, fontSize: theme.type.display },
-          ]}
-        >
-          :
-        </Text>
-        <View style={wakeStyles.column}>
-          <Bumper
-            icon="chevron-up"
-            onPress={() => onAdjustMinute(15)}
-            accessibilityLabel="Subir minutos"
-          />
-          <Text
-            style={[
-              wakeStyles.value,
-              { color: theme.colors.heroText, fontSize: theme.type.display },
-            ]}
-          >
-            {mm}
-          </Text>
-          <Bumper
-            icon="chevron-down"
-            onPress={() => onAdjustMinute(-15)}
-            accessibilityLabel="Bajar minutos"
-          />
-        </View>
+      <Animated.View style={[wakeStyles.pickerWrapper, pickerStyle]}>
+        <WheelTimePicker value={value} onChange={onChange} />
       </Animated.View>
     </SlideShell>
   );
 };
 
 const wakeStyles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    marginTop: 28,
-  },
-  column: { alignItems: 'center', gap: 8 },
-  value: {
-    fontWeight: '800',
-    letterSpacing: -2,
-    fontVariant: ['tabular-nums'],
-    minWidth: 86,
-    textAlign: 'center',
-  },
-  separator: {
-    fontWeight: '800',
-    letterSpacing: -2,
-    marginTop: -8,
+  pickerWrapper: {
+    alignSelf: 'stretch',
+    marginTop: 16,
   },
 });
 
@@ -793,7 +1003,7 @@ const SlideChronotype: FC<{
             { color: theme.colors.accent[300], fontSize: theme.type.caption },
           ]}
         >
-          Ventana óptima: {win.bedtimeStart} – {win.bedtimeEnd}
+          Ventana óptima: {win.bedtimeStart} a {win.bedtimeEnd}
         </Text>
       </Animated.View>
     </SlideShell>
@@ -964,14 +1174,16 @@ export const OnboardingScreen: FC<Props> = () => {
     },
   });
 
-  const adjustHour = (delta: number) =>
-    setWakeHour((h) => (h + delta + 24) % 24);
+  const wakeDate = useMemo(() => {
+    const d = new Date();
+    d.setHours(wakeHour, wakeMinute, 0, 0);
+    return d;
+  }, [wakeHour, wakeMinute]);
 
-  const adjustMinute = (delta: number) =>
-    setWakeMinute((m) => {
-      const next = Math.round((m + delta) / 15) * 15;
-      return ((next % 60) + 60) % 60;
-    });
+  const handleWakeChange = (picked: Date) => {
+    setWakeHour(picked.getHours());
+    setWakeMinute(picked.getMinutes());
+  };
 
   const handleStart = async () => {
     const next: SleepProfile = {
@@ -988,6 +1200,8 @@ export const OnboardingScreen: FC<Props> = () => {
     () => [
       { key: 'welcome' },
       { key: 'cycles' },
+      { key: 'tour' },
+      { key: 'approx' },
       { key: 'wake' },
       { key: 'chrono' },
       { key: 'done' },
@@ -1002,32 +1216,34 @@ export const OnboardingScreen: FC<Props> = () => {
       case 1:
         return <SlideCycles scrollX={scrollX} index={1} theme={theme} />;
       case 2:
+        return <SlideHowItWorks scrollX={scrollX} index={2} theme={theme} />;
+      case 3:
+        return <SlideApprox scrollX={scrollX} index={3} theme={theme} />;
+      case 4:
         return (
           <SlideWakeTime
             scrollX={scrollX}
-            index={2}
-            wakeHour={wakeHour}
-            wakeMinute={wakeMinute}
-            onAdjustHour={adjustHour}
-            onAdjustMinute={adjustMinute}
+            index={4}
+            value={wakeDate}
+            onChange={handleWakeChange}
             theme={theme}
           />
         );
-      case 3:
+      case 5:
         return (
           <SlideChronotype
             scrollX={scrollX}
-            index={3}
+            index={5}
             value={chronotype}
             onChange={setChronotype}
             theme={theme}
           />
         );
-      case 4:
+      case 6:
         return (
           <SlideDone
             scrollX={scrollX}
-            index={4}
+            index={6}
             onStart={handleStart}
             theme={theme}
           />

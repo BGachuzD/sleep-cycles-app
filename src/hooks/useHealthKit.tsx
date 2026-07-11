@@ -17,6 +17,7 @@ import React, {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useState,
   type ReactNode,
 } from 'react';
@@ -255,21 +256,38 @@ export const HealthKitProvider = ({ children }: { children: ReactNode }) => {
     }
   }, []);
 
-  const value: UseHealthKit = {
-    isAvailable,
-    isAuthorized,
-    isLoading,
-    isBannerDismissed,
-    requestPermissions,
-    fetchForDate,
-    fetchForRange,
-    markImported,
-    markManyImported,
-    isImported,
-    dismissBanner,
-    resetConnection,
-    clearHistoricalSync,
-  };
+  const value: UseHealthKit = useMemo(
+    () => ({
+      isAvailable,
+      isAuthorized,
+      isLoading,
+      isBannerDismissed,
+      requestPermissions,
+      fetchForDate,
+      fetchForRange,
+      markImported,
+      markManyImported,
+      isImported,
+      dismissBanner,
+      resetConnection,
+      clearHistoricalSync,
+    }),
+    [
+      isAvailable,
+      isAuthorized,
+      isLoading,
+      isBannerDismissed,
+      requestPermissions,
+      fetchForDate,
+      fetchForRange,
+      markImported,
+      markManyImported,
+      isImported,
+      dismissBanner,
+      resetConnection,
+      clearHistoricalSync,
+    ],
+  );
 
   return (
     <HealthKitContext.Provider value={value}>

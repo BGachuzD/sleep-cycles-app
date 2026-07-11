@@ -4,6 +4,7 @@ import {
   ActivityIndicator,
   Alert,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -11,7 +12,16 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
+import * as Haptics from 'expo-haptics';
+import Animated, {
+  Easing,
+  FadeInDown,
+  FadeInUp,
+  useAnimatedProps,
+  useSharedValue,
+  withDelay,
+  withTiming,
+} from 'react-native-reanimated';
 import { useNavigation } from '@react-navigation/native';
 import Svg, { Circle, Polyline, Defs, LinearGradient, Stop } from 'react-native-svg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -30,6 +40,7 @@ import {
   computeCompleteCycles,
   computeSleepMinutes,
   computeStats,
+  localDateString,
   type SleepLogEntry,
 } from '../domain/sleepLog';
 import { getAdjustedCycleLengthMinutes } from '../domain/sleepProfile';
@@ -54,6 +65,8 @@ const FEELING_ICON: Record<
 // ─────────────────────────────────────────────
 // CompletionRing: anillo SVG con stroke parcial
 // ─────────────────────────────────────────────
+const AnimatedCircle = Animated.createAnimatedComponent(Circle);
+
 const CompletionRing: FC<{
   completed: number;
   total: number;
@@ -65,7 +78,22 @@ const CompletionRing: FC<{
   const circumference = 2 * Math.PI * radius;
   const safeTotal = Math.max(total, 1);
   const progress = Math.min(completed / safeTotal, 1);
-  const dashOffset = circumference * (1 - progress);
+
+  // El anillo se llena animado desde 0 hasta el progreso real.
+  const animatedProgress = useSharedValue(0);
+  React.useEffect(() => {
+    animatedProgress.value = withDelay(
+      250,
+      withTiming(progress, {
+        duration: 900,
+        easing: Easing.out(Easing.cubic),
+      }),
+    );
+  }, [progress, animatedProgress]);
+
+  const animatedProps = useAnimatedProps(() => ({
+    strokeDashoffset: circumference * (1 - animatedProgress.value),
+  }));
 
   return (
     <View style={{ width: size, height: size }}>
@@ -86,7 +114,7 @@ const CompletionRing: FC<{
           fill="none"
         />
         {/* Progress */}
-        <Circle
+        <AnimatedCircle
           cx={size / 2}
           cy={size / 2}
           r={radius}
@@ -95,7 +123,7 @@ const CompletionRing: FC<{
           fill="none"
           strokeLinecap="round"
           strokeDasharray={`${circumference} ${circumference}`}
-          strokeDashoffset={dashOffset}
+          animatedProps={animatedProps}
           transform={`rotate(-90 ${size / 2} ${size / 2})`}
         />
       </Svg>
@@ -198,7 +226,7 @@ const WeekChart: FC<{
     for (let i = 6; i >= 0; i--) {
       const d = new Date();
       d.setDate(d.getDate() - i);
-      const dateStr = d.toISOString().split('T')[0];
+      const dateStr = localDateString(d);
       const entry = entries.find((e) => e.date === dateStr);
       const mins = entry ? computeSleepMinutes(entry) : 0;
       const cycles = entry ? computeCompleteCycles(mins, cycleMins) : 0;
@@ -220,7 +248,7 @@ const WeekChart: FC<{
 
   return (
     <View style={chartStyles.barsRow}>
-      {days.map((day) => {
+      {days.map((day, index) => {
         const heightPct = day.mins / maxMins;
         const isGood = day.mins >= targetMins;
         const barColor =
@@ -232,7 +260,10 @@ const WeekChart: FC<{
         return (
           <View key={day.dateStr} style={chartStyles.barCol}>
             <View style={chartStyles.barWrapper}>
-              <View
+              <Animated.View
+                entering={FadeInUp.delay(300 + index * 60)
+                  .springify()
+                  .damping(15)}
                 style={[
                   chartStyles.bar,
                   {
@@ -527,6 +558,16 @@ export const StatsScreen: FC = () => {
 
   const hk = useHealthKit();
   const [isSyncingHistorical, setIsSyncingHistorical] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await refresh();
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refresh]);
 
   const cycleMins = getAdjustedCycleLengthMinutes(profile?.age ?? 30);
   const stats = useMemo(
@@ -600,6 +641,9 @@ export const StatsScreen: FC = () => {
       await AsyncStorage.setItem(HK_HISTORICAL_SYNCED_KEY, 'true');
 
       if (imported > 0) {
+        Haptics.notificationAsync(
+          Haptics.NotificationFeedbackType.Success,
+        ).catch(() => {});
         Alert.alert(
           'Sincronización completa',
           `${imported} ${imported === 1 ? 'noche importada' : 'noches importadas'} de Salud.`,
@@ -648,6 +692,13 @@ export const StatsScreen: FC = () => {
           style={styles.scroll}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              tintColor={theme.colors.accent[400]}
+            />
+          }
         >
           <Animated.View entering={FadeInDown.duration(500)} style={styles.hero}>
             <Text style={styles.heroEyebrow}>ESTADÍSTICAS</Text>
@@ -699,6 +750,13 @@ export const StatsScreen: FC = () => {
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor={theme.colors.accent[400]}
+          />
+        }
       >
         {/* HealthKit banner */}
         {showHkBanner && (

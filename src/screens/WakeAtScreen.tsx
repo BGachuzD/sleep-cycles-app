@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import {
   BottomSheetBackdrop,
@@ -24,7 +25,7 @@ import { GradientBackground } from '../components/GradientBackground';
 import { FloatingDrawerButton } from '../components/FloatingDrawerButton';
 import { FloatingHomeButton } from '../components/FloatingHomeButton';
 import { PrimaryCTA } from '../components/PrimaryCTA';
-import { Bumper } from '../components/Bumper';
+import { WheelTimePicker } from '../components/WheelTimePicker';
 import { usePressScale } from '../hooks/usePressScale';
 import { useSleepProfileContext } from '../context/SleepProfileContext';
 import {
@@ -60,6 +61,10 @@ function scoreToStars(score: number): number {
 
 function getCycleEducation(cycles: number): string {
   switch (cycles) {
+    case 1:
+      return 'Sueño de emergencia. 1 ciclo (~90 min) restaura algo de energía y siempre es mejor que no dormir, pero está muy lejos del descanso real. Úsalo solo cuando no haya alternativa.';
+    case 2:
+      return 'Descanso de rescate. 2 ciclos cubren una parte del sueño profundo; funcionan para una noche partida o una siesta muy larga. No lo hagas costumbre: la deuda de sueño se acumula.';
     case 3:
       return 'Descanso mínimo. 3 ciclos cubren funciones esenciales pero te dejan déficit acumulado. Úsalo solo en noches excepcionales.';
     case 4:
@@ -67,7 +72,7 @@ function getCycleEducation(cycles: number): string {
     case 5:
       return 'Descanso óptimo para la mayoría de adultos. 5 ciclos completan las fases de consolidación de memoria y recuperación física.';
     case 6:
-      return 'Descanso profundo. 6 ciclos ofrecen recuperación completa — ideal tras esfuerzo físico intenso o noches previas cortas.';
+      return 'Descanso profundo. 6 ciclos ofrecen recuperación completa, ideal tras esfuerzo físico intenso o noches previas cortas.';
     case 7:
       return 'Sueño extendido. 7 ciclos ayudan a recuperar deuda de sueño acumulada. Más allá puede aumentar la inercia al despertar.';
     default:
@@ -182,6 +187,26 @@ const SleepOptionCard: FC<{
 
         <View style={optionStyles.right}>
           <ScoreStars stars={stars} theme={theme} />
+          {option.cycles <= 2 && (
+            <View
+              style={[
+                optionStyles.badgeMuted,
+                {
+                  backgroundColor: `${theme.colors.warning}1F`,
+                  borderColor: `${theme.colors.warning}55`,
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  optionStyles.badgeMutedText,
+                  { color: theme.colors.warning },
+                ]}
+              >
+                CORTO
+              </Text>
+            </View>
+          )}
           {isOptimalChronotype && (
             <View
               style={[
@@ -310,27 +335,19 @@ export const WakeAtScreen: FC<Props> = () => {
     setWakeDate(initialWakeDate);
   }, [initialWakeDate]);
 
-  const adjustHours = useCallback((delta: number) => {
-    setWakeDate((prev) => {
-      const next = new Date(prev);
-      next.setHours(next.getHours() + delta);
-      return next;
-    });
-  }, []);
-
-  const adjustMinutes = useCallback((delta: number) => {
-    setWakeDate((prev) => {
-      const next = new Date(prev);
-      const rounded = Math.round((next.getMinutes() + delta) / 15) * 15;
-      next.setMinutes(rounded);
-      return next;
-    });
+  const handleWakeTimeChange = useCallback((picked: Date) => {
+    // La rueda solo aporta hora/minuto; buildWakeDate decide si cae hoy o mañana.
+    setWakeDate(buildWakeDate(picked.getHours(), picked.getMinutes()));
   }, []);
 
   // Cálculo automático: reactivo a profile, wakeDate y now
   const options = useMemo<SleepTimeOption[]>(() => {
     if (!profile) return [];
-    return getSleepTimesForWakeDateForProfile(profile, wakeDate, [3, 4, 5, 6, 7]);
+    return getSleepTimesForWakeDateForProfile(
+      profile,
+      wakeDate,
+      [1, 2, 3, 4, 5, 6, 7],
+    );
   }, [profile, wakeDate]);
 
   // Bottom sheet
@@ -399,6 +416,9 @@ export const WakeAtScreen: FC<Props> = () => {
       return;
     }
 
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
+      () => {},
+    );
     Alert.alert(
       'Recordatorios programados',
       `• Preparación: ${preSleepTime > new Date(0)
@@ -429,9 +449,6 @@ export const WakeAtScreen: FC<Props> = () => {
     );
   }
 
-  const hh = String(wakeDate.getHours()).padStart(2, '0');
-  const mm = String(wakeDate.getMinutes()).padStart(2, '0');
-
   // Cálculos derivados para el sheet
   const sheetUntilSleep = selectedOption
     ? minutesUntil(selectedOption.sleepDate, now)
@@ -456,19 +473,7 @@ export const WakeAtScreen: FC<Props> = () => {
         <Animated.View entering={FadeInUp.duration(500)} style={styles.hero}>
           <Text style={styles.heroEyebrow}>DESPIERTA A LAS</Text>
 
-          <View style={styles.pickerRow}>
-            <View style={styles.pickerColumn}>
-              <Bumper icon="chevron-up" onPress={() => adjustHours(1)} accessibilityLabel="Subir hora" />
-              <Text style={styles.pickerValue}>{hh}</Text>
-              <Bumper icon="chevron-down" onPress={() => adjustHours(-1)} accessibilityLabel="Bajar hora" />
-            </View>
-            <Text style={styles.pickerSeparator}>:</Text>
-            <View style={styles.pickerColumn}>
-              <Bumper icon="chevron-up" onPress={() => adjustMinutes(15)} accessibilityLabel="Subir minutos" />
-              <Text style={styles.pickerValue}>{mm}</Text>
-              <Bumper icon="chevron-down" onPress={() => adjustMinutes(-15)} accessibilityLabel="Bajar minutos" />
-            </View>
-          </View>
+          <WheelTimePicker value={wakeDate} onChange={handleWakeTimeChange} />
 
           <Text style={styles.heroSubtitle}>
             Estas son las mejores horas para dormirte y despertar fresco a las{' '}
@@ -549,7 +554,7 @@ export const WakeAtScreen: FC<Props> = () => {
                   <Text style={styles.contextValue}>
                     {sheetUntilSleep > 0
                       ? formatDuration(sheetUntilSleep)
-                      : '—'}
+                      : 'Ahora'}
                   </Text>
                 </View>
                 <View
@@ -657,33 +662,6 @@ const createStyles = (theme: AppTheme) =>
       fontSize: theme.type.micro,
       fontWeight: '700',
       letterSpacing: 1.2,
-    },
-    pickerRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: theme.spacing.sm,
-      marginTop: theme.spacing.xs,
-    },
-    pickerColumn: {
-      alignItems: 'center',
-      gap: theme.spacing.xs,
-    },
-    pickerValue: {
-      color: theme.colors.heroText,
-      fontSize: theme.type.display,
-      fontWeight: '800',
-      letterSpacing: -2,
-      fontVariant: ['tabular-nums'],
-      minWidth: 86,
-      textAlign: 'center',
-    },
-    pickerSeparator: {
-      color: theme.colors.heroText,
-      fontSize: theme.type.display,
-      fontWeight: '800',
-      letterSpacing: -2,
-      marginTop: -8,
     },
     heroSubtitle: {
       color: theme.colors.textSecondary,

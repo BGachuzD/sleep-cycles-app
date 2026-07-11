@@ -32,19 +32,22 @@
           "icon": "./assets/adaptive-icon.png",
           "color": "#4f46e5"
         }
-      ]
+      ],
+      "expo-font",
+      "@react-native-community/datetimepicker"
     ],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.bgachuzd.mimebien",
       "infoPlist": {
         "NSUserNotificationsUsageDescription": "Esta app utiliza notificaciones para recordarte cuándo dormir o despertar según tus ciclos de sueño.",
-        "NSHealthShareUsageDescription": "Mimebien lee tus registros de sueño del app Salud para completar tu diario automáticamente. Tus datos nunca salen de tu dispositivo.",
+        "NSHealthShareUsageDescription": "Mimebien lee tus registros de sueño del app Salud para completar tu diario automáticamente y sincronizarlo con tu cuenta. No usamos tus datos con fines publicitarios ni los compartimos con terceros.",
         "NSHealthUpdateUsageDescription": "Mimebien puede guardar tus registros manuales en Salud para que tengas todo centralizado.",
         "ITSAppUsesNonExemptEncryption": false
       },
       "entitlements": {
-        "com.apple.developer.healthkit": true
+        "com.apple.developer.healthkit": true,
+        "com.apple.developer.usernotifications.time-sensitive": true
       }
     },
     "extra": {

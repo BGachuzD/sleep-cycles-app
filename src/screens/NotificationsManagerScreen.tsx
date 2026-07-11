@@ -68,7 +68,7 @@ const NotificationCard: FC<{
 }> = ({ request, onCancel, theme }) => {
   const trash = usePressScale(0.85);
   const triggerDate = getTriggerDate(request.trigger);
-  const timeString = triggerDate ? formatTime(triggerDate) : '—';
+  const timeString = triggerDate ? formatTime(triggerDate) : 'Sin hora';
   const relativeString = triggerDate ? formatRelativeDate(triggerDate) : 'sin fecha';
   const isPast = triggerDate ? triggerDate.getTime() < Date.now() : false;
 

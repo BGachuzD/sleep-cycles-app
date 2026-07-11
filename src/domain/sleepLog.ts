@@ -32,9 +32,26 @@ export function computeCompleteCycles(
   return Math.floor(sleepMinutes / cycleLengthMinutes);
 }
 
+/**
+ * YYYY-MM-DD en hora LOCAL. Nunca usar toISOString() aquí: es UTC y en
+ * México (UTC-6) a partir de las 18:00 devolvería la fecha de mañana.
+ */
+export function localDateString(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
 export function todayDateString(): string {
-  const now = new Date();
-  return now.toISOString().split('T')[0];
+  return localDateString(new Date());
+}
+
+/** Fecha local de hace `days` días, en YYYY-MM-DD. */
+export function dateStringDaysAgo(days: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() - days);
+  return localDateString(d);
 }
 
 export function computeStats(

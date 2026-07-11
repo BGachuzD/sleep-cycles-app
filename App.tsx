@@ -36,6 +36,7 @@ import { useSleepProfileContext } from './src/context/SleepProfileContext';
 import { SleepLogProvider } from './src/context/SleepLogContext';
 import { SleepRoutineProvider } from './src/context/SleepRoutineContext';
 import { HealthKitProvider } from './src/hooks/useHealthKit';
+import { scheduleDailyLogReminder } from './src/notifications/scheduler';
 import { ThemeProvider, useAppTheme } from './src/theme/ThemeProvider';
 
 export type RootStackParamList = {
@@ -118,6 +119,21 @@ function RootNavigator() {
       }
     })();
   }, []);
+
+  // ─────────────────────────────────────────────
+  // Recordatorio diario de registro: ~30 min después de la hora de despertar
+  // del perfil. Se reprograma solo si cambia la hora (clave única en el
+  // scheduler reemplaza el anterior).
+  // ─────────────────────────────────────────────
+  useEffect(() => {
+    if (!user || !profile) return;
+    const totalMinutes =
+      (profile.wakeHour ?? 8) * 60 + (profile.wakeMinute ?? 0) + 30;
+    scheduleDailyLogReminder({
+      hour: Math.floor(totalMinutes / 60) % 24,
+      minute: totalMinutes % 60,
+    });
+  }, [user, profile]);
 
   // ─────────────────────────────────────────────
   // Deep link listener: captura URLs del esquema `mimebien://` y, si vienen
