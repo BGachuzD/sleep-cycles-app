@@ -12,7 +12,6 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
 import Animated, {
   Easing,
   FadeInDown,
@@ -24,9 +23,6 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useNavigation } from '@react-navigation/native';
 import Svg, { Circle, Polyline, Defs, LinearGradient, Stop } from 'react-native-svg';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import 'react-native-get-random-values';
-import { v4 as uuidv4 } from 'uuid';
 
 import { GradientBackground } from '../components/GradientBackground';
 import { FloatingDrawerButton } from '../components/FloatingDrawerButton';
@@ -542,22 +538,17 @@ const entryStyles = StyleSheet.create({
   },
 });
 
-// Key persistente para el flag de sync histórico (la del banner ahora vive
-// dentro del HealthKitProvider, compartida globalmente).
-const HK_HISTORICAL_SYNCED_KEY = 'healthkit:historical_synced';
-
 // ─────────────────────────────────────────────
 // StatsScreen
 // ─────────────────────────────────────────────
 export const StatsScreen: FC = () => {
-  const { entries, loading, addEntry, refresh } = useSleepLogContext();
+  const { entries, loading, refresh } = useSleepLogContext();
   const { profile } = useSleepProfileContext();
   const { theme } = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const navigation = useNavigation();
 
   const hk = useHealthKit();
-  const [isSyncingHistorical, setIsSyncingHistorical] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
   const handleRefresh = useCallback(async () => {
@@ -590,79 +581,8 @@ export const StatsScreen: FC = () => {
     return recent.map((e) => computeSleepMinutes(e) / 60);
   }, [entries]);
 
-  /**
-   * Sincronización histórica: una sola vez por dispositivo, importa hasta
-   * 30 días atrás desde HealthKit creando entries en sleep_log para los
-   * días que el usuario no tiene ya registrados localmente.
-   */
-  const syncHistoricalData = useCallback(async () => {
-    if (!hk.isAuthorized) return;
-    try {
-      const alreadySynced = await AsyncStorage.getItem(HK_HISTORICAL_SYNCED_KEY);
-      if (alreadySynced === 'true') return;
-
-      setIsSyncingHistorical(true);
-
-      // Rango: 30 días atrás (excluyendo hoy para no chocar con auto-populate del log)
-      const end = new Date();
-      end.setDate(end.getDate() - 1);
-      const start = new Date();
-      start.setDate(start.getDate() - 30);
-      const fmt = (d: Date) => {
-        const y = d.getFullYear();
-        const m = String(d.getMonth() + 1).padStart(2, '0');
-        const day = String(d.getDate()).padStart(2, '0');
-        return `${y}-${m}-${day}`;
-      };
-
-      const hkEntries = await hk.fetchForRange(fmt(start), fmt(end));
-      const existingDates = new Set(entries.map((e) => e.date));
-
-      let imported = 0;
-      const importedIds: string[] = [];
-      for (const hkEntry of hkEntries) {
-        if (existingDates.has(hkEntry.date)) continue;
-        const newId = uuidv4();
-        await addEntry({
-          id: newId,
-          date: hkEntry.date,
-          bedTimeISO: hkEntry.bedTime,
-          wakeTimeISO: hkEntry.wakeTime,
-          feeling: 2, // neutral — HealthKit no nos da sensación al despertar
-        });
-        importedIds.push(newId);
-        imported++;
-      }
-
-      if (importedIds.length > 0) {
-        await hk.markManyImported(importedIds);
-      }
-
-      await AsyncStorage.setItem(HK_HISTORICAL_SYNCED_KEY, 'true');
-
-      if (imported > 0) {
-        Haptics.notificationAsync(
-          Haptics.NotificationFeedbackType.Success,
-        ).catch(() => {});
-        Alert.alert(
-          'Sincronización completa',
-          `${imported} ${imported === 1 ? 'noche importada' : 'noches importadas'} de Salud.`,
-        );
-      }
-    } catch (err) {
-      console.error('[Stats] syncHistoricalData failed', err);
-    } finally {
-      setIsSyncingHistorical(false);
-    }
-  }, [hk, entries, addEntry]);
-
-  // Disparar sync histórico la primera vez que el usuario está autorizado
-  useEffect(() => {
-    if (hk.isAuthorized && !hk.isLoading) {
-      syncHistoricalData();
-    }
-  }, [hk.isAuthorized, hk.isLoading, syncHistoricalData]);
-
+  // La importación histórica de 30 días vive en el HealthKitProvider:
+  // se dispara sola al conectar (desde cualquier pantalla) y deduplica.
   const handleConnectHK = useCallback(async () => {
     const granted = await hk.requestPermissions();
     if (!granted) {
@@ -671,7 +591,6 @@ export const StatsScreen: FC = () => {
         'Puedes activarlo más tarde desde Ajustes → Salud → Mimebien.',
       );
     }
-    // Si concede, el useEffect de arriba dispara syncHistoricalData
   }, [hk]);
 
   const showHkBanner =
@@ -767,7 +686,7 @@ export const StatsScreen: FC = () => {
         )}
 
         {/* Sync histórico en curso */}
-        {isSyncingHistorical && (
+        {hk.isImporting && (
           <View
             style={[
               styles.syncBox,

@@ -114,18 +114,21 @@ export const SignUpScreen: FC<Props> = ({ navigation }) => {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [infoMessage, setInfoMessage] = useState<string | null>(null);
+  // Al crearse la cuenta, la pantalla completa cambia a la vista de
+  // "confirma tu correo" (desaparece el form: imposible reenviar).
+  const [accountCreated, setAccountCreated] = useState(false);
 
   const handleSignUp = async () => {
+    if (loading) return;
     setError(null);
-    setInfoMessage(null);
 
-    if (!displayName.trim() || !email.trim() || !password || !passwordConfirm) {
+    const name = displayName.trim().replace(/\s+/g, ' ');
+    if (!name || !email.trim() || !password || !passwordConfirm) {
       setError('Completa todos los campos.');
       return;
     }
-    if (displayName.trim().length < 2) {
-      setError('Ingresa un nombre válido (mínimo 2 caracteres).');
+    if (name.length < 5 || !name.includes(' ')) {
+      setError('Ingresa tu nombre completo (nombre y apellido).');
       return;
     }
     if (password !== passwordConfirm) {
@@ -141,7 +144,7 @@ export const SignUpScreen: FC<Props> = ({ navigation }) => {
     const { error: signUpError } = await signUp({
       email: email.trim(),
       password,
-      displayName: displayName.trim(),
+      displayName: name,
       chronotype,
     });
     setLoading(false);
@@ -151,13 +154,100 @@ export const SignUpScreen: FC<Props> = ({ navigation }) => {
       return;
     }
 
-    setInfoMessage(
-      'Cuenta creada. Si la verificación por correo está habilitada, revisa tu bandeja de entrada y confirma tu email antes de iniciar sesión.',
-    );
+    setAccountCreated(true);
   };
 
   const goToSignIn = () => navigation.replace('SignIn');
   const linkScale = usePressScale(0.97);
+
+  // ── Vista post-registro: confirma tu correo ──
+  if (accountCreated) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+        <View style={styles.ambient} pointerEvents="none">
+          <View
+            style={[
+              styles.ambientGlow,
+              {
+                backgroundColor: theme.colors.accent[600],
+                shadowColor: theme.colors.accent[600],
+              },
+            ]}
+          />
+        </View>
+
+        <ScrollView
+          style={styles.flex}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          <Animated.View entering={FadeInDown.duration(500)}>
+            <AuthHero icon="mail-unread-outline" />
+          </Animated.View>
+
+          <Animated.View
+            entering={FadeInDown.delay(100).duration(500)}
+            style={styles.titleBlock}
+          >
+            <Text style={styles.eyebrow}>CUENTA CREADA</Text>
+            <Text style={styles.title}>Confirma tu correo</Text>
+            <Text style={styles.subtitle}>
+              Te enviamos un enlace de verificación a{'\n'}
+              <Text style={styles.subtitleStrong}>{email.trim()}</Text>
+            </Text>
+          </Animated.View>
+
+          <Animated.View
+            entering={FadeInUp.delay(180).duration(500)}
+            style={styles.stepsCard}
+          >
+            {[
+              { n: '1', text: 'Abre el correo que te acabamos de enviar.' },
+              { n: '2', text: 'Toca el enlace para confirmar tu cuenta.' },
+              { n: '3', text: 'Regresa aquí e inicia sesión.' },
+            ].map((step) => (
+              <View key={step.n} style={styles.stepRow}>
+                <View
+                  style={[
+                    styles.stepBullet,
+                    { backgroundColor: `${theme.colors.accent[500]}1F` },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.stepBulletText,
+                      { color: theme.colors.accent[400] },
+                    ]}
+                  >
+                    {step.n}
+                  </Text>
+                </View>
+                <Text style={styles.stepText}>{step.text}</Text>
+              </View>
+            ))}
+          </Animated.View>
+
+          <Animated.View entering={FadeInUp.delay(260).duration(500)}>
+            <PrimaryCTA
+              label="Ir a iniciar sesión"
+              icon="log-in-outline"
+              onPress={goToSignIn}
+            />
+          </Animated.View>
+
+          <Animated.View
+            entering={FadeInUp.delay(340).duration(500)}
+            style={styles.linkWrapper}
+          >
+            <Text style={styles.linkText}>
+              ¿No llega el correo? Revisa la carpeta de spam o correo no
+              deseado.
+            </Text>
+          </Animated.View>
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
@@ -208,10 +298,10 @@ export const SignUpScreen: FC<Props> = ({ navigation }) => {
             style={styles.form}
           >
             <FieldInput
-              label="Nombre para mostrar"
+              label="Nombre completo"
               value={displayName}
               onChangeText={setDisplayName}
-              placeholder="Tu nombre"
+              placeholder="Nombre y apellido"
               autoCapitalize="words"
               large={false}
             />
@@ -295,36 +385,6 @@ export const SignUpScreen: FC<Props> = ({ navigation }) => {
                   style={[styles.alertText, { color: theme.colors.danger }]}
                 >
                   {error}
-                </Text>
-              </View>
-            </Animated.View>
-          )}
-
-          {/* Info */}
-          {infoMessage && (
-            <Animated.View entering={FadeInUp.duration(300)}>
-              <View
-                style={[
-                  styles.alertBox,
-                  {
-                    backgroundColor: `${theme.colors.accent[500]}14`,
-                    borderColor: `${theme.colors.accent[500]}40`,
-                    borderRadius: theme.radius.md,
-                  },
-                ]}
-              >
-                <Ionicons
-                  name="checkmark-circle-outline"
-                  size={16}
-                  color={theme.colors.accent[400]}
-                />
-                <Text
-                  style={[
-                    styles.alertText,
-                    { color: theme.colors.accent[300] },
-                  ]}
-                >
-                  {infoMessage}
                 </Text>
               </View>
             </Animated.View>
@@ -419,6 +479,41 @@ const createStyles = (theme: AppTheme) =>
       marginTop: 6,
       textAlign: 'center',
       paddingHorizontal: theme.spacing.md,
+    },
+    subtitleStrong: {
+      color: theme.colors.textPrimary,
+      fontWeight: '800',
+    },
+    stepsCard: {
+      backgroundColor: theme.colors.surface,
+      borderColor: theme.colors.border,
+      borderWidth: 1,
+      borderRadius: theme.radius.xl,
+      padding: theme.spacing.xl,
+      gap: theme.spacing.lg,
+      marginTop: theme.spacing.md,
+    },
+    stepRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+    },
+    stepBullet: {
+      width: 28,
+      height: 28,
+      borderRadius: 14,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    stepBulletText: {
+      fontSize: theme.type.small,
+      fontWeight: '900',
+    },
+    stepText: {
+      flex: 1,
+      color: theme.colors.textSecondary,
+      fontSize: theme.type.body,
+      lineHeight: 19,
     },
     form: { gap: theme.spacing.sm, marginTop: theme.spacing.md },
     chronoSection: { gap: theme.spacing.sm, marginTop: theme.spacing.xs },

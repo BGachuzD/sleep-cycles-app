@@ -369,12 +369,10 @@ const HealthKitCard: FC<{ theme: AppTheme }> = ({ theme }) => {
         { text: 'Cancelar', style: 'cancel' },
         {
           text: 'Resincronizar',
-          onPress: async () => {
-            await hk.clearHistoricalSync();
-            Alert.alert(
-              'Listo',
-              'La sincronización se ejecutará la próxima vez que abras Estadísticas.',
-            );
+          onPress: () => {
+            // force re-ejecuta aunque el flag de sync ya exista; el propio
+            // import muestra el resumen (n noches o "sin noches nuevas").
+            hk.runHistoricalImport({ force: true });
           },
         },
       ],

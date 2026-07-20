@@ -1,9 +1,8 @@
 // src/screens/OnboardingScreen.tsx
-import React, { FC, useEffect, useMemo, useRef, useState } from 'react';
+import React, { FC, useEffect, useMemo, useRef } from 'react';
 import {
   Dimensions,
   FlatList,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -27,15 +26,8 @@ import Animated, {
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import type { RootStackParamList } from '../../App';
-import { WheelTimePicker } from '../components/WheelTimePicker';
 import { PrimaryCTA } from '../components/PrimaryCTA';
-import { usePressScale } from '../hooks/usePressScale';
 import { useOnboardingFlag } from '../hooks/useOnboardingFlag';
-import { useSleepProfileContext } from '../context/SleepProfileContext';
-import { defaultProfile } from '../hooks/useSleepProfile';
-import { useAuth } from '../context/AuthContext';
-import type { Chronotype, SleepProfile } from '../domain/sleepProfile';
-import { getOptimalSleepWindow } from '../domain/sleepProfile';
 import { useAppTheme } from '../theme/ThemeProvider';
 import type { AppTheme } from '../theme/theme';
 
@@ -350,23 +342,6 @@ const textStyles = StyleSheet.create({
 // ─────────────────────────────────────────────
 // Slides
 // ─────────────────────────────────────────────
-const SlideWelcome: FC<{
-  scrollX: SharedValue<number>;
-  index: number;
-  theme: AppTheme;
-}> = ({ scrollX, index, theme }) => (
-  <SlideShell>
-    <HeroComposition icon="moon-outline" scrollX={scrollX} index={index} theme={theme} />
-    <SlideTextLayer
-      title="Mejores despertares"
-      description="Calculamos las horas exactas para que despiertes al final de un ciclo de sueño ligero, no desde lo más profundo."
-      scrollX={scrollX}
-      index={index}
-      theme={theme}
-    />
-  </SlideShell>
-);
-
 const SlideCycles: FC<{
   scrollX: SharedValue<number>;
   index: number;
@@ -402,10 +377,10 @@ const SlideCycles: FC<{
 
   return (
     <SlideShell>
-      <HeroComposition icon="infinite-outline" scrollX={scrollX} index={index} theme={theme} />
+      <HeroComposition icon="moon-outline" scrollX={scrollX} index={index} theme={theme} />
       <SlideTextLayer
-        title="Ciclos, no solo horas"
-        description="Tu sueño se organiza en ciclos de ~90 min. Completarlos importa más que la cantidad total de horas."
+        title="Duerme en ciclos, despierta mejor"
+        description="Tu sueño se organiza en ciclos de ~90 min. Calculamos las horas exactas para que despiertes al final de uno, en fase ligera, no desde lo más profundo."
         scrollX={scrollX}
         index={index}
         theme={theme}
@@ -636,8 +611,9 @@ const tourStyles = StyleSheet.create({
 const SlideApprox: FC<{
   scrollX: SharedValue<number>;
   index: number;
+  onStart: () => void;
   theme: AppTheme;
-}> = ({ scrollX, index, theme }) => {
+}> = ({ scrollX, index, onStart, theme }) => {
   const cardStyle = useAnimatedStyle(() => {
     const inputRange = [(index - 1) * width, index * width, (index + 1) * width];
     return {
@@ -738,6 +714,22 @@ const SlideApprox: FC<{
       >
         Las estrellas indican qué tan reparadora es cada opción.
       </Text>
+      <View style={approxStyles.ctaWrapper}>
+        <PrimaryCTA
+          label="Configurar mi perfil"
+          icon="arrow-forward"
+          trailingIcon="sparkles-outline"
+          onPress={onStart}
+        />
+        <Text
+          style={[
+            approxStyles.ctaHint,
+            { color: theme.colors.textMuted, fontSize: theme.type.caption },
+          ]}
+        >
+          Te tomará menos de un minuto.
+        </Text>
+      </View>
     </SlideShell>
   );
 };
@@ -770,316 +762,15 @@ const approxStyles = StyleSheet.create({
     paddingHorizontal: 40,
     fontWeight: '600',
   },
-});
-
-const SlideWakeTime: FC<{
-  scrollX: SharedValue<number>;
-  index: number;
-  value: Date;
-  onChange: (date: Date) => void;
-  theme: AppTheme;
-}> = ({ scrollX, index, value, onChange, theme }) => {
-  const pickerStyle = useAnimatedStyle(() => {
-    const inputRange = [(index - 1) * width, index * width, (index + 1) * width];
-    return {
-      transform: [
-        {
-          translateY: interpolate(
-            scrollX.value,
-            inputRange,
-            [40, 0, 40],
-            Extrapolation.CLAMP,
-          ),
-        },
-      ],
-      opacity: interpolate(
-        scrollX.value,
-        inputRange,
-        [0, 1, 0],
-        Extrapolation.CLAMP,
-      ),
-    };
-  });
-
-  return (
-    <SlideShell>
-      <HeroComposition icon="alarm-outline" scrollX={scrollX} index={index} theme={theme} />
-      <SlideTextLayer
-        title="¿A qué hora despiertas?"
-        description="Esto nos ayudará a darte recomendaciones listas de inmediato."
-        scrollX={scrollX}
-        index={index}
-        theme={theme}
-      />
-      <Animated.View style={[wakeStyles.pickerWrapper, pickerStyle]}>
-        <WheelTimePicker value={value} onChange={onChange} />
-      </Animated.View>
-    </SlideShell>
-  );
-};
-
-const wakeStyles = StyleSheet.create({
-  pickerWrapper: {
-    alignSelf: 'stretch',
-    marginTop: 16,
-  },
-});
-
-const CHRONO_OPTIONS: Array<{
-  id: Chronotype;
-  icon: keyof typeof Ionicons.glyphMap;
-  label: string;
-  desc: string;
-}> = [
-  {
-    id: 'morning',
-    icon: 'sunny-outline',
-    label: 'Matutino',
-    desc: 'Me duermo y me levanto temprano naturalmente.',
-  },
-  {
-    id: 'intermediate',
-    icon: 'partly-sunny-outline',
-    label: 'Intermedio',
-    desc: 'Sin preferencia clara de horario.',
-  },
-  {
-    id: 'night',
-    icon: 'moon-outline',
-    label: 'Nocturno',
-    desc: 'Me desvelo fácilmente y me cuesta madrugar.',
-  },
-];
-
-const ChronotypeOption: FC<{
-  option: (typeof CHRONO_OPTIONS)[number];
-  active: boolean;
-  onPress: () => void;
-  theme: AppTheme;
-}> = ({ option, active, onPress, theme }) => {
-  const { animatedStyle, onPressIn, onPressOut } = usePressScale(0.97);
-  return (
-    <Animated.View style={animatedStyle}>
-      <Pressable
-        onPress={onPress}
-        onPressIn={onPressIn}
-        onPressOut={onPressOut}
-        accessibilityRole="button"
-        style={[
-          chronoStyles.option,
-          {
-            backgroundColor: active
-              ? `${theme.colors.accent[500]}14`
-              : theme.colors.surface,
-            borderColor: active
-              ? theme.colors.accent[500]
-              : theme.colors.border,
-            borderWidth: active ? 1.5 : 1,
-            borderRadius: theme.radius.lg,
-          },
-        ]}
-      >
-        <View
-          style={[
-            chronoStyles.iconCircle,
-            {
-              backgroundColor: `${theme.colors.accent[500]}1F`,
-            },
-          ]}
-        >
-          <Ionicons
-            name={option.icon}
-            size={20}
-            color={theme.colors.accent[400]}
-          />
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text
-            style={[
-              chronoStyles.label,
-              {
-                color: active
-                  ? theme.colors.textPrimary
-                  : theme.colors.textSecondary,
-                fontSize: theme.type.bodyLarge,
-              },
-            ]}
-          >
-            {option.label}
-          </Text>
-          <Text
-            style={[
-              chronoStyles.desc,
-              { color: theme.colors.textMuted, fontSize: theme.type.small },
-            ]}
-          >
-            {option.desc}
-          </Text>
-        </View>
-        {active && (
-          <Ionicons
-            name="checkmark-circle"
-            size={20}
-            color={theme.colors.accent[400]}
-          />
-        )}
-      </Pressable>
-    </Animated.View>
-  );
-};
-
-const chronoStyles = StyleSheet.create({
-  option: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 10,
-    gap: 12,
-  },
-  iconCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  label: { fontWeight: '700' },
-  desc: { lineHeight: 16, marginTop: 2 },
-});
-
-const SlideChronotype: FC<{
-  scrollX: SharedValue<number>;
-  index: number;
-  value: Chronotype;
-  onChange: (c: Chronotype) => void;
-  theme: AppTheme;
-}> = ({ scrollX, index, value, onChange, theme }) => {
-  const listStyle = useAnimatedStyle(() => {
-    const inputRange = [(index - 1) * width, index * width, (index + 1) * width];
-    return {
-      transform: [
-        {
-          translateY: interpolate(
-            scrollX.value,
-            inputRange,
-            [40, 0, 40],
-            Extrapolation.CLAMP,
-          ),
-        },
-      ],
-      opacity: interpolate(
-        scrollX.value,
-        inputRange,
-        [0, 1, 0],
-        Extrapolation.CLAMP,
-      ),
-    };
-  });
-
-  const win = getOptimalSleepWindow(value);
-
-  return (
-    <SlideShell>
-      <HeroComposition icon="compass-outline" scrollX={scrollX} index={index} theme={theme} />
-      <SlideTextLayer
-        title="¿Cuál es tu cronotipo?"
-        description="Tu reloj biológico natural. Ajustaremos tu latencia y ventanas óptimas."
-        scrollX={scrollX}
-        index={index}
-        theme={theme}
-      />
-      <Animated.View style={[chronoListStyles.list, listStyle]}>
-        {CHRONO_OPTIONS.map((opt) => (
-          <ChronotypeOption
-            key={opt.id}
-            option={opt}
-            active={value === opt.id}
-            onPress={() => onChange(opt.id)}
-            theme={theme}
-          />
-        ))}
-        <Text
-          style={[
-            chronoListStyles.hint,
-            { color: theme.colors.accent[300], fontSize: theme.type.caption },
-          ]}
-        >
-          Ventana óptima: {win.bedtimeStart} a {win.bedtimeEnd}
-        </Text>
-      </Animated.View>
-    </SlideShell>
-  );
-};
-
-const chronoListStyles = StyleSheet.create({
-  list: {
-    paddingHorizontal: 28,
-    marginTop: 20,
-    gap: 12,
-    alignSelf: 'stretch',
-  },
-  hint: {
-    fontWeight: '700',
-    letterSpacing: 0.5,
-    textAlign: 'center',
-    marginTop: 8,
-  },
-});
-
-const SlideDone: FC<{
-  scrollX: SharedValue<number>;
-  index: number;
-  onStart: () => void;
-  theme: AppTheme;
-}> = ({ scrollX, index, onStart, theme }) => {
-  const ctaStyle = useAnimatedStyle(() => {
-    const inputRange = [(index - 1) * width, index * width, (index + 1) * width];
-    return {
-      transform: [
-        {
-          translateY: interpolate(
-            scrollX.value,
-            inputRange,
-            [40, 0, 40],
-            Extrapolation.CLAMP,
-          ),
-        },
-      ],
-      opacity: interpolate(
-        scrollX.value,
-        inputRange,
-        [0, 1, 0],
-        Extrapolation.CLAMP,
-      ),
-    };
-  });
-
-  return (
-    <SlideShell>
-      <HeroComposition icon="sparkles-outline" scrollX={scrollX} index={index} theme={theme} />
-      <SlideTextLayer
-        title="Todo listo"
-        description="Tu app está personalizada. Empieza a dormir mejor desde esta misma noche."
-        scrollX={scrollX}
-        index={index}
-        theme={theme}
-      />
-      <Animated.View style={[doneStyles.ctaWrapper, ctaStyle]}>
-        <PrimaryCTA
-          label="Empezar a dormir mejor"
-          icon="arrow-forward"
-          trailingIcon="sparkles-outline"
-          onPress={onStart}
-        />
-      </Animated.View>
-    </SlideShell>
-  );
-};
-
-const doneStyles = StyleSheet.create({
   ctaWrapper: {
     paddingHorizontal: 28,
     width: '100%',
-    marginTop: 32,
+    marginTop: 28,
+    gap: 10,
+  },
+  ctaHint: {
+    textAlign: 'center',
+    fontWeight: '600',
   },
 });
 
@@ -1156,16 +847,7 @@ const SlideShell: FC<{ children: React.ReactNode }> = ({ children }) => (
 export const OnboardingScreen: FC<Props> = () => {
   const { theme } = useAppTheme();
   const { markAsSeen } = useOnboardingFlag();
-  const { profile, saveProfile } = useSleepProfileContext();
-  const { user } = useAuth();
   const flatRef = useRef<FlatList>(null);
-
-  const [wakeHour, setWakeHour] = useState(profile?.wakeHour ?? 7);
-  const [wakeMinute, setWakeMinute] = useState(profile?.wakeMinute ?? 0);
-  const metaChronotype = user?.user_metadata?.chronotype as Chronotype | undefined;
-  const [chronotype, setChronotype] = useState<Chronotype>(
-    profile?.chronotype ?? metaChronotype ?? 'intermediate',
-  );
 
   const scrollX = useSharedValue(0);
   const onScroll = useAnimatedScrollHandler({
@@ -1174,76 +856,28 @@ export const OnboardingScreen: FC<Props> = () => {
     },
   });
 
-  const wakeDate = useMemo(() => {
-    const d = new Date();
-    d.setHours(wakeHour, wakeMinute, 0, 0);
-    return d;
-  }, [wakeHour, wakeMinute]);
-
-  const handleWakeChange = (picked: Date) => {
-    setWakeHour(picked.getHours());
-    setWakeMinute(picked.getMinutes());
-  };
-
+  // Solo marca el carrusel como visto: el perfil se llena en el stepper
+  // (ProfileSetupScreen), al que el navigator lleva porque profile es null.
   const handleStart = async () => {
-    const next: SleepProfile = {
-      ...(profile ?? defaultProfile),
-      chronotype,
-      wakeHour,
-      wakeMinute,
-    };
-    await saveProfile(next);
     await markAsSeen();
   };
 
   const slides = useMemo(
-    () => [
-      { key: 'welcome' },
-      { key: 'cycles' },
-      { key: 'tour' },
-      { key: 'approx' },
-      { key: 'wake' },
-      { key: 'chrono' },
-      { key: 'done' },
-    ],
+    () => [{ key: 'cycles' }, { key: 'tour' }, { key: 'approx' }],
     [],
   );
 
   const renderItem = ({ index }: { item: { key: string }; index: number }) => {
     switch (index) {
       case 0:
-        return <SlideWelcome scrollX={scrollX} index={0} theme={theme} />;
+        return <SlideCycles scrollX={scrollX} index={0} theme={theme} />;
       case 1:
-        return <SlideCycles scrollX={scrollX} index={1} theme={theme} />;
+        return <SlideHowItWorks scrollX={scrollX} index={1} theme={theme} />;
       case 2:
-        return <SlideHowItWorks scrollX={scrollX} index={2} theme={theme} />;
-      case 3:
-        return <SlideApprox scrollX={scrollX} index={3} theme={theme} />;
-      case 4:
         return (
-          <SlideWakeTime
+          <SlideApprox
             scrollX={scrollX}
-            index={4}
-            value={wakeDate}
-            onChange={handleWakeChange}
-            theme={theme}
-          />
-        );
-      case 5:
-        return (
-          <SlideChronotype
-            scrollX={scrollX}
-            index={5}
-            value={chronotype}
-            onChange={setChronotype}
-            theme={theme}
-          />
-        );
-      case 6:
-        return (
-          <SlideDone
-            scrollX={scrollX}
-            index={6}
+            index={2}
             onStart={handleStart}
             theme={theme}
           />

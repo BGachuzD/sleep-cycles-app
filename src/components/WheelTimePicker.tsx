@@ -6,6 +6,7 @@ import React, {
   useMemo,
   useImperativeHandle,
   useRef,
+  useState,
 } from 'react';
 import {
   NativeScrollEvent,
@@ -145,6 +146,35 @@ const WheelColumn = forwardRef<
       scrollY.value = event.contentOffset.y;
     });
 
+    // Ventana manual: solo se montan las filas cercanas al centro; el resto
+    // se sustituye por espaciadores del alto exacto. Evita anidar una
+    // VirtualizedList dentro del ScrollView de la pantalla.
+    const WINDOW_BUFFER = 14; // filas montadas a cada lado del centro
+    const makeWindow = useCallback(
+      (center: number) => ({
+        start: Math.max(0, center - WINDOW_BUFFER),
+        end: Math.min(extended.length, center + WINDOW_BUFFER + 1),
+      }),
+      [extended.length],
+    );
+    const [window, setWindow] = useState(() =>
+      makeWindow(base + initialIndex),
+    );
+    const applyWindow = useCallback(
+      (center: number) => setWindow(makeWindow(center)),
+      [makeWindow],
+    );
+    const lastWindowCenter = useSharedValue(base + initialIndex);
+    useAnimatedReaction(
+      () => Math.round(scrollY.value / ITEM_HEIGHT),
+      (curr) => {
+        if (Math.abs(curr - lastWindowCenter.value) > WINDOW_BUFFER / 2) {
+          lastWindowCenter.value = curr;
+          runOnJS(applyWindow)(curr);
+        }
+      },
+    );
+
     // Tick háptico al pasar cada fila, como la rueda nativa. Throttled:
     // en un flick rápido, disparar haptics por cada fila satura el puente
     // JS y el motor háptico, y eso se siente como jank.
@@ -177,10 +207,22 @@ const WheelColumn = forwardRef<
             y: (base + dataIdx) * ITEM_HEIGHT,
             animated: false,
           });
+          lastWindowCenter.value = base + dataIdx;
+          applyWindow(base + dataIdx);
         }
         onSettle(dataIdx);
       },
-      [extended.length, len, loop, repeat, base, onSettle, scrollRef],
+      [
+        extended.length,
+        len,
+        loop,
+        repeat,
+        base,
+        onSettle,
+        scrollRef,
+        applyWindow,
+        lastWindowCenter,
+      ],
     );
 
     const handleMomentumEnd = useCallback(
@@ -210,10 +252,27 @@ const WheelColumn = forwardRef<
             y: (base + dataIndex) * ITEM_HEIGHT,
             animated: false,
           });
+          lastWindowCenter.value = base + dataIndex;
+          applyWindow(base + dataIndex);
         },
       }),
-      [base, scrollRef],
+      [base, scrollRef, applyWindow, lastWindowCenter],
     );
+
+    const items = [];
+    for (let i = window.start; i < window.end; i++) {
+      items.push(
+        <WheelItem
+          key={i}
+          label={extended[i]}
+          index={i}
+          scrollY={scrollY}
+          fontSize={fontSize}
+          color={color}
+          letterSpacing={letterSpacing}
+        />,
+      );
+    }
 
     return (
       <Animated.ScrollView
@@ -229,17 +288,9 @@ const WheelColumn = forwardRef<
         onMomentumScrollEnd={handleMomentumEnd}
         onScrollEndDrag={handleDragEnd}
       >
-        {extended.map((label, index) => (
-          <WheelItem
-            key={`${index}-${label}`}
-            label={label}
-            index={index}
-            scrollY={scrollY}
-            fontSize={fontSize}
-            color={color}
-            letterSpacing={letterSpacing}
-          />
-        ))}
+        <View style={{ height: window.start * ITEM_HEIGHT }} />
+        {items}
+        <View style={{ height: (extended.length - window.end) * ITEM_HEIGHT }} />
       </Animated.ScrollView>
     );
   },
