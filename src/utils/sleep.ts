@@ -111,5 +111,5 @@ export function formatDuration(totalMinutes: number): string {
 export function formatTimeRange(start: Date, end: Date): string {
   const startStr = formatTime(start);
   const endStr = formatTime(end);
-  return `${startStr} – ${endStr}`;
+  return `${startStr} a ${endStr}`;
 }

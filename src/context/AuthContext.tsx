@@ -23,13 +23,34 @@ type AuthContextValue = {
   signOut: () => Promise<void>;
   deleteAccount: () => Promise<{ error?: string }>;
   resetPassword: (email: string) => Promise<{ error?: string }>;
+  updatePassword: (newPassword: string) => Promise<{ error?: string }>;
+  /**
+   * True cuando el usuario abrió un link de recuperación de contraseña y la
+   * sesión se acaba de establecer desde el deep link. En este estado el
+   * RootNavigator muestra ResetPasswordScreen en lugar del flujo normal de
+   * app autenticada.
+   */
+  isInPasswordRecovery: boolean;
+  /** Marca el flujo como activo (lo llama el listener de deep link). */
+  enterPasswordRecovery: () => void;
+  /** Limpia el flag tras éxito o cancelación del reset. */
+  exitPasswordRecovery: () => void;
 };
+
+// Deep link al que Supabase debe redirigir tras el clic en el correo de
+// recuperación. Debe coincidir con `scheme` en app.json y estar autorizado
+// en Supabase dashboard → Authentication → URL Configuration → Redirect URLs.
+export const PASSWORD_RESET_REDIRECT = 'mimebien://reset-password';
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isInPasswordRecovery, setIsInPasswordRecovery] = useState(false);
+
+  const enterPasswordRecovery = () => setIsInPasswordRecovery(true);
+  const exitPasswordRecovery = () => setIsInPasswordRecovery(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -145,9 +166,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const resetPassword: AuthContextValue['resetPassword'] = async (email) => {
-    const { error } = await supabase.auth.resetPasswordForEmail(email);
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: PASSWORD_RESET_REDIRECT,
+    });
     if (error) {
       console.warn('resetPassword error', error);
+      return { error: error.message };
+    }
+    return {};
+  };
+
+  const updatePassword: AuthContextValue['updatePassword'] = async (newPassword) => {
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    if (error) {
+      console.warn('updatePassword error', error);
       return { error: error.message };
     }
     return {};
@@ -162,6 +194,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     signOut,
     deleteAccount,
     resetPassword,
+    updatePassword,
+    isInPasswordRecovery,
+    enterPasswordRecovery,
+    exitPasswordRecovery,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

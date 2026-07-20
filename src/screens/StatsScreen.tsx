@@ -1,8 +1,10 @@
 // src/screens/StatsScreen.tsx
-import React, { FC, useMemo } from 'react';
+import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -10,20 +12,35 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
+import * as Haptics from 'expo-haptics';
+import Animated, {
+  Easing,
+  FadeInDown,
+  FadeInUp,
+  useAnimatedProps,
+  useSharedValue,
+  withDelay,
+  withTiming,
+} from 'react-native-reanimated';
 import { useNavigation } from '@react-navigation/native';
 import Svg, { Circle, Polyline, Defs, LinearGradient, Stop } from 'react-native-svg';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import 'react-native-get-random-values';
+import { v4 as uuidv4 } from 'uuid';
 
 import { GradientBackground } from '../components/GradientBackground';
 import { FloatingDrawerButton } from '../components/FloatingDrawerButton';
 import { FloatingHomeButton } from '../components/FloatingHomeButton';
 import { PrimaryCTA } from '../components/PrimaryCTA';
+import { HealthKitBanner } from '../components/HealthKitBanner';
+import { useHealthKit } from '../hooks/useHealthKit';
 import { useSleepLogContext } from '../context/SleepLogContext';
 import { useSleepProfileContext } from '../context/SleepProfileContext';
 import {
   computeCompleteCycles,
   computeSleepMinutes,
   computeStats,
+  localDateString,
   type SleepLogEntry,
 } from '../domain/sleepLog';
 import { getAdjustedCycleLengthMinutes } from '../domain/sleepProfile';
@@ -48,6 +65,8 @@ const FEELING_ICON: Record<
 // ─────────────────────────────────────────────
 // CompletionRing: anillo SVG con stroke parcial
 // ─────────────────────────────────────────────
+const AnimatedCircle = Animated.createAnimatedComponent(Circle);
+
 const CompletionRing: FC<{
   completed: number;
   total: number;
@@ -59,7 +78,22 @@ const CompletionRing: FC<{
   const circumference = 2 * Math.PI * radius;
   const safeTotal = Math.max(total, 1);
   const progress = Math.min(completed / safeTotal, 1);
-  const dashOffset = circumference * (1 - progress);
+
+  // El anillo se llena animado desde 0 hasta el progreso real.
+  const animatedProgress = useSharedValue(0);
+  React.useEffect(() => {
+    animatedProgress.value = withDelay(
+      250,
+      withTiming(progress, {
+        duration: 900,
+        easing: Easing.out(Easing.cubic),
+      }),
+    );
+  }, [progress, animatedProgress]);
+
+  const animatedProps = useAnimatedProps(() => ({
+    strokeDashoffset: circumference * (1 - animatedProgress.value),
+  }));
 
   return (
     <View style={{ width: size, height: size }}>
@@ -80,7 +114,7 @@ const CompletionRing: FC<{
           fill="none"
         />
         {/* Progress */}
-        <Circle
+        <AnimatedCircle
           cx={size / 2}
           cy={size / 2}
           r={radius}
@@ -89,7 +123,7 @@ const CompletionRing: FC<{
           fill="none"
           strokeLinecap="round"
           strokeDasharray={`${circumference} ${circumference}`}
-          strokeDashoffset={dashOffset}
+          animatedProps={animatedProps}
           transform={`rotate(-90 ${size / 2} ${size / 2})`}
         />
       </Svg>
@@ -192,7 +226,7 @@ const WeekChart: FC<{
     for (let i = 6; i >= 0; i--) {
       const d = new Date();
       d.setDate(d.getDate() - i);
-      const dateStr = d.toISOString().split('T')[0];
+      const dateStr = localDateString(d);
       const entry = entries.find((e) => e.date === dateStr);
       const mins = entry ? computeSleepMinutes(entry) : 0;
       const cycles = entry ? computeCompleteCycles(mins, cycleMins) : 0;
@@ -214,7 +248,7 @@ const WeekChart: FC<{
 
   return (
     <View style={chartStyles.barsRow}>
-      {days.map((day) => {
+      {days.map((day, index) => {
         const heightPct = day.mins / maxMins;
         const isGood = day.mins >= targetMins;
         const barColor =
@@ -226,7 +260,10 @@ const WeekChart: FC<{
         return (
           <View key={day.dateStr} style={chartStyles.barCol}>
             <View style={chartStyles.barWrapper}>
-              <View
+              <Animated.View
+                entering={FadeInUp.delay(300 + index * 60)
+                  .springify()
+                  .damping(15)}
                 style={[
                   chartStyles.bar,
                   {
@@ -354,8 +391,9 @@ const compactStyles = StyleSheet.create({
 const EntryRow: FC<{
   entry: SleepLogEntry;
   cycleMins: number;
+  isFromHealthKit: boolean;
   theme: AppTheme;
-}> = ({ entry, cycleMins, theme }) => {
+}> = ({ entry, cycleMins, isFromHealthKit, theme }) => {
   const mins = computeSleepMinutes(entry);
   const cycles = computeCompleteCycles(mins, cycleMins);
   const bedDate = new Date(entry.bedTimeISO);
@@ -386,14 +424,41 @@ const EntryRow: FC<{
         ]}
       />
       <View style={entryStyles.content}>
-        <Text
-          style={[
-            entryStyles.date,
-            { color: theme.colors.textMuted, fontSize: theme.type.caption },
-          ]}
-        >
-          {entry.date}
-        </Text>
+        <View style={entryStyles.dateRow}>
+          <Text
+            style={[
+              entryStyles.date,
+              { color: theme.colors.textMuted, fontSize: theme.type.caption },
+            ]}
+          >
+            {entry.date}
+          </Text>
+          {isFromHealthKit && (
+            <View
+              style={[
+                entryStyles.sourceBadge,
+                {
+                  backgroundColor: `${theme.colors.success}1F`,
+                  borderColor: `${theme.colors.success}55`,
+                },
+              ]}
+            >
+              <Ionicons
+                name="heart"
+                size={8}
+                color={theme.colors.success}
+              />
+              <Text
+                style={[
+                  entryStyles.sourceBadgeText,
+                  { color: theme.colors.success },
+                ]}
+              >
+                Salud
+              </Text>
+            </View>
+          )}
+        </View>
         <Text
           style={[
             entryStyles.times,
@@ -446,7 +511,23 @@ const entryStyles = StyleSheet.create({
   },
   dot: { width: 10, height: 10, borderRadius: 5 },
   content: { flex: 1 },
-  date: { fontWeight: '700', letterSpacing: 0.3, marginBottom: 2 },
+  dateRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 },
+  date: { fontWeight: '700', letterSpacing: 0.3 },
+  sourceBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+  sourceBadgeText: {
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
+  },
   times: { fontWeight: '700', fontVariant: ['tabular-nums'] },
   right: { alignItems: 'flex-end' },
   duration: { fontWeight: '800', fontVariant: ['tabular-nums'] },
@@ -461,15 +542,32 @@ const entryStyles = StyleSheet.create({
   },
 });
 
+// Key persistente para el flag de sync histórico (la del banner ahora vive
+// dentro del HealthKitProvider, compartida globalmente).
+const HK_HISTORICAL_SYNCED_KEY = 'healthkit:historical_synced';
+
 // ─────────────────────────────────────────────
 // StatsScreen
 // ─────────────────────────────────────────────
 export const StatsScreen: FC = () => {
-  const { entries, loading, refresh } = useSleepLogContext();
+  const { entries, loading, addEntry, refresh } = useSleepLogContext();
   const { profile } = useSleepProfileContext();
   const { theme } = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const navigation = useNavigation();
+
+  const hk = useHealthKit();
+  const [isSyncingHistorical, setIsSyncingHistorical] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await refresh();
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refresh]);
 
   const cycleMins = getAdjustedCycleLengthMinutes(profile?.age ?? 30);
   const stats = useMemo(
@@ -492,6 +590,96 @@ export const StatsScreen: FC = () => {
     return recent.map((e) => computeSleepMinutes(e) / 60);
   }, [entries]);
 
+  /**
+   * Sincronización histórica: una sola vez por dispositivo, importa hasta
+   * 30 días atrás desde HealthKit creando entries en sleep_log para los
+   * días que el usuario no tiene ya registrados localmente.
+   */
+  const syncHistoricalData = useCallback(async () => {
+    if (!hk.isAuthorized) return;
+    try {
+      const alreadySynced = await AsyncStorage.getItem(HK_HISTORICAL_SYNCED_KEY);
+      if (alreadySynced === 'true') return;
+
+      setIsSyncingHistorical(true);
+
+      // Rango: 30 días atrás (excluyendo hoy para no chocar con auto-populate del log)
+      const end = new Date();
+      end.setDate(end.getDate() - 1);
+      const start = new Date();
+      start.setDate(start.getDate() - 30);
+      const fmt = (d: Date) => {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${day}`;
+      };
+
+      const hkEntries = await hk.fetchForRange(fmt(start), fmt(end));
+      const existingDates = new Set(entries.map((e) => e.date));
+
+      let imported = 0;
+      const importedIds: string[] = [];
+      for (const hkEntry of hkEntries) {
+        if (existingDates.has(hkEntry.date)) continue;
+        const newId = uuidv4();
+        await addEntry({
+          id: newId,
+          date: hkEntry.date,
+          bedTimeISO: hkEntry.bedTime,
+          wakeTimeISO: hkEntry.wakeTime,
+          feeling: 2, // neutral — HealthKit no nos da sensación al despertar
+        });
+        importedIds.push(newId);
+        imported++;
+      }
+
+      if (importedIds.length > 0) {
+        await hk.markManyImported(importedIds);
+      }
+
+      await AsyncStorage.setItem(HK_HISTORICAL_SYNCED_KEY, 'true');
+
+      if (imported > 0) {
+        Haptics.notificationAsync(
+          Haptics.NotificationFeedbackType.Success,
+        ).catch(() => {});
+        Alert.alert(
+          'Sincronización completa',
+          `${imported} ${imported === 1 ? 'noche importada' : 'noches importadas'} de Salud.`,
+        );
+      }
+    } catch (err) {
+      console.error('[Stats] syncHistoricalData failed', err);
+    } finally {
+      setIsSyncingHistorical(false);
+    }
+  }, [hk, entries, addEntry]);
+
+  // Disparar sync histórico la primera vez que el usuario está autorizado
+  useEffect(() => {
+    if (hk.isAuthorized && !hk.isLoading) {
+      syncHistoricalData();
+    }
+  }, [hk.isAuthorized, hk.isLoading, syncHistoricalData]);
+
+  const handleConnectHK = useCallback(async () => {
+    const granted = await hk.requestPermissions();
+    if (!granted) {
+      Alert.alert(
+        'Permiso no concedido',
+        'Puedes activarlo más tarde desde Ajustes → Salud → Mimebien.',
+      );
+    }
+    // Si concede, el useEffect de arriba dispara syncHistoricalData
+  }, [hk]);
+
+  const showHkBanner =
+    hk.isAvailable &&
+    !hk.isAuthorized &&
+    !hk.isLoading &&
+    !hk.isBannerDismissed;
+
   // Empty state
   if (entries.length === 0) {
     return (
@@ -504,6 +692,13 @@ export const StatsScreen: FC = () => {
           style={styles.scroll}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              tintColor={theme.colors.accent[400]}
+            />
+          }
         >
           <Animated.View entering={FadeInDown.duration(500)} style={styles.hero}>
             <Text style={styles.heroEyebrow}>ESTADÍSTICAS</Text>
@@ -512,6 +707,13 @@ export const StatsScreen: FC = () => {
               Registra tu sueño en el diario para empezar a ver tu evolución.
             </Text>
           </Animated.View>
+
+          {showHkBanner && (
+            <HealthKitBanner
+              onConnect={handleConnectHK}
+              onDismiss={hk.dismissBanner}
+            />
+          )}
 
           <Animated.View entering={FadeInUp.delay(80).duration(500)}>
             <View style={styles.emptyBox}>
@@ -548,7 +750,46 @@ export const StatsScreen: FC = () => {
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor={theme.colors.accent[400]}
+          />
+        }
       >
+        {/* HealthKit banner */}
+        {showHkBanner && (
+          <HealthKitBanner
+            onConnect={handleConnectHK}
+            onDismiss={hk.dismissBanner}
+          />
+        )}
+
+        {/* Sync histórico en curso */}
+        {isSyncingHistorical && (
+          <View
+            style={[
+              styles.syncBox,
+              {
+                backgroundColor: `${theme.colors.accent[500]}14`,
+                borderColor: `${theme.colors.accent[500]}40`,
+                borderRadius: theme.radius.lg,
+              },
+            ]}
+          >
+            <ActivityIndicator size="small" color={theme.colors.accent[400]} />
+            <Text
+              style={[
+                styles.syncText,
+                { color: theme.colors.accent[300] },
+              ]}
+            >
+              Importando datos de Salud…
+            </Text>
+          </View>
+        )}
+
         {/* Hero KPI */}
         <Animated.View entering={FadeInDown.duration(500)} style={styles.hero}>
           <View style={styles.heroTopRow}>
@@ -753,6 +994,7 @@ export const StatsScreen: FC = () => {
                 <EntryRow
                   entry={entry}
                   cycleMins={cycleMins}
+                  isFromHealthKit={hk.isImported(entry.id)}
                   theme={theme}
                 />
               </Animated.View>
@@ -944,4 +1186,16 @@ const createStyles = (theme: AppTheme) =>
       lineHeight: 18,
     },
     emptyCta: { marginTop: theme.spacing.lg },
+    syncBox: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      paddingVertical: theme.spacing.md,
+      paddingHorizontal: theme.spacing.lg,
+      borderWidth: 1,
+    },
+    syncText: {
+      fontSize: theme.type.small,
+      fontWeight: '700',
+    },
   });

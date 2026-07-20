@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import Animated, { FadeInUp } from 'react-native-reanimated';
 import {
   BottomSheetBackdrop,
@@ -57,6 +58,10 @@ function scoreToStars(score: number): number {
 
 function getCycleEducation(cycles: number): string {
   switch (cycles) {
+    case 1:
+      return 'Sueño de emergencia. 1 ciclo (~90 min) restaura algo de energía y siempre es mejor que no dormir, pero está muy lejos del descanso real. Úsalo solo cuando no haya alternativa.';
+    case 2:
+      return 'Descanso de rescate. 2 ciclos cubren una parte del sueño profundo; funcionan para una noche partida o una siesta muy larga. No lo hagas costumbre: la deuda de sueño se acumula.';
     case 3:
       return 'Descanso mínimo. 3 ciclos cubren funciones esenciales pero te dejan déficit acumulado. Úsalo solo en noches excepcionales.';
     case 4:
@@ -64,7 +69,7 @@ function getCycleEducation(cycles: number): string {
     case 5:
       return 'Descanso óptimo para la mayoría de adultos. 5 ciclos completan las fases de consolidación de memoria y recuperación física.';
     case 6:
-      return 'Descanso profundo. 6 ciclos ofrecen recuperación completa — ideal tras esfuerzo físico intenso o noches previas cortas.';
+      return 'Descanso profundo. 6 ciclos ofrecen recuperación completa, ideal tras esfuerzo físico intenso o noches previas cortas.';
     case 7:
       return 'Sueño extendido. 7 ciclos ayudan a recuperar deuda de sueño acumulada. Más allá puede aumentar la inercia al despertar.';
     default:
@@ -163,6 +168,26 @@ const OptionCard: FC<{
 
         <View style={optionStyles.right}>
           <ScoreStars stars={stars} theme={theme} />
+          {option.cycles <= 2 && (
+            <View
+              style={[
+                optionStyles.badgeMuted,
+                {
+                  backgroundColor: `${theme.colors.warning}1F`,
+                  borderColor: `${theme.colors.warning}55`,
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  optionStyles.badgeMutedText,
+                  { color: theme.colors.warning },
+                ]}
+              >
+                CORTO
+              </Text>
+            </View>
+          )}
           {isOptimalChronotype && (
             <View
               style={[
@@ -274,7 +299,7 @@ export const SleepNowScreen: FC<Props> = () => {
   // Cálculo automático: cada vez que cambia profile o now (cada minuto)
   const options = useMemo<WakeTimeOption[]>(() => {
     if (!profile) return [];
-    return getWakeTimesFromNowForProfile(profile, now, [3, 4, 5, 6, 7]);
+    return getWakeTimesFromNowForProfile(profile, now, [1, 2, 3, 4, 5, 6, 7]);
   }, [profile, now]);
 
   // Bottom sheet
@@ -327,6 +352,9 @@ export const SleepNowScreen: FC<Props> = () => {
       return;
     }
 
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
+      () => {},
+    );
     Alert.alert(
       'Alarma inteligente programada',
       `3 alertas escalonadas en la ventana ${formatTimeRange(

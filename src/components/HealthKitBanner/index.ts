@@ -1,0 +1,1 @@
+export { HealthKitBanner } from './HealthKitBanner';

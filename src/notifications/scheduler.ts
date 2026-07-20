@@ -41,13 +41,17 @@ function normalizeToFutureDate(date: Date): Date {
 
 /**
  * Programa una notificación local en una fecha específica.
+ * `timeSensitive` (iOS): atraviesa los modos Focus (p. ej. "Sueño") — esencial
+ * para que la alarma de despertar realmente suene. Requiere el entitlement
+ * com.apple.developer.usernotifications.time-sensitive.
  */
 export async function scheduleLocalNotificationAtDate(params: {
   title: string;
   body: string;
   date: Date;
+  timeSensitive?: boolean;
 }): Promise<string | null> {
-  const { title, body, date } = params;
+  const { title, body, date, timeSensitive } = params;
 
   try {
     const trigger: Notifications.DateTriggerInput = {
@@ -60,6 +64,9 @@ export async function scheduleLocalNotificationAtDate(params: {
         title,
         body,
         sound: 'default',
+        ...(Platform.OS === 'ios' && timeSensitive
+          ? { interruptionLevel: 'timeSensitive' as const }
+          : {}),
         ...(Platform.OS === 'android' ? { channelId: 'sleep-reminders' } : {}),
       },
       trigger,
@@ -77,8 +84,9 @@ export async function scheduleUniqueNotificationAtDate(params: {
   title: string;
   body: string;
   date: Date;
+  timeSensitive?: boolean;
 }): Promise<string | null> {
-  const { key, title, body, date } = params;
+  const { key, title, body, date, timeSensitive } = params;
   const targetDate = normalizeToFutureDate(date);
 
   const scheduledMap = await getScheduledMap();
@@ -92,6 +100,7 @@ export async function scheduleUniqueNotificationAtDate(params: {
     title,
     body,
     date: targetDate,
+    timeSensitive,
   });
   if (!id) return null;
 
@@ -115,26 +124,30 @@ export async function scheduleSmartWakeAlarm(params: {
   const centerMs = (windowStart.getTime() + windowEnd.getTime()) / 2;
   const center = new Date(centerMs);
 
-  const [startId, centerId, endId] = await Promise.all([
-    scheduleUniqueNotificationAtDate({
-      key: `${keyBase}:start`,
-      title: 'Ventana de despertar',
-      body: 'Inicio de tu ventana de sueño ligero 😴',
-      date: windowStart,
-    }),
-    scheduleUniqueNotificationAtDate({
-      key: `${keyBase}:center`,
-      title: '¡Es hora de despertar!',
-      body: 'Hora ideal según tus ciclos de sueño ⏰',
-      date: center,
-    }),
-    scheduleUniqueNotificationAtDate({
-      key: `${keyBase}:end`,
-      title: 'Último aviso de despertar',
-      body: 'Fin de tu ventana óptima. ¡Buen día! ☀️',
-      date: windowEnd,
-    }),
-  ]);
+  // Secuencial a propósito: cada llamada lee y reescribe el mapa persistido
+  // de notificaciones; en paralelo los writes se pisan entre sí y se pierden
+  // ids (las alarmas viejas quedan huérfanas sin poder cancelarse).
+  const startId = await scheduleUniqueNotificationAtDate({
+    key: `${keyBase}:start`,
+    title: 'Ventana de despertar',
+    body: 'Inicio de tu ventana de sueño ligero 😴',
+    date: windowStart,
+    timeSensitive: true,
+  });
+  const centerId = await scheduleUniqueNotificationAtDate({
+    key: `${keyBase}:center`,
+    title: '¡Es hora de despertar!',
+    body: 'Hora ideal según tus ciclos de sueño ⏰',
+    date: center,
+    timeSensitive: true,
+  });
+  const endId = await scheduleUniqueNotificationAtDate({
+    key: `${keyBase}:end`,
+    title: 'Último aviso de despertar',
+    body: 'Fin de tu ventana óptima. ¡Buen día! ☀️',
+    date: windowEnd,
+    timeSensitive: true,
+  });
 
   return { startId, centerId, endId };
 }
@@ -165,6 +178,51 @@ export async function cancelAllNotifications() {
     await AsyncStorage.removeItem(NOTIFICATION_KEYS_STORAGE);
   } catch (err) {
     console.warn('Error cancelling all notifications', err);
+  }
+}
+
+const DAILY_LOG_REMINDER_KEY = 'daily-log-reminder';
+
+/**
+ * Recordatorio diario para registrar el sueño, programado ~30 min después
+ * de la hora de despertar del perfil. Reemplaza el anterior si la hora cambió.
+ */
+export async function scheduleDailyLogReminder(params: {
+  hour: number;
+  minute: number;
+}): Promise<string | null> {
+  const { hour, minute } = params;
+
+  try {
+    const scheduledMap = await getScheduledMap();
+    const previousId = scheduledMap[DAILY_LOG_REMINDER_KEY];
+    if (previousId) {
+      await cancelNotification(previousId);
+    }
+
+    const trigger: Notifications.DailyTriggerInput = {
+      type: Notifications.SchedulableTriggerInputTypes.DAILY,
+      hour,
+      minute,
+    };
+
+    const id = await Notifications.scheduleNotificationAsync({
+      content: {
+        title: '¿Cómo dormiste?',
+        body: 'Registra tu noche para mantener tu racha y tus estadísticas al día.',
+        sound: 'default',
+        ...(Platform.OS === 'android' ? { channelId: 'sleep-reminders' } : {}),
+      },
+      trigger,
+    });
+
+    const map = await getScheduledMap();
+    map[DAILY_LOG_REMINDER_KEY] = id;
+    await setScheduledMap(map);
+    return id;
+  } catch (err) {
+    console.warn('Error scheduling daily log reminder', err);
+    return null;
   }
 }
 

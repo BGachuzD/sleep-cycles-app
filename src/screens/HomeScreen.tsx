@@ -230,7 +230,7 @@ export const HomeScreen: FC = () => {
         <AnchorCard
           theme={theme}
           eyebrow={`Tu ventana óptima · ${optWindow.label}`}
-          headline={`${optWindow.bedtimeStart} – ${optWindow.bedtimeEnd}`}
+          headline={`${optWindow.bedtimeStart} a ${optWindow.bedtimeEnd}`}
           subline={`Despertar entre ${optWindow.wakeStart} y ${optWindow.wakeEnd}`}
           cta="Ver rutina"
           onPress={() => navigation.navigate('SleepRoutine' as any)}
@@ -299,7 +299,7 @@ export const HomeScreen: FC = () => {
                 <Text style={styles.weeklyValue}>
                   {weeklyStats.currentStreak > 0
                     ? `🔥 ${weeklyStats.currentStreak}`
-                    : '—'}
+                    : '0'}
                 </Text>
                 <Text style={styles.weeklyLabel}>racha</Text>
               </View>

@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
   Alert,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -18,20 +19,32 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
+import * as Haptics from 'expo-haptics';
+import Animated, {
+  FadeInDown,
+  FadeInUp,
+  FadeOutUp,
+  LinearTransition,
+  useAnimatedStyle,
+  useSharedValue,
+  withSequence,
+  withSpring,
+} from 'react-native-reanimated';
 import 'react-native-get-random-values';
 import { v4 as uuidv4 } from 'uuid';
 
 import { GradientBackground } from '../components/GradientBackground';
 import { FloatingDrawerButton } from '../components/FloatingDrawerButton';
-import { Bumper } from '../components/Bumper';
+import { TimeWheel } from '../components/TimeWheel';
 import { PrimaryCTA } from '../components/PrimaryCTA';
+import { HealthKitBanner } from '../components/HealthKitBanner';
 import { usePressScale } from '../hooks/usePressScale';
+import { useHealthKit } from '../hooks/useHealthKit';
 import { useSleepLogContext } from '../context/SleepLogContext';
 import {
   computeSleepMinutes,
   computeCompleteCycles,
-  todayDateString,
+  dateStringDaysAgo,
   type SleepLogEntry,
 } from '../domain/sleepLog';
 import { formatDuration, formatTime } from '../utils/sleep';
@@ -84,67 +97,86 @@ function getSmartDefaults(): { bed: Date; wake: Date } {
 }
 
 // ─────────────────────────────────────────────
-// TimeColumn: columna con label + bumpers + hora
+// TimeField: tarjeta tocable que muestra la hora;
+// al tocarla se abre la rueda nativa debajo.
 // ─────────────────────────────────────────────
-const TimeColumn: FC<{
+const TimeField: FC<{
   label: string;
   date: Date;
-  onAdjust: (deltaMin: number) => void;
+  active: boolean;
+  onPress: () => void;
   theme: AppTheme;
-}> = ({ label, date, onAdjust, theme }) => (
-  <View
-    style={[
-      timeStyles.column,
-      {
-        backgroundColor: theme.colors.surfaceElevated,
-        borderRadius: theme.radius.lg,
-        borderColor: theme.colors.border,
-      },
-    ]}
-  >
-    <Text
-      style={[
-        timeStyles.label,
-        { color: theme.colors.textMuted, fontSize: theme.type.micro },
-      ]}
-    >
-      {label}
-    </Text>
-    <Bumper
-      icon="chevron-up"
-      onPress={() => onAdjust(15)}
-      size={32}
-      iconSize={18}
-      accessibilityLabel={`Subir 15 min: ${label}`}
-    />
-    <Text
-      style={[
-        timeStyles.value,
-        { color: theme.colors.heroText, fontSize: theme.type.title2 },
-      ]}
-      numberOfLines={1}
-      adjustsFontSizeToFit
-      minimumFontScale={0.65}
-    >
-      {formatTime(date)}
-    </Text>
-    <Bumper
-      icon="chevron-down"
-      onPress={() => onAdjust(-15)}
-      size={32}
-      iconSize={18}
-      accessibilityLabel={`Bajar 15 min: ${label}`}
-    />
-  </View>
-);
+}> = ({ label, date, active, onPress, theme }) => {
+  const { animatedStyle, onPressIn, onPressOut } = usePressScale(0.97);
+  return (
+    <Animated.View style={[{ flex: 1 }, animatedStyle]}>
+      <Pressable
+        onPress={onPress}
+        onPressIn={onPressIn}
+        onPressOut={onPressOut}
+        accessibilityRole="button"
+        accessibilityLabel={`${label}: ${formatTime(date)}. Toca para cambiar la hora`}
+        style={[
+          timeStyles.column,
+          {
+            backgroundColor: active
+              ? `${theme.colors.accent[500]}14`
+              : theme.colors.surfaceElevated,
+            borderRadius: theme.radius.lg,
+            borderColor: active ? theme.colors.accent[500] : theme.colors.border,
+            borderWidth: active ? 1.5 : 1,
+          },
+        ]}
+      >
+        <Text
+          style={[
+            timeStyles.label,
+            { color: theme.colors.textMuted, fontSize: theme.type.micro },
+          ]}
+        >
+          {label}
+        </Text>
+        <Text
+          style={[
+            timeStyles.value,
+            { color: theme.colors.heroText, fontSize: theme.type.title2 },
+          ]}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.65}
+        >
+          {formatTime(date)}
+        </Text>
+        <View style={timeStyles.hintRow}>
+          <Ionicons
+            name={active ? 'chevron-up' : 'create-outline'}
+            size={12}
+            color={active ? theme.colors.accent[400] : theme.colors.textMuted}
+          />
+          <Text
+            style={[
+              timeStyles.hint,
+              {
+                color: active
+                  ? theme.colors.accent[400]
+                  : theme.colors.textMuted,
+                fontSize: theme.type.caption,
+              },
+            ]}
+          >
+            {active ? 'Cerrar' : 'Editar'}
+          </Text>
+        </View>
+      </Pressable>
+    </Animated.View>
+  );
+};
 
 const timeStyles = StyleSheet.create({
   column: {
-    flex: 1,
     alignItems: 'center',
     paddingVertical: 14,
-    gap: 8,
-    borderWidth: 1,
+    gap: 6,
   },
   label: { fontWeight: '700', letterSpacing: 0.8, textTransform: 'uppercase' },
   value: {
@@ -152,7 +184,29 @@ const timeStyles = StyleSheet.create({
     letterSpacing: -0.5,
     fontVariant: ['tabular-nums'],
   },
+  hintRow: { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  hint: { fontWeight: '700', letterSpacing: 0.3 },
 });
+
+/** Copia la hora/minuto de `picked` sobre la fecha de `base`. */
+function withTime(base: Date, picked: Date): Date {
+  const next = new Date(base);
+  next.setHours(picked.getHours(), picked.getMinutes(), 0, 0);
+  return next;
+}
+
+/**
+ * Ancla la hora de acostarse relativa al despertar: misma fecha del
+ * despertar y, si queda igual o después, la noche anterior. Así el
+ * cruce de medianoche se resuelve solo y bed < wake siempre.
+ */
+function anchorBedToWake(bedHM: Date, wake: Date): Date {
+  const bed = withTime(wake, bedHM);
+  if (bed.getTime() >= wake.getTime()) {
+    bed.setDate(bed.getDate() - 1);
+  }
+  return bed;
+}
 
 // ─────────────────────────────────────────────
 // FeelingChip
@@ -166,6 +220,20 @@ const FeelingChip: FC<{
   const { animatedStyle, onPressIn, onPressOut } = usePressScale(0.95);
   const info = FEELINGS[feeling];
   const color = theme.colors[info.colorKey];
+
+  // Pop del icono al quedar seleccionado
+  const iconScale = useSharedValue(1);
+  useEffect(() => {
+    if (active) {
+      iconScale.value = withSequence(
+        withSpring(1.3, { mass: 0.3, damping: 10, stiffness: 260 }),
+        withSpring(1, { mass: 0.3, damping: 12, stiffness: 220 }),
+      );
+    }
+  }, [active, iconScale]);
+  const iconAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: iconScale.value }],
+  }));
 
   return (
     <Animated.View style={[{ flex: 1 }, animatedStyle]}>
@@ -187,11 +255,13 @@ const FeelingChip: FC<{
           },
         ]}
       >
-        <Ionicons
-          name={info.icon}
-          size={24}
-          color={active ? color : theme.colors.textMuted}
-        />
+        <Animated.View style={iconAnimatedStyle}>
+          <Ionicons
+            name={info.icon}
+            size={24}
+            color={active ? color : theme.colors.textMuted}
+          />
+        </Animated.View>
         <Text
           style={[
             feelingStyles.label,
@@ -219,16 +289,104 @@ const feelingStyles = StyleSheet.create({
 });
 
 // ─────────────────────────────────────────────
+// DayChip: selector de a qué día pertenece el registro
+// (la fecha es la del DESPERTAR: "Hoy" = desperté esta mañana)
+// ─────────────────────────────────────────────
+const DayChip: FC<{
+  label: string;
+  dateCaption: string;
+  active: boolean;
+  onPress: () => void;
+  theme: AppTheme;
+}> = ({ label, dateCaption, active, onPress, theme }) => {
+  const { animatedStyle, onPressIn, onPressOut } = usePressScale(0.95);
+  return (
+    <Animated.View style={[{ flex: 1 }, animatedStyle]}>
+      <Pressable
+        onPress={onPress}
+        onPressIn={onPressIn}
+        onPressOut={onPressOut}
+        accessibilityRole="button"
+        accessibilityLabel={`Registrar despertar de ${label}`}
+        style={[
+          dayStyles.chip,
+          {
+            backgroundColor: active
+              ? `${theme.colors.accent[500]}1F`
+              : theme.colors.surfaceElevated,
+            borderColor: active
+              ? theme.colors.accent[500]
+              : theme.colors.border,
+            borderWidth: active ? 1.5 : 1,
+            borderRadius: theme.radius.md,
+          },
+        ]}
+      >
+        <Text
+          style={[
+            dayStyles.label,
+            {
+              color: active
+                ? theme.colors.accent[300]
+                : theme.colors.textSecondary,
+              fontSize: theme.type.small,
+            },
+          ]}
+        >
+          {label}
+        </Text>
+        <Text
+          style={[
+            dayStyles.caption,
+            { color: theme.colors.textMuted, fontSize: theme.type.caption },
+          ]}
+        >
+          {dateCaption}
+        </Text>
+      </Pressable>
+    </Animated.View>
+  );
+};
+
+const dayStyles = StyleSheet.create({
+  chip: {
+    alignItems: 'center',
+    gap: 2,
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+  },
+  label: { fontWeight: '800' },
+  caption: { fontWeight: '600' },
+});
+
+function formatDayCaption(dateStr: string): string {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString('es-MX', {
+    day: 'numeric',
+    month: 'short',
+  });
+}
+
+// ─────────────────────────────────────────────
 // HistoryCard
 // ─────────────────────────────────────────────
 const HistoryCard: FC<{
   entry: SleepLogEntry;
   cycleMins: number;
   isEditing: boolean;
+  isFromHealthKit: boolean;
   onEdit: () => void;
   onDelete: () => void;
   theme: AppTheme;
-}> = ({ entry, cycleMins, isEditing, onEdit, onDelete, theme }) => {
+}> = ({
+  entry,
+  cycleMins,
+  isEditing,
+  isFromHealthKit,
+  onEdit,
+  onDelete,
+  theme,
+}) => {
   const mins = computeSleepMinutes(entry);
   const cycles = computeCompleteCycles(mins, cycleMins);
   const info = FEELINGS[entry.feeling];
@@ -253,14 +411,37 @@ const HistoryCard: FC<{
       ]}
     >
       <View style={historyStyles.left}>
-        <Text
-          style={[
-            historyStyles.date,
-            { color: theme.colors.textMuted, fontSize: theme.type.caption },
-          ]}
-        >
-          {entry.date}
-        </Text>
+        <View style={historyStyles.dateRow}>
+          <Text
+            style={[
+              historyStyles.date,
+              { color: theme.colors.textMuted, fontSize: theme.type.caption },
+            ]}
+          >
+            {entry.date}
+          </Text>
+          {isFromHealthKit && (
+            <View
+              style={[
+                historyStyles.sourceBadge,
+                {
+                  backgroundColor: `${theme.colors.success}1F`,
+                  borderColor: `${theme.colors.success}55`,
+                },
+              ]}
+            >
+              <Ionicons name="heart" size={9} color={theme.colors.success} />
+              <Text
+                style={[
+                  historyStyles.sourceBadgeText,
+                  { color: theme.colors.success },
+                ]}
+              >
+                Salud
+              </Text>
+            </View>
+          )}
+        </View>
         <Text
           style={[
             historyStyles.time,
@@ -318,7 +499,28 @@ const historyStyles = StyleSheet.create({
     alignItems: 'center',
   },
   left: { flex: 1, marginRight: 8 },
-  date: { fontWeight: '700', letterSpacing: 0.3, marginBottom: 2 },
+  dateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 2,
+  },
+  date: { fontWeight: '700', letterSpacing: 0.3 },
+  sourceBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+  sourceBadgeText: {
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
+  },
   time: { fontWeight: '700', fontVariant: ['tabular-nums'] },
   detail: { marginTop: 2 },
   right: { alignItems: 'center', gap: 8 },
@@ -344,6 +546,10 @@ export const SleepLogScreen: FC = () => {
   const styles = useMemo(() => createStyles(theme), [theme]);
   const scrollRef = useRef<ScrollView>(null);
 
+  const hk = useHealthKit();
+  const [autoPopulatedFromHK, setAutoPopulatedFromHK] = useState(false);
+  const [hasUserEdited, setHasUserEdited] = useState(false);
+
   const cycleMins = getAdjustedCycleLengthMinutes(profile?.age ?? 30);
   const { bed: initialBed, wake: initialWake } = useMemo(
     () => getSmartDefaults(),
@@ -354,12 +560,62 @@ export const SleepLogScreen: FC = () => {
   const [wakeTime, setWakeTime] = useState<Date>(initialWake);
   const [feeling, setFeeling] = useState<FeelingLevel>(2);
   const [editingEntry, setEditingEntry] = useState<SleepLogEntry | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Día del despertar del registro nuevo: 0 = hoy, 1 = ayer.
+  const [daysAgo, setDaysAgo] = useState<0 | 1>(0);
+  const logDate = dateStringDaysAgo(daysAgo);
+
+  const selectDay = useCallback(
+    (next: 0 | 1) => {
+      setDaysAgo((prev) => {
+        if (prev === next) return prev;
+        // Conservar las horas elegidas, desplazando el datetime real ±24 h.
+        const deltaMs = (prev - next) * 24 * 60 * 60 * 1000;
+        setBedTime((b) => new Date(b.getTime() + deltaMs));
+        setWakeTime((w) => new Date(w.getTime() + deltaMs));
+        return next;
+      });
+      setAutoPopulatedFromHK(false);
+    },
+    [],
+  );
+
+  // Auto-poblar desde HealthKit cuando hay permisos, no estamos editando y
+  // el usuario aún no tocó los campos manualmente.
+  useEffect(() => {
+    if (!hk.isAuthorized || hk.isLoading || editingEntry || hasUserEdited) {
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const hkEntry = await hk.fetchForDate(logDate);
+      if (cancelled || !hkEntry) return;
+      setBedTime(new Date(hkEntry.bedTime));
+      setWakeTime(new Date(hkEntry.wakeTime));
+      setAutoPopulatedFromHK(true);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [hk, editingEntry, hasUserEdited, logDate]);
+
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await refresh();
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refresh]);
 
   useEffect(() => {
     if (editingEntry) {
       setBedTime(new Date(editingEntry.bedTimeISO));
       setWakeTime(new Date(editingEntry.wakeTimeISO));
       setFeeling(editingEntry.feeling);
+      setAutoPopulatedFromHK(false);
+      setHasUserEdited(false);
       scrollRef.current?.scrollTo({ y: 0, animated: true });
     }
   }, [editingEntry]);
@@ -370,15 +626,55 @@ export const SleepLogScreen: FC = () => {
     setBedTime(bed);
     setWakeTime(wake);
     setFeeling(2);
+    setDaysAgo(0);
+    setAutoPopulatedFromHK(false);
+    setHasUserEdited(false);
+    setActiveField(null);
   }, []);
 
-  const adjustBed = useCallback((delta: number) => {
-    setBedTime((prev) => new Date(prev.getTime() + delta * 60_000));
+  // Campo cuyo TimeWheel está abierto (null = ninguno).
+  const [activeField, setActiveField] = useState<'bed' | 'wake' | null>(null);
+
+  const toggleField = useCallback((field: 'bed' | 'wake') => {
+    Haptics.selectionAsync().catch(() => {});
+    setActiveField((prev) => (prev === field ? null : field));
   }, []);
 
-  const adjustWake = useCallback((delta: number) => {
-    setWakeTime((prev) => new Date(prev.getTime() + delta * 60_000));
-  }, []);
+  const handleBedPicked = useCallback(
+    (picked: Date) => {
+      setBedTime(anchorBedToWake(picked, wakeTime));
+      setHasUserEdited(true);
+      setAutoPopulatedFromHK(false);
+    },
+    [wakeTime],
+  );
+
+  const handleWakePicked = useCallback(
+    (picked: Date) => {
+      const nextWake = withTime(wakeTime, picked);
+      setWakeTime(nextWake);
+      setBedTime((prevBed) => anchorBedToWake(prevBed, nextWake));
+      setHasUserEdited(true);
+      setAutoPopulatedFromHK(false);
+    },
+    [wakeTime],
+  );
+
+  const handleConnectHK = useCallback(async () => {
+    const granted = await hk.requestPermissions();
+    if (!granted) {
+      Alert.alert(
+        'Permiso no concedido',
+        'Puedes activarlo más tarde desde Ajustes → Salud → Mimebien.',
+      );
+    }
+  }, [hk]);
+
+  const showHkBanner =
+    hk.isAvailable &&
+    !hk.isAuthorized &&
+    !hk.isLoading &&
+    !hk.isBannerDismissed;
 
   const previewMinutes = useMemo(
     () =>
@@ -394,6 +690,9 @@ export const SleepLogScreen: FC = () => {
 
   const handleSave = useCallback(async () => {
     if (wakeTime <= bedTime) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(
+        () => {},
+      );
       Alert.alert(
         'Hora inválida',
         'La hora de despertar debe ser posterior a la hora de acostarse.',
@@ -401,6 +700,9 @@ export const SleepLogScreen: FC = () => {
       return;
     }
     if (previewOutOfRange) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(
+        () => {},
+      );
       Alert.alert(
         'Rango demasiado amplio',
         'La diferencia entre acostarse y despertar parece mayor a 16 h. Ajusta las horas.',
@@ -417,16 +719,32 @@ export const SleepLogScreen: FC = () => {
       };
       await updateEntry(updated);
       setEditingEntry(null);
+      setActiveField(null);
+      Haptics.notificationAsync(
+        Haptics.NotificationFeedbackType.Success,
+      ).catch(() => {});
       Alert.alert('Actualizado', 'Tu registro ha sido actualizado.');
     } else {
+      const newId = uuidv4();
       const entry: SleepLogEntry = {
-        id: uuidv4(),
-        date: todayDateString(),
+        id: newId,
+        date: logDate,
         bedTimeISO: bedTime.toISOString(),
         wakeTimeISO: wakeTime.toISOString(),
         feeling,
       };
       await addEntry(entry);
+      // Si los valores vinieron de HealthKit, marca el id para el badge.
+      if (autoPopulatedFromHK) {
+        await hk.markImported(newId);
+      }
+      setAutoPopulatedFromHK(false);
+      setHasUserEdited(false);
+      setDaysAgo(0);
+      setActiveField(null);
+      Haptics.notificationAsync(
+        Haptics.NotificationFeedbackType.Success,
+      ).catch(() => {});
       Alert.alert('Guardado', 'Tu sueño quedó registrado.');
     }
   }, [
@@ -435,8 +753,11 @@ export const SleepLogScreen: FC = () => {
     previewOutOfRange,
     editingEntry,
     feeling,
+    logDate,
     addEntry,
     updateEntry,
+    autoPopulatedFromHK,
+    hk,
   ]);
 
   const handleDelete = useCallback(
@@ -468,6 +789,13 @@ export const SleepLogScreen: FC = () => {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor={theme.colors.accent[400]}
+          />
+        }
       >
         {/* Hero */}
         <Animated.View entering={FadeInDown.duration(500)} style={styles.hero}>
@@ -482,6 +810,14 @@ export const SleepLogScreen: FC = () => {
           </Text>
         </Animated.View>
 
+        {/* HealthKit banner */}
+        {showHkBanner && (
+          <HealthKitBanner
+            onConnect={handleConnectHK}
+            onDismiss={hk.dismissBanner}
+          />
+        )}
+
         {/* Form */}
         <Animated.View
           entering={FadeInDown.delay(80).duration(500)}
@@ -493,12 +829,60 @@ export const SleepLogScreen: FC = () => {
             },
           ]}
         >
+          {/* Importado de Salud — solo cuando los valores vienen de HK */}
+          {autoPopulatedFromHK && (
+            <View
+              style={[
+                styles.importedBadge,
+                {
+                  backgroundColor: `${theme.colors.success}14`,
+                  borderColor: `${theme.colors.success}40`,
+                },
+              ]}
+            >
+              <Ionicons
+                name="cloud-done-outline"
+                size={14}
+                color={theme.colors.success}
+              />
+              <Text
+                style={[
+                  styles.importedBadgeText,
+                  { color: theme.colors.success },
+                ]}
+              >
+                Importado de Salud
+              </Text>
+            </View>
+          )}
+
+          {/* Día del despertar (solo para registros nuevos) */}
+          {!editingEntry && (
+            <View style={styles.dayRow}>
+              <DayChip
+                label="Ayer"
+                dateCaption={formatDayCaption(dateStringDaysAgo(1))}
+                active={daysAgo === 1}
+                onPress={() => selectDay(1)}
+                theme={theme}
+              />
+              <DayChip
+                label="Hoy"
+                dateCaption={formatDayCaption(dateStringDaysAgo(0))}
+                active={daysAgo === 0}
+                onPress={() => selectDay(0)}
+                theme={theme}
+              />
+            </View>
+          )}
+
           {/* Time pickers */}
           <View style={styles.timeRow}>
-            <TimeColumn
+            <TimeField
               label="Me acosté"
               date={bedTime}
-              onAdjust={adjustBed}
+              active={activeField === 'bed'}
+              onPress={() => toggleField('bed')}
               theme={theme}
             />
             <View style={styles.timeArrow}>
@@ -508,13 +892,30 @@ export const SleepLogScreen: FC = () => {
                 color={theme.colors.textMuted}
               />
             </View>
-            <TimeColumn
+            <TimeField
               label="Desperté"
               date={wakeTime}
-              onAdjust={adjustWake}
+              active={activeField === 'wake'}
+              onPress={() => toggleField('wake')}
               theme={theme}
             />
           </View>
+
+          {activeField && (
+            <Animated.View
+              entering={FadeInDown.duration(220)}
+              layout={LinearTransition.springify().damping(16)}
+              style={styles.wheelBox}
+            >
+              <TimeWheel
+                value={activeField === 'bed' ? bedTime : wakeTime}
+                onChange={
+                  activeField === 'bed' ? handleBedPicked : handleWakePicked
+                }
+                height={170}
+              />
+            </Animated.View>
+          )}
 
           {/* Preview */}
           {previewValid && (
@@ -561,7 +962,7 @@ export const SleepLogScreen: FC = () => {
               <Text
                 style={[styles.previewText, { color: theme.colors.danger }]}
               >
-                Rango inválido — revisa las horas
+                Rango inválido, revisa las horas
               </Text>
             </View>
           )}
@@ -644,11 +1045,14 @@ export const SleepLogScreen: FC = () => {
                   entering={FadeInUp.delay(index * 40)
                     .springify()
                     .damping(14)}
+                  exiting={FadeOutUp.duration(220)}
+                  layout={LinearTransition.springify().damping(16)}
                 >
                   <HistoryCard
                     entry={entry}
                     cycleMins={cycleMins}
                     isEditing={isEditing}
+                    isFromHealthKit={hk.isImported(entry.id)}
                     onEdit={() =>
                       isEditing ? cancelEdit() : setEditingEntry(entry)
                     }
@@ -705,6 +1109,10 @@ const createStyles = (theme: AppTheme) =>
       padding: theme.spacing.xl,
       gap: theme.spacing.lg,
     },
+    dayRow: {
+      flexDirection: 'row',
+      gap: theme.spacing.sm,
+    },
     timeRow: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -715,6 +1123,13 @@ const createStyles = (theme: AppTheme) =>
       height: 24,
       alignItems: 'center',
       justifyContent: 'center',
+    },
+    wheelBox: {
+      backgroundColor: theme.colors.surfaceElevated,
+      borderRadius: theme.radius.lg,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      paddingVertical: theme.spacing.xs,
     },
     previewBox: {
       flexDirection: 'row',
@@ -773,4 +1188,19 @@ const createStyles = (theme: AppTheme) =>
       fontSize: theme.type.small,
     },
     historyList: { gap: theme.spacing.sm },
+    importedBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      alignSelf: 'flex-start',
+      gap: 6,
+      paddingVertical: 5,
+      paddingHorizontal: theme.spacing.sm,
+      borderRadius: 999,
+      borderWidth: 1,
+    },
+    importedBadgeText: {
+      fontSize: theme.type.caption,
+      fontWeight: '800',
+      letterSpacing: 0.4,
+    },
   });

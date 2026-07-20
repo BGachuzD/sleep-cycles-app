@@ -246,7 +246,7 @@ Pantallas redibujadas (todas):
 - ✅ **NapScreen** — hero + 4 NapCards con colores únicos por tipo (success/warning/accent500/accent700), BottomSheet con detalles + tip + CTA programar, refresh automático del `wakeEta` cada minuto
 - ✅ **NotificationsManagerScreen** — hero con count dinámico, NotificationCards con icon violeta + hora gigante + chip de fecha relativa (hoy/mañana/ayer/lunes/15 may), cancel individual y masivo con confirmación
 - ✅ **SleepProfileScreen** — hero con saludo (Hola, {nombre}), `FieldInput` reutilizable con focus state violeta, `SegmentedChips` para gender y chronotype, BMI value en heroText, parámetros derivados en card, `SecondaryLink` list para ver recordatorios/cerrar sesión/eliminar cuenta, PrimaryCTA en footer fijo
-- ✅ **SettingsScreen** — Premium hero card con gradient violeta (placeholder hasta RevenueCat en Fase 3), preview del tema activo, `ThemeOption` cards refinadas, `LinkRow` para Sitio web / Términos / Privacidad (URLs placeholder `sleepcycles.app/*` que se actualizan cuando exista la landing)
+- ✅ **SettingsScreen** — Premium hero card con gradient violeta (placeholder hasta RevenueCat en Fase 3), preview del tema activo, `ThemeOption` cards refinadas, `LinkRow` para Sitio web / Términos / Privacidad (URLs placeholder `mimebien.com/*` que se actualizan cuando exista la landing)
 - ✅ **SignInScreen** — `AuthHero` con icono `moon-outline` + ambient glow violeta + form con `FieldInput` (email + password con eye toggle) + PrimaryCTA "Iniciar sesión" + link a registro
 - ✅ **SignUpScreen** — `AuthHero` con icono `sparkles-outline` + form completo (nombre/email/2x password con toggle) + `SegmentedChip` para cronotipo + alertas error/info con bloques contextuales + PrimaryCTA "Crear cuenta"
 
@@ -276,9 +276,9 @@ Pantallas redibujadas (todas):
 
 Definidas como constantes al inicio de `SettingsScreen.tsx`:
 
-- `LANDING_URL = 'https://sleepcycles.app'`
-- `PRIVACY_URL = 'https://sleepcycles.app/privacy'`
-- `TERMS_URL = 'https://sleepcycles.app/terms'`
+- `LANDING_URL = 'https://mimebien.com'`
+- `PRIVACY_URL = 'https://mimebien.com/privacy'`
+- `TERMS_URL = 'https://mimebien.com/terms'`
 
 Actualizar cuando exista la landing definitiva.
 

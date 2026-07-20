@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import {
   BottomSheetBackdrop,
@@ -87,9 +88,9 @@ const NAP_OPTIONS: NapOption[] = [
     durationMinutes: 180,
     shortDesc: 'Dos ciclos completos. Para deuda significativa.',
     longDesc:
-      'Dos ciclos seguidos. Recuperación profunda — usa solo si necesitas compensar mala noche o si no dormiste suficiente.',
+      'Dos ciclos seguidos. Recuperación profunda, usa solo si necesitas compensar mala noche o si no dormiste suficiente.',
     colorKey: 'accent700',
-    tip: 'Evita después de las 4pm — podría desplazar tu sueño nocturno.',
+    tip: 'Evita después de las 4pm, podría desplazar tu sueño nocturno.',
   },
 ];
 
@@ -397,6 +398,9 @@ export const NapScreen: FC = () => {
       ...prev,
       [selectedOption.id]: formatTime(wakeTime),
     }));
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
+      () => {},
+    );
     Alert.alert(
       'Siesta programada',
       `Despertarás a las ${formatTime(wakeTime)} (ventana ${formatTimeRange(
