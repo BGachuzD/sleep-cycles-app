@@ -21,6 +21,7 @@ import { AppDrawerNavigator } from './src/navigation/AppDrawerNavigator';
 import { SleepNowScreen } from './src/screens/SleepNowScreen';
 import { WakeAtScreen } from './src/screens/WakeAtScreen';
 import { OnboardingScreen } from './src/screens/OnboardingScreen';
+import { ProfileSetupScreen } from './src/screens/ProfileSetupScreen';
 import { SleepProfileScreen } from './src/screens/SleepProfileScreen';
 import { SleepProfileProvider } from './src/context/SleepProfileContext';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
@@ -41,6 +42,7 @@ import { ThemeProvider, useAppTheme } from './src/theme/ThemeProvider';
 
 export type RootStackParamList = {
   Onboarding: undefined;
+  ProfileSetup: undefined;
   SleepNow: undefined;
   WakeAt: undefined;
   SleepProfile: { forceSetup?: boolean } | undefined;
@@ -220,14 +222,11 @@ function RootNavigator() {
     );
   }
 
+  // Usuario nuevo sin perfil: stepper obligatorio antes de entrar a la app.
   if (!profile) {
     return (
       <Stack.Navigator screenOptions={{ headerShown: false }}>
-        <Stack.Screen
-          name="SleepProfile"
-          component={SleepProfileScreen}
-          initialParams={{ forceSetup: true }}
-        />
+        <Stack.Screen name="ProfileSetup" component={ProfileSetupScreen} />
       </Stack.Navigator>
     );
   }

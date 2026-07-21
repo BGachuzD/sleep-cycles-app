@@ -858,21 +858,29 @@ export const SleepLogScreen: FC = () => {
 
           {/* Día del despertar (solo para registros nuevos) */}
           {!editingEntry && (
-            <View style={styles.dayRow}>
-              <DayChip
-                label="Ayer"
-                dateCaption={formatDayCaption(dateStringDaysAgo(1))}
-                active={daysAgo === 1}
-                onPress={() => selectDay(1)}
-                theme={theme}
-              />
-              <DayChip
-                label="Hoy"
-                dateCaption={formatDayCaption(dateStringDaysAgo(0))}
-                active={daysAgo === 0}
-                onPress={() => selectDay(0)}
-                theme={theme}
-              />
+            <View style={styles.daySection}>
+              <Text style={styles.fieldLabel}>¿Qué mañana despertaste?</Text>
+              <View style={styles.dayRow}>
+                <DayChip
+                  label="Ayer"
+                  dateCaption={formatDayCaption(dateStringDaysAgo(1))}
+                  active={daysAgo === 1}
+                  onPress={() => selectDay(1)}
+                  theme={theme}
+                />
+                <DayChip
+                  label="Hoy"
+                  dateCaption={formatDayCaption(dateStringDaysAgo(0))}
+                  active={daysAgo === 0}
+                  onPress={() => selectDay(0)}
+                  theme={theme}
+                />
+              </View>
+              <Text style={styles.dayHint}>
+                {daysAgo === 0
+                  ? 'Registrarás la noche que terminó esta mañana.'
+                  : 'Registrarás la noche anterior, la que terminó ayer por la mañana.'}
+              </Text>
             </View>
           )}
 
@@ -1109,9 +1117,17 @@ const createStyles = (theme: AppTheme) =>
       padding: theme.spacing.xl,
       gap: theme.spacing.lg,
     },
+    daySection: {
+      gap: theme.spacing.sm,
+    },
     dayRow: {
       flexDirection: 'row',
       gap: theme.spacing.sm,
+    },
+    dayHint: {
+      color: theme.colors.textMuted,
+      fontSize: theme.type.caption,
+      lineHeight: 15,
     },
     timeRow: {
       flexDirection: 'row',

@@ -20,7 +20,6 @@ import { FloatingDrawerButton } from '../components/FloatingDrawerButton';
 import { FloatingHomeButton } from '../components/FloatingHomeButton';
 import { usePressScale } from '../hooks/usePressScale';
 import {
-  cancelAllNotifications,
   cancelNotification,
   listScheduledNotifications,
 } from '../notifications/scheduler';
@@ -37,6 +36,18 @@ function getTriggerDate(trigger: NotificationRequest['trigger']): Date | null {
   const rawDate = (trigger as { date?: string | number | Date }).date;
   if (!rawDate) return null;
   return rawDate instanceof Date ? rawDate : new Date(rawDate);
+}
+
+/**
+ * Los recordatorios repetitivos (p. ej. el diario "¿Cómo dormiste?") los
+ * gestiona la app automáticamente; no tiene sentido listarlos junto a las
+ * alarmas puntuales que el usuario programó.
+ */
+function isRecurringSystemReminder(
+  trigger: NotificationRequest['trigger'],
+): boolean {
+  if (!trigger || typeof trigger !== 'object') return false;
+  return 'repeats' in trigger && trigger.repeats === true;
 }
 
 function formatRelativeDate(date: Date): string {
@@ -164,7 +175,7 @@ const NotificationCard: FC<{
               { color: theme.colors.textMuted, fontSize: theme.type.micro },
             ]}
           >
-            DISPARO
+            HORA
           </Text>
           <Text
             style={[
@@ -274,8 +285,10 @@ export const NotificationsManagerScreen: FC = () => {
 
   const load = useCallback(async () => {
     setIsLoading(true);
-    const scheduled = await listScheduledNotifications();
-    // ordenar por fecha de disparo ascendente
+    const scheduled = (await listScheduledNotifications()).filter(
+      (r) => !isRecurringSystemReminder(r.trigger),
+    );
+    // ordenar por fecha de envío ascendente
     scheduled.sort((a, b) => {
       const da = getTriggerDate(a.trigger)?.getTime() ?? Number.MAX_SAFE_INTEGER;
       const db = getTriggerDate(b.trigger)?.getTime() ?? Number.MAX_SAFE_INTEGER;
@@ -323,13 +336,18 @@ export const NotificationsManagerScreen: FC = () => {
           text: 'Cancelar todas',
           style: 'destructive',
           onPress: async () => {
-            await cancelAllNotifications();
+            // Solo las alertas listadas: el recordatorio diario oculto
+            // (gestionado por la app) debe sobrevivir. Secuencial porque
+            // cancelNotification lee/escribe el mapa persistido.
+            for (const request of items) {
+              await cancelNotification(request.identifier);
+            }
             load();
           },
         },
       ],
     );
-  }, [items.length, load]);
+  }, [items, load]);
 
   const refresh = usePressScale(0.9);
 
@@ -357,7 +375,7 @@ export const NotificationsManagerScreen: FC = () => {
                     : `${items.length} ${items.length === 1 ? 'alerta activa' : 'alertas activas'}`}
               </Text>
               <Text style={styles.heroSubtitle}>
-                Recordatorios y alarmas inteligentes que disparará la app.
+                Recordatorios y alarmas inteligentes que la app te enviará.
               </Text>
             </View>
             <Animated.View style={refresh.animatedStyle}>

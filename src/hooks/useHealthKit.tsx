@@ -18,10 +18,15 @@ import React, {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react';
+import { Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Haptics from 'expo-haptics';
+import 'react-native-get-random-values';
+import { v4 as uuidv4 } from 'uuid';
 
 import {
   fetchSleepDataForDate,
@@ -31,6 +36,7 @@ import {
   requestHealthKitPermissions,
   type HealthKitSleepEntry,
 } from '../services/healthKitService';
+import { useSleepLogContext } from '../context/SleepLogContext';
 
 const AUTHORIZED_KEY = 'healthkit:authorized';
 const IMPORTED_IDS_KEY = 'healthkit:imported_ids';
@@ -67,6 +73,14 @@ export type UseHealthKit = {
   isImported: (entryId: string) => boolean;
   /** Oculta el banner y persiste el flag. */
   dismissBanner: () => Promise<void>;
+  /** True mientras corre la importación histórica de 30 días. */
+  isImporting: boolean;
+  /**
+   * Importa hasta 30 días de sueño desde Salud al diario (una sola vez;
+   * `force` la re-ejecuta). Deduplica por fecha, marca las entries con el
+   * badge "Salud" y muestra UN solo resumen al terminar.
+   */
+  runHistoricalImport: (opts?: { force?: boolean }) => Promise<void>;
   /**
    * Resetea el estado local de la integración: olvida la autorización
    * cacheada, los ids marcados como importados, el flag de banner dismiss
@@ -90,6 +104,14 @@ export const HealthKitProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [isBannerDismissed, setIsBannerDismissed] = useState(false);
   const [importedIds, setImportedIds] = useState<Set<string>>(new Set());
+  const [isImporting, setIsImporting] = useState(false);
+
+  // El diario vive arriba en el árbol; via refs evitamos que sus cambios
+  // (cada addEntry del import) recreen callbacks y re-disparen efectos.
+  const sleepLog = useSleepLogContext();
+  const sleepLogRef = useRef(sleepLog);
+  sleepLogRef.current = sleepLog;
+  const importInFlightRef = useRef(false);
 
   // Inicialización al montar
   useEffect(() => {
@@ -228,6 +250,103 @@ export const HealthKitProvider = ({ children }: { children: ReactNode }) => {
     [importedIds],
   );
 
+  // ── Importación histórica (30 días) ──
+  const authorizedRef = useRef(isAuthorized);
+  authorizedRef.current = isAuthorized;
+
+  const runHistoricalImport = useCallback(
+    async (opts?: { force?: boolean }) => {
+      if (importInFlightRef.current) return;
+      if (!authorizedRef.current) return;
+      // El diario debe estar cargado para poder deduplicar por fecha.
+      if (sleepLogRef.current.loading) return;
+
+      try {
+        const alreadySynced = await AsyncStorage.getItem(HISTORICAL_SYNCED_KEY);
+        if (alreadySynced === 'true' && !opts?.force) return;
+      } catch {
+        // Si no se puede leer el flag, seguimos: el candado en memoria
+        // evita duplicar dentro de la sesión.
+      }
+
+      importInFlightRef.current = true;
+      setIsImporting(true);
+
+      try {
+        // Candado persistente inmediato: aunque el import tarde, ningún
+        // re-render puede disparar una segunda corrida.
+        await AsyncStorage.setItem(HISTORICAL_SYNCED_KEY, 'true');
+
+        // Rango: 30 días atrás, excluyendo hoy (el auto-populate del
+        // diario cubre el día en curso).
+        const end = new Date();
+        end.setDate(end.getDate() - 1);
+        const start = new Date();
+        start.setDate(start.getDate() - 30);
+        const fmt = (d: Date) => {
+          const y = d.getFullYear();
+          const m = String(d.getMonth() + 1).padStart(2, '0');
+          const day = String(d.getDate()).padStart(2, '0');
+          return `${y}-${m}-${day}`;
+        };
+
+        const hkEntries = await fetchSleepDataForRange(fmt(start), fmt(end));
+        const existingDates = new Set(
+          sleepLogRef.current.entries.map((e) => e.date),
+        );
+
+        const newIds: string[] = [];
+        for (const hkEntry of hkEntries) {
+          if (existingDates.has(hkEntry.date)) continue;
+          const newId = uuidv4();
+          await sleepLogRef.current.addEntry({
+            id: newId,
+            date: hkEntry.date,
+            bedTimeISO: hkEntry.bedTime,
+            wakeTimeISO: hkEntry.wakeTime,
+            feeling: 2, // neutral: Salud no registra sensación al despertar
+          });
+          newIds.push(newId);
+        }
+
+        if (newIds.length > 0) {
+          await markManyImported(newIds);
+          Haptics.notificationAsync(
+            Haptics.NotificationFeedbackType.Success,
+          ).catch(() => {});
+          Alert.alert(
+            'Salud conectado',
+            `Importamos ${newIds.length} ${
+              newIds.length === 1 ? 'noche' : 'noches'
+            } de las últimas cuatro semanas. Ya alimentan tu diario y tus estadísticas.`,
+          );
+        } else if (opts?.force) {
+          Alert.alert(
+            'Sin noches nuevas',
+            'Tus últimos 30 días ya estaban registrados en el diario.',
+          );
+        }
+      } catch (err) {
+        console.error('[HealthKit] historical import failed', err);
+        // Liberar el candado persistente para que un retry sea posible.
+        AsyncStorage.removeItem(HISTORICAL_SYNCED_KEY).catch(() => {});
+      } finally {
+        importInFlightRef.current = false;
+        setIsImporting(false);
+      }
+    },
+    [markManyImported],
+  );
+
+  // Gatillo único: corre cuando hay autorización y el diario terminó de
+  // cargar. Cubre tanto la conexión recién concedida (desde cualquier
+  // banner o Settings) como una conexión previa sin histórico importado.
+  useEffect(() => {
+    if (isAuthorized && !isLoading && !sleepLog.loading) {
+      runHistoricalImport();
+    }
+  }, [isAuthorized, isLoading, sleepLog.loading, runHistoricalImport]);
+
   const dismissBanner = useCallback(async () => {
     setIsBannerDismissed(true);
     try {
@@ -269,6 +388,8 @@ export const HealthKitProvider = ({ children }: { children: ReactNode }) => {
       markManyImported,
       isImported,
       dismissBanner,
+      isImporting,
+      runHistoricalImport,
       resetConnection,
       clearHistoricalSync,
     }),
@@ -284,6 +405,8 @@ export const HealthKitProvider = ({ children }: { children: ReactNode }) => {
       markManyImported,
       isImported,
       dismissBanner,
+      isImporting,
+      runHistoricalImport,
       resetConnection,
       clearHistoricalSync,
     ],
