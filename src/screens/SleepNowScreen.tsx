@@ -283,7 +283,7 @@ const detailStyles = StyleSheet.create({
 // ─────────────────────────────────────────────
 // SleepNowScreen
 // ─────────────────────────────────────────────
-export const SleepNowScreen: FC<Props> = () => {
+export const SleepNowScreen: FC = () => {
   const { profile, loading } = useSleepProfileContext();
   const { theme } = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);

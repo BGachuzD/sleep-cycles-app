@@ -302,7 +302,7 @@ const detailStyles = StyleSheet.create({
 // ─────────────────────────────────────────────
 // WakeAtScreen
 // ─────────────────────────────────────────────
-export const WakeAtScreen: FC<Props> = () => {
+export const WakeAtScreen: FC = () => {
   const { profile, loading } = useSleepProfileContext();
   const { theme } = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);

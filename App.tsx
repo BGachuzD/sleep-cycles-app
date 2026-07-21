@@ -17,7 +17,7 @@ import * as Notifications from 'expo-notifications';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 
-import { AppDrawerNavigator } from './src/navigation/AppDrawerNavigator';
+import { AppTabNavigator } from './src/navigation/AppTabNavigator';
 import { SleepNowScreen } from './src/screens/SleepNowScreen';
 import { WakeAtScreen } from './src/screens/WakeAtScreen';
 import { OnboardingScreen } from './src/screens/OnboardingScreen';
@@ -239,7 +239,7 @@ function RootNavigator() {
     );
   }
 
-  return <AppDrawerNavigator />;
+  return <AppTabNavigator />;
 }
 
 function AppNavigation() {
