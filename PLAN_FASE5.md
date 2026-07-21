@@ -2,6 +2,17 @@
 
 > **Estado de partida (2026-07-20):** Fases 1-4 completas. App validada en dispositivo físico y en camino a TestFlight (branch `healthkit`). typecheck limpio. Backend Supabase con RLS + HealthKit (lectura de sueño) + notificaciones locales.
 
+**Avance (2026-07-20):**
+
+- ✅ **Sprint 0** — abstracción Premium (`usePremium`, `EntitlementsContext`, `PremiumHint`), Premium card de Settings ruteada por `presentPaywall`.
+- ✅ **Sprint 1** — Bitácora de sueños (migración `sleep_log`, UI en `SleepLogScreen`, topes del tier gratuito). ⚠️ Falta aplicar la migración al remoto con `supabase db push`.
+- ✅ **Sprint 2** — Motor `sleepInsights.ts` + infraestructura de tests (jest + ts-jest, `pnpm test`).
+- ✅ **Sprint 3** — completo: `InsightCard` + "Tu coach" en Home, `achievements.ts` + tira de logros en Stats, estado vacío guiado, resumen semanal (`weeklyRecap.ts` + `WeeklyRecapCard` + notificación dominical), voz de coach en el recordatorio diario, y **metas** (`sleepGoal.ts` + `useSleepGoals` + `SleepGoalsContext` + `GoalCard` en Home).
+- 🔄 **Sprint 4 (groundwork listo)** — hecho en código: paywall real (`Paywall.tsx`, reemplaza el `Alert`), capa de compras aislada (`src/lib/purchases.ts`, hoy en modo stub inerte), `EntitlementsContext` consumiendo esa capa, `PaywallHost` montado en `App.tsx`. **Pendiente (tu setup manual):** cuenta RevenueCat + productos en App Store Connect + instalar `react-native-purchases` + EAS build — pasos en `ACTIVAR_REVENUECAT.md`.
+- ⏳ **Fase 6** (IA de sueños, extra Premium) sin empezar.
+
+> ⚠️ **Dos migraciones creadas pero NO aplicadas al remoto** — hay que correr `supabase db push`: `20260720000000_dream_journal.sql` (bitácora) y `20260720000001_sleep_goals.sql` (metas). Hasta entonces, bitácora y metas funcionan solo con caché local; no persisten en Supabase.
+
 ## Objetivo de la fase
 
 Convertir Mimebien de "una app que calcula horarios y registra noches" en **una app que te acompaña**: que nunca se sienta como un formulario vacío, que refleje tu progreso de vuelta y que te dé retroalimentación personalizada para dormir mejor.

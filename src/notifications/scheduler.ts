@@ -208,8 +208,8 @@ export async function scheduleDailyLogReminder(params: {
 
     const id = await Notifications.scheduleNotificationAsync({
       content: {
-        title: '¿Cómo dormiste?',
-        body: 'Registra tu noche para mantener tu racha y tus estadísticas al día.',
+        title: 'Buen día ☀️ ¿Cómo dormiste?',
+        body: 'Cuéntame tu noche en un minuto y tu seguimiento sigue al día. Tu racha te espera.',
         sound: 'default',
         ...(Platform.OS === 'android' ? { channelId: 'sleep-reminders' } : {}),
       },
@@ -222,6 +222,56 @@ export async function scheduleDailyLogReminder(params: {
     return id;
   } catch (err) {
     console.warn('Error scheduling daily log reminder', err);
+    return null;
+  }
+}
+
+const WEEKLY_RECAP_KEY = 'weekly-recap-reminder';
+
+/**
+ * Recordatorio semanal para revisar el resumen de la semana. Trigger semanal
+ * (por defecto domingo por la noche). Reemplaza el anterior si ya existía.
+ * Cuenta como 1 sola notificación programada (importa por el límite de 64 en iOS).
+ *
+ * `weekday`: 1 = domingo … 7 = sábado (convención de expo-notifications).
+ */
+export async function scheduleWeeklyRecapReminder(params: {
+  weekday: number;
+  hour: number;
+  minute: number;
+}): Promise<string | null> {
+  const { weekday, hour, minute } = params;
+
+  try {
+    const scheduledMap = await getScheduledMap();
+    const previousId = scheduledMap[WEEKLY_RECAP_KEY];
+    if (previousId) {
+      await cancelNotification(previousId);
+    }
+
+    const trigger: Notifications.WeeklyTriggerInput = {
+      type: Notifications.SchedulableTriggerInputTypes.WEEKLY,
+      weekday,
+      hour,
+      minute,
+    };
+
+    const id = await Notifications.scheduleNotificationAsync({
+      content: {
+        title: 'Tu semana de sueño 🌙',
+        body: 'Mira cómo dormiste esta semana y qué ajustar para la próxima.',
+        sound: 'default',
+        ...(Platform.OS === 'android' ? { channelId: 'sleep-reminders' } : {}),
+      },
+      trigger,
+    });
+
+    const map = await getScheduledMap();
+    map[WEEKLY_RECAP_KEY] = id;
+    await setScheduledMap(map);
+    return id;
+  } catch (err) {
+    console.warn('Error scheduling weekly recap reminder', err);
     return null;
   }
 }

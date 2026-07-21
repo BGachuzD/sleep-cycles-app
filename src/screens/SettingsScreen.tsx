@@ -18,6 +18,7 @@ import { GradientBackground } from '../components/GradientBackground';
 import { FloatingDrawerButton } from '../components/FloatingDrawerButton';
 import { FloatingHomeButton } from '../components/FloatingHomeButton';
 import { usePressScale } from '../hooks/usePressScale';
+import { usePremium } from '../context/EntitlementsContext';
 import { useHealthKit } from '../hooks/useHealthKit';
 import { useOnboardingFlag } from '../hooks/useOnboardingFlag';
 import { useAppTheme } from '../theme/ThemeProvider';
@@ -637,6 +638,7 @@ export const SettingsScreen: FC = () => {
   const { theme, mode, setMode } = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const { resetOnboarding } = useOnboardingFlag();
+  const { presentPaywall } = usePremium();
 
   // Al resetear el flag, el navigator raíz muestra el recorrido de nuevo.
   const handleReplayTour = () => {
@@ -693,13 +695,7 @@ export const SettingsScreen: FC = () => {
     });
   };
 
-  const openPremium = () => {
-    Alert.alert(
-      'Sleep Cycles Premium',
-      'Próximamente. Estamos preparando funciones avanzadas, sincronización extendida y análisis profundo para suscriptores.',
-      [{ text: 'Entendido', style: 'default' }],
-    );
-  };
+  const openPremium = () => presentPaywall();
 
   const premiumScale = usePressScale(0.97);
 
@@ -733,7 +729,7 @@ export const SettingsScreen: FC = () => {
             onPressIn={premiumScale.onPressIn}
             onPressOut={premiumScale.onPressOut}
             accessibilityRole="button"
-            accessibilityLabel="Conocer Sleep Cycles Premium"
+            accessibilityLabel="Conocer Mimebien Premium"
           >
             <LinearGradient
               colors={[theme.colors.accent[500], theme.colors.accent[700]]}

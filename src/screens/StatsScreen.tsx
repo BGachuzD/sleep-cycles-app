@@ -29,6 +29,8 @@ import { FloatingDrawerButton } from '../components/FloatingDrawerButton';
 import { FloatingHomeButton } from '../components/FloatingHomeButton';
 import { PrimaryCTA } from '../components/PrimaryCTA';
 import { HealthKitBanner } from '../components/HealthKitBanner';
+import { InsightCard } from '../components/InsightCard';
+import { WeeklyRecapCard } from '../components/WeeklyRecapCard';
 import { useHealthKit } from '../hooks/useHealthKit';
 import { useSleepLogContext } from '../context/SleepLogContext';
 import { useSleepProfileContext } from '../context/SleepProfileContext';
@@ -40,6 +42,9 @@ import {
   type SleepLogEntry,
 } from '../domain/sleepLog';
 import { getAdjustedCycleLengthMinutes } from '../domain/sleepProfile';
+import { computeInsights } from '../domain/sleepInsights';
+import { computeAchievements, type Achievement } from '../domain/achievements';
+import { computeWeeklyRecap } from '../domain/weeklyRecap';
 import { formatDuration, formatTime } from '../utils/sleep';
 import { useAppTheme } from '../theme/ThemeProvider';
 import type { AppTheme } from '../theme/theme';
@@ -382,6 +387,88 @@ const compactStyles = StyleSheet.create({
 });
 
 // ─────────────────────────────────────────────
+// AchievementChip: tarjeta de logro (tira horizontal)
+// ─────────────────────────────────────────────
+const AchievementChip: FC<{ achievement: Achievement; theme: AppTheme }> = ({
+  achievement,
+  theme,
+}) => {
+  const { unlocked, icon, title, progress } = achievement;
+  const color = unlocked ? theme.colors.accent[400] : theme.colors.textMuted;
+  return (
+    <View
+      style={[
+        achievementStyles.chip,
+        {
+          backgroundColor: theme.colors.surface,
+          borderColor: unlocked ? theme.colors.accent[500] : theme.colors.border,
+          borderWidth: unlocked ? 1.5 : 1,
+          borderRadius: theme.radius.lg,
+        },
+      ]}
+    >
+      <View
+        style={[
+          achievementStyles.iconCircle,
+          {
+            backgroundColor: unlocked
+              ? `${theme.colors.accent[500]}1F`
+              : `${theme.colors.textMuted}1F`,
+          },
+        ]}
+      >
+        <Ionicons
+          name={(unlocked ? icon : 'lock-closed') as keyof typeof Ionicons.glyphMap}
+          size={18}
+          color={color}
+        />
+      </View>
+      <Text
+        style={[
+          achievementStyles.title,
+          { color: unlocked ? theme.colors.textPrimary : theme.colors.textMuted },
+        ]}
+        numberOfLines={2}
+      >
+        {title}
+      </Text>
+      {unlocked ? (
+        <View style={achievementStyles.doneRow}>
+          <Ionicons
+            name="checkmark-circle"
+            size={12}
+            color={theme.colors.success}
+          />
+          <Text style={[achievementStyles.doneText, { color: theme.colors.success }]}>
+            Logrado
+          </Text>
+        </View>
+      ) : progress ? (
+        <Text style={[achievementStyles.progressText, { color: theme.colors.textMuted }]}>
+          {progress.current}/{progress.total}
+        </Text>
+      ) : null}
+    </View>
+  );
+};
+
+const achievementStyles = StyleSheet.create({
+  strip: { gap: 10, paddingVertical: 2, paddingRight: 4 },
+  chip: { width: 122, padding: 12, gap: 8, alignItems: 'flex-start' },
+  iconCircle: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  title: { fontSize: 12, fontWeight: '800', lineHeight: 15 },
+  doneRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  doneText: { fontSize: 11, fontWeight: '700' },
+  progressText: { fontSize: 11, fontWeight: '700', fontVariant: ['tabular-nums'] },
+});
+
+// ─────────────────────────────────────────────
 // EntryRow del historial
 // ─────────────────────────────────────────────
 const EntryRow: FC<{
@@ -566,6 +653,16 @@ export const StatsScreen: FC = () => {
     [entries, cycleMins],
   );
 
+  const achievements = useMemo(
+    () => computeAchievements(entries, stats),
+    [entries, stats],
+  );
+
+  const recap = useMemo(
+    () => computeWeeklyRecap(entries, cycleMins),
+    [entries, cycleMins],
+  );
+
   const avgHours = stats.avgSleepMinutes / 60;
   const debtHours = stats.debtMinutes / 60;
 
@@ -635,6 +732,22 @@ export const StatsScreen: FC = () => {
           )}
 
           <Animated.View entering={FadeInUp.delay(80).duration(500)}>
+            {profile &&
+              computeInsights([], profile)
+                .slice(0, 1)
+                .map((insight) => (
+                  <View
+                    key={insight.id}
+                    style={{ marginBottom: theme.spacing.lg }}
+                  >
+                    <InsightCard
+                      insight={insight}
+                      onCtaPress={(screen) =>
+                        navigation.navigate(screen as never)
+                      }
+                    />
+                  </View>
+                ))}
             <View style={styles.emptyBox}>
               <Ionicons
                 name="stats-chart-outline"
@@ -747,6 +860,11 @@ export const StatsScreen: FC = () => {
           </View>
         </Animated.View>
 
+        {/* Resumen semanal */}
+        <Animated.View entering={FadeInUp.delay(60).duration(500)}>
+          <WeeklyRecapCard recap={recap} />
+        </Animated.View>
+
         {/* Ring + Sparkline */}
         <Animated.View entering={FadeInUp.delay(80).duration(500)}>
           <View style={styles.dashboardRow}>
@@ -826,6 +944,20 @@ export const StatsScreen: FC = () => {
               theme={theme}
             />
           </View>
+        </Animated.View>
+
+        {/* Logros */}
+        <Animated.View entering={FadeInUp.delay(180).duration(500)}>
+          <Text style={styles.sectionEyebrow}>LOGROS</Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={achievementStyles.strip}
+          >
+            {achievements.map((a) => (
+              <AchievementChip key={a.id} achievement={a} theme={theme} />
+            ))}
+          </ScrollView>
         </Animated.View>
 
         {/* Deuda */}

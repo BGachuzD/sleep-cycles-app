@@ -25,6 +25,7 @@ import { ProfileSetupScreen } from './src/screens/ProfileSetupScreen';
 import { SleepProfileScreen } from './src/screens/SleepProfileScreen';
 import { SleepProfileProvider } from './src/context/SleepProfileContext';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
+import { EntitlementsProvider } from './src/context/EntitlementsContext';
 import { useOnboardingFlag } from './src/hooks/useOnboardingFlag';
 import { SignInScreen } from './src/screens/auth/SignInScreen';
 import { SignUpScreen } from './src/screens/auth/SignUpScreen';
@@ -35,9 +36,14 @@ import { supabase } from './src/lib/supabaseClient';
 import { OnboardingProvider } from './src/context/OnboardingContext';
 import { useSleepProfileContext } from './src/context/SleepProfileContext';
 import { SleepLogProvider } from './src/context/SleepLogContext';
+import { SleepGoalsProvider } from './src/context/SleepGoalsContext';
 import { SleepRoutineProvider } from './src/context/SleepRoutineContext';
 import { HealthKitProvider } from './src/hooks/useHealthKit';
-import { scheduleDailyLogReminder } from './src/notifications/scheduler';
+import { PaywallHost } from './src/components/Paywall';
+import {
+  scheduleDailyLogReminder,
+  scheduleWeeklyRecapReminder,
+} from './src/notifications/scheduler';
 import { ThemeProvider, useAppTheme } from './src/theme/ThemeProvider';
 
 export type RootStackParamList = {
@@ -135,6 +141,8 @@ function RootNavigator() {
       hour: Math.floor(totalMinutes / 60) % 24,
       minute: totalMinutes % 60,
     });
+    // Resumen semanal: domingo 8:00 p.m. (weekday 1 = domingo).
+    scheduleWeeklyRecapReminder({ weekday: 1, hour: 20, minute: 0 });
   }, [user, profile]);
 
   // ─────────────────────────────────────────────
@@ -266,6 +274,7 @@ function AppNavigation() {
     <NavigationContainer theme={navigationTheme}>
       <StatusBar style={theme.name === 'dark' ? 'light' : 'dark'} />
       <RootNavigator />
+      <PaywallHost />
     </NavigationContainer>
   );
 }
@@ -275,19 +284,23 @@ export default function App() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <ThemeProvider>
         <AuthProvider>
-          <OnboardingProvider>
-            <SleepProfileProvider>
-              <SleepLogProvider>
-                <SleepRoutineProvider>
-                  <HealthKitProvider>
-                    <BottomSheetModalProvider>
-                      <AppNavigation />
-                    </BottomSheetModalProvider>
-                  </HealthKitProvider>
-                </SleepRoutineProvider>
-              </SleepLogProvider>
-            </SleepProfileProvider>
-          </OnboardingProvider>
+          <EntitlementsProvider>
+            <OnboardingProvider>
+              <SleepProfileProvider>
+                <SleepLogProvider>
+                  <SleepGoalsProvider>
+                    <SleepRoutineProvider>
+                      <HealthKitProvider>
+                        <BottomSheetModalProvider>
+                          <AppNavigation />
+                        </BottomSheetModalProvider>
+                      </HealthKitProvider>
+                    </SleepRoutineProvider>
+                  </SleepGoalsProvider>
+                </SleepLogProvider>
+              </SleepProfileProvider>
+            </OnboardingProvider>
+          </EntitlementsProvider>
         </AuthProvider>
       </ThemeProvider>
     </GestureHandlerRootView>

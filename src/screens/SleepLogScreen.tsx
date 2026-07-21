@@ -15,15 +15,16 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import Animated, {
+  FadeIn,
   FadeInDown,
-  FadeInUp,
-  FadeOutUp,
+  FadeOut,
   LinearTransition,
   useAnimatedStyle,
   useSharedValue,
@@ -38,13 +39,20 @@ import { FloatingDrawerButton } from '../components/FloatingDrawerButton';
 import { TimeWheel } from '../components/TimeWheel';
 import { PrimaryCTA } from '../components/PrimaryCTA';
 import { HealthKitBanner } from '../components/HealthKitBanner';
+import { PremiumHint } from '../components/PremiumHint';
 import { usePressScale } from '../hooks/usePressScale';
+import { usePremium } from '../context/EntitlementsContext';
 import { useHealthKit } from '../hooks/useHealthKit';
 import { useSleepLogContext } from '../context/SleepLogContext';
 import {
   computeSleepMinutes,
   computeCompleteCycles,
   dateStringDaysAgo,
+  DREAM_TAGS,
+  FREE_DREAM_TAG_LIMIT,
+  FREE_DREAM_NOTE_MAXLEN,
+  PREMIUM_DREAM_NOTE_MAXLEN,
+  type DreamMood,
   type SleepLogEntry,
 } from '../domain/sleepLog';
 import { formatDuration, formatTime } from '../utils/sleep';
@@ -289,6 +297,75 @@ const feelingStyles = StyleSheet.create({
 });
 
 // ─────────────────────────────────────────────
+// DreamChip: chip genérico de la bitácora (toggle soñé/no, mood y tags).
+// El icono es opcional; `grow` lo expande para ocupar la fila.
+// ─────────────────────────────────────────────
+const DreamChip: FC<{
+  label: string;
+  icon?: keyof typeof Ionicons.glyphMap;
+  active: boolean;
+  color?: string;
+  onPress: () => void;
+  theme: AppTheme;
+  grow?: boolean;
+}> = ({ label, icon, active, color, onPress, theme, grow }) => {
+  const { animatedStyle, onPressIn, onPressOut } = usePressScale(0.95);
+  const c = color ?? theme.colors.accent[500];
+  return (
+    <Animated.View style={[grow ? { flex: 1 } : null, animatedStyle]}>
+      <Pressable
+        onPress={onPress}
+        onPressIn={onPressIn}
+        onPressOut={onPressOut}
+        accessibilityRole="button"
+        accessibilityLabel={label}
+        style={[
+          dreamStyles.chip,
+          {
+            backgroundColor: active ? `${c}1F` : theme.colors.surfaceElevated,
+            borderColor: active ? c : theme.colors.border,
+            borderWidth: active ? 1.5 : 1,
+            borderRadius: theme.radius.md,
+          },
+        ]}
+      >
+        {icon && (
+          <Ionicons
+            name={icon}
+            size={16}
+            color={active ? c : theme.colors.textMuted}
+          />
+        )}
+        <Text
+          style={[
+            dreamStyles.chipLabel,
+            {
+              color: active ? c : theme.colors.textSecondary,
+              fontSize: theme.type.small,
+            },
+          ]}
+        >
+          {label}
+        </Text>
+      </Pressable>
+    </Animated.View>
+  );
+};
+
+const dreamStyles = StyleSheet.create({
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+  },
+  chipLabel: { fontWeight: '700' },
+  tagsWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+});
+
+// ─────────────────────────────────────────────
 // DayChip: selector de a qué día pertenece el registro
 // (la fecha es la del DESPERTAR: "Hoy" = desperté esta mañana)
 // ─────────────────────────────────────────────
@@ -441,6 +518,31 @@ const HistoryCard: FC<{
               </Text>
             </View>
           )}
+          {entry.dreamed && (
+            <View
+              style={[
+                historyStyles.sourceBadge,
+                {
+                  backgroundColor: `${theme.colors.accent[500]}1F`,
+                  borderColor: `${theme.colors.accent[500]}55`,
+                },
+              ]}
+            >
+              <Ionicons
+                name="cloudy-night"
+                size={9}
+                color={theme.colors.accent[400]}
+              />
+              <Text
+                style={[
+                  historyStyles.sourceBadgeText,
+                  { color: theme.colors.accent[400] },
+                ]}
+              >
+                Sueño
+              </Text>
+            </View>
+          )}
         </View>
         <Text
           style={[
@@ -547,6 +649,7 @@ export const SleepLogScreen: FC = () => {
   const scrollRef = useRef<ScrollView>(null);
 
   const hk = useHealthKit();
+  const { isPremium, presentPaywall } = usePremium();
   const [autoPopulatedFromHK, setAutoPopulatedFromHK] = useState(false);
   const [hasUserEdited, setHasUserEdited] = useState(false);
 
@@ -561,6 +664,42 @@ export const SleepLogScreen: FC = () => {
   const [feeling, setFeeling] = useState<FeelingLevel>(2);
   const [editingEntry, setEditingEntry] = useState<SleepLogEntry | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+
+  // ── Bitácora de sueños ──
+  const [dreamed, setDreamed] = useState(false);
+  const [dreamMood, setDreamMood] = useState<DreamMood>(2);
+  const [dreamTags, setDreamTags] = useState<string[]>([]);
+  const [dreamNote, setDreamNote] = useState('');
+  const noteMaxLen = isPremium
+    ? PREMIUM_DREAM_NOTE_MAXLEN
+    : FREE_DREAM_NOTE_MAXLEN;
+
+  const resetDream = useCallback(() => {
+    setDreamed(false);
+    setDreamMood(2);
+    setDreamTags([]);
+    setDreamNote('');
+  }, []);
+
+  const toggleTag = useCallback(
+    (tag: string) => {
+      const selected = dreamTags.includes(tag);
+      if (
+        !selected &&
+        !isPremium &&
+        dreamTags.length >= FREE_DREAM_TAG_LIMIT
+      ) {
+        presentPaywall(
+          `El plan gratuito permite hasta ${FREE_DREAM_TAG_LIMIT} sensaciones por sueño.`,
+        );
+        return;
+      }
+      setDreamTags((prev) =>
+        prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag],
+      );
+    },
+    [dreamTags, isPremium, presentPaywall],
+  );
 
   // Día del despertar del registro nuevo: 0 = hoy, 1 = ayer.
   const [daysAgo, setDaysAgo] = useState<0 | 1>(0);
@@ -614,6 +753,10 @@ export const SleepLogScreen: FC = () => {
       setBedTime(new Date(editingEntry.bedTimeISO));
       setWakeTime(new Date(editingEntry.wakeTimeISO));
       setFeeling(editingEntry.feeling);
+      setDreamed(!!editingEntry.dreamed);
+      setDreamMood(editingEntry.dreamMood ?? 2);
+      setDreamTags(editingEntry.dreamTags ?? []);
+      setDreamNote(editingEntry.dreamNote ?? '');
       setAutoPopulatedFromHK(false);
       setHasUserEdited(false);
       scrollRef.current?.scrollTo({ y: 0, animated: true });
@@ -627,10 +770,11 @@ export const SleepLogScreen: FC = () => {
     setWakeTime(wake);
     setFeeling(2);
     setDaysAgo(0);
+    resetDream();
     setAutoPopulatedFromHK(false);
     setHasUserEdited(false);
     setActiveField(null);
-  }, []);
+  }, [resetDream]);
 
   // Campo cuyo TimeWheel está abierto (null = ninguno).
   const [activeField, setActiveField] = useState<'bed' | 'wake' | null>(null);
@@ -710,12 +854,30 @@ export const SleepLogScreen: FC = () => {
       return;
     }
 
+    const dreamFields: Pick<
+      SleepLogEntry,
+      'dreamed' | 'dreamMood' | 'dreamTags' | 'dreamNote'
+    > = dreamed
+      ? {
+          dreamed: true,
+          dreamMood,
+          dreamTags: dreamTags.length ? dreamTags : undefined,
+          dreamNote: dreamNote.trim() ? dreamNote.trim() : undefined,
+        }
+      : {
+          dreamed: false,
+          dreamMood: undefined,
+          dreamTags: undefined,
+          dreamNote: undefined,
+        };
+
     if (editingEntry) {
       const updated: SleepLogEntry = {
         ...editingEntry,
         bedTimeISO: bedTime.toISOString(),
         wakeTimeISO: wakeTime.toISOString(),
         feeling,
+        ...dreamFields,
       };
       await updateEntry(updated);
       setEditingEntry(null);
@@ -732,6 +894,7 @@ export const SleepLogScreen: FC = () => {
         bedTimeISO: bedTime.toISOString(),
         wakeTimeISO: wakeTime.toISOString(),
         feeling,
+        ...dreamFields,
       };
       await addEntry(entry);
       // Si los valores vinieron de HealthKit, marca el id para el badge.
@@ -742,6 +905,7 @@ export const SleepLogScreen: FC = () => {
       setHasUserEdited(false);
       setDaysAgo(0);
       setActiveField(null);
+      resetDream();
       Haptics.notificationAsync(
         Haptics.NotificationFeedbackType.Success,
       ).catch(() => {});
@@ -753,6 +917,11 @@ export const SleepLogScreen: FC = () => {
     previewOutOfRange,
     editingEntry,
     feeling,
+    dreamed,
+    dreamMood,
+    dreamTags,
+    dreamNote,
+    resetDream,
     logDate,
     addEntry,
     updateEntry,
@@ -989,6 +1158,110 @@ export const SleepLogScreen: FC = () => {
             ))}
           </View>
 
+          {/* Bitácora de sueños */}
+          <View style={styles.dreamSection}>
+            <Text style={styles.fieldLabel}>¿Soñaste anoche?</Text>
+            <View style={styles.dreamRow}>
+              <DreamChip
+                label="No"
+                icon="remove-circle-outline"
+                active={!dreamed}
+                color={theme.colors.textMuted}
+                onPress={() => setDreamed(false)}
+                theme={theme}
+                grow
+              />
+              <DreamChip
+                label="Sí, soñé"
+                icon="cloudy-night-outline"
+                active={dreamed}
+                onPress={() => setDreamed(true)}
+                theme={theme}
+                grow
+              />
+            </View>
+
+            {dreamed && (
+              <Animated.View
+                entering={FadeInDown.duration(220)}
+                layout={LinearTransition.springify().damping(16)}
+                style={styles.dreamDetails}
+              >
+                <Text style={styles.fieldLabel}>¿Cómo fue el sueño?</Text>
+                <View style={styles.dreamRow}>
+                  <DreamChip
+                    label="Malo"
+                    icon="thunderstorm-outline"
+                    active={dreamMood === 1}
+                    color={theme.colors.danger}
+                    onPress={() => setDreamMood(1)}
+                    theme={theme}
+                    grow
+                  />
+                  <DreamChip
+                    label="Bueno"
+                    icon="sparkles-outline"
+                    active={dreamMood === 2}
+                    color={theme.colors.success}
+                    onPress={() => setDreamMood(2)}
+                    theme={theme}
+                    grow
+                  />
+                </View>
+
+                <Text style={styles.fieldLabel}>¿Qué sensaciones te dejó?</Text>
+                <View style={dreamStyles.tagsWrap}>
+                  {DREAM_TAGS.map((tag) => (
+                    <DreamChip
+                      key={tag}
+                      label={tag}
+                      active={dreamTags.includes(tag)}
+                      onPress={() => toggleTag(tag)}
+                      theme={theme}
+                    />
+                  ))}
+                </View>
+                {!isPremium && (
+                  <Text style={styles.dreamHint}>
+                    Hasta {FREE_DREAM_TAG_LIMIT} sensaciones en el plan gratuito.
+                  </Text>
+                )}
+
+                <Text style={styles.fieldLabel}>Notas del sueño</Text>
+                <TextInput
+                  value={dreamNote}
+                  onChangeText={setDreamNote}
+                  placeholder="¿Qué recuerdas? ¿Dónde estabas, quién aparecía…?"
+                  placeholderTextColor={theme.colors.textMuted}
+                  multiline
+                  maxLength={noteMaxLen}
+                  style={[
+                    styles.dreamNote,
+                    {
+                      backgroundColor: theme.colors.surfaceElevated,
+                      borderColor: theme.colors.border,
+                      borderRadius: theme.radius.md,
+                      color: theme.colors.textPrimary,
+                    },
+                  ]}
+                />
+                <Text style={styles.dreamCounter}>
+                  {dreamNote.length}/{noteMaxLen}
+                </Text>
+                {!isPremium && dreamNote.length >= FREE_DREAM_NOTE_MAXLEN && (
+                  <PremiumHint
+                    label="Escribe notas más largas con Premium"
+                    onPress={() =>
+                      presentPaywall(
+                        `El plan gratuito permite notas de hasta ${FREE_DREAM_NOTE_MAXLEN} caracteres.`,
+                      )
+                    }
+                  />
+                )}
+              </Animated.View>
+            )}
+          </View>
+
           {/* Submit */}
           <View style={styles.submitWrapper}>
             <PrimaryCTA
@@ -1050,11 +1323,9 @@ export const SleepLogScreen: FC = () => {
               return (
                 <Animated.View
                   key={entry.id}
-                  entering={FadeInUp.delay(index * 40)
-                    .springify()
-                    .damping(14)}
-                  exiting={FadeOutUp.duration(220)}
-                  layout={LinearTransition.springify().damping(16)}
+                  entering={FadeIn.delay(index * 30).duration(220)}
+                  exiting={FadeOut.duration(180)}
+                  layout={LinearTransition.duration(200)}
                 >
                   <HistoryCard
                     entry={entry}
@@ -1171,6 +1442,38 @@ const createStyles = (theme: AppTheme) =>
     feelingRow: {
       flexDirection: 'row',
       gap: theme.spacing.sm,
+    },
+    dreamSection: {
+      gap: theme.spacing.sm,
+    },
+    dreamRow: {
+      flexDirection: 'row',
+      gap: theme.spacing.sm,
+    },
+    dreamDetails: {
+      gap: theme.spacing.sm,
+      marginTop: theme.spacing.xs,
+    },
+    dreamHint: {
+      color: theme.colors.textMuted,
+      fontSize: theme.type.caption,
+      lineHeight: 15,
+    },
+    dreamNote: {
+      minHeight: 72,
+      borderWidth: 1,
+      paddingHorizontal: theme.spacing.md,
+      paddingTop: theme.spacing.sm,
+      paddingBottom: theme.spacing.sm,
+      fontSize: theme.type.body,
+      textAlignVertical: 'top',
+    },
+    dreamCounter: {
+      color: theme.colors.textMuted,
+      fontSize: theme.type.caption,
+      fontWeight: '600',
+      alignSelf: 'flex-end',
+      fontVariant: ['tabular-nums'],
     },
     submitWrapper: { marginTop: theme.spacing.xs },
     cancelBtn: { alignItems: 'center', paddingVertical: 6 },

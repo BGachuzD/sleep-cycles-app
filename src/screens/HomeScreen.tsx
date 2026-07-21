@@ -16,6 +16,8 @@ import type { DrawerNavigationProp } from '@react-navigation/drawer';
 import { GradientBackground } from '../components/GradientBackground';
 import { FloatingDrawerButton } from '../components/FloatingDrawerButton';
 import { PrimaryCTA } from '../components/PrimaryCTA';
+import { InsightCard } from '../components/InsightCard';
+import { GoalCard } from '../components/GoalCard';
 import { usePressScale } from '../hooks/usePressScale';
 import { useSleepProfileContext } from '../context/SleepProfileContext';
 import { useSleepLogContext } from '../context/SleepLogContext';
@@ -37,6 +39,7 @@ import {
   getAdjustedCycleLengthMinutes,
   getOptimalSleepWindow,
 } from '../domain/sleepProfile';
+import { computeInsights } from '../domain/sleepInsights';
 import type { AppDrawerParamList } from '../navigation/AppDrawerNavigator';
 
 type TimeContext = 'evening' | 'night' | 'morning' | 'afternoon';
@@ -180,6 +183,11 @@ export const HomeScreen: FC = () => {
     [entries, cycleMins],
   );
 
+  const insights = useMemo(
+    () => (profile ? computeInsights(entries, profile) : []),
+    [entries, profile],
+  );
+
   const optWindow = profile?.chronotype
     ? getOptimalSleepWindow(profile.chronotype)
     : null;
@@ -307,9 +315,35 @@ export const HomeScreen: FC = () => {
           </Animated.View>
         )}
 
+        {/* Tu coach: insights personalizados */}
+        {insights.length > 0 && (
+          <Animated.View
+            entering={FadeInDown.delay(240).duration(500)}
+            style={styles.coachSection}
+          >
+            <Text style={styles.coachEyebrow}>TU COACH</Text>
+            <View style={styles.coachList}>
+              {insights.slice(0, 2).map((insight) => (
+                <InsightCard
+                  key={insight.id}
+                  insight={insight}
+                  onCtaPress={(screen) =>
+                    navigation.navigate(screen as never)
+                  }
+                />
+              ))}
+            </View>
+          </Animated.View>
+        )}
+
+        {/* Tu meta */}
+        <Animated.View entering={FadeInDown.delay(270).duration(500)}>
+          <GoalCard />
+        </Animated.View>
+
         {/* Grid 2×2 atajos */}
         <Animated.View
-          entering={FadeInDown.delay(280).duration(500)}
+          entering={FadeInDown.delay(320).duration(500)}
           style={styles.quickGrid}
         >
           {QUICK_NAV.map((item) => (
@@ -479,4 +513,12 @@ const createStyles = (theme: AppTheme) =>
       gap: theme.spacing.md,
       marginTop: theme.spacing.xs,
     },
+    coachSection: { gap: theme.spacing.sm },
+    coachEyebrow: {
+      color: theme.colors.textMuted,
+      fontSize: theme.type.micro,
+      fontWeight: '700',
+      letterSpacing: 1.2,
+    },
+    coachList: { gap: theme.spacing.sm },
   });

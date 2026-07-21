@@ -1,5 +1,8 @@
-import type { SleepLogEntry } from '../domain/sleepLog';
+import type { DreamMood, SleepLogEntry } from '../domain/sleepLog';
 import { supabase } from '../lib/supabaseClient';
+
+const SLEEP_LOG_COLUMNS =
+  'id,user_id,date,bed_time_iso,wake_time_iso,feeling,dreamed,dream_mood,dream_tags,dream_note';
 
 type SleepLogRow = {
   id: string;
@@ -8,6 +11,10 @@ type SleepLogRow = {
   bed_time_iso: string;
   wake_time_iso: string;
   feeling: number;
+  dreamed: boolean | null;
+  dream_mood: number | null;
+  dream_tags: string[] | null;
+  dream_note: string | null;
 };
 
 function rowToEntry(row: SleepLogRow): SleepLogEntry {
@@ -17,6 +24,10 @@ function rowToEntry(row: SleepLogRow): SleepLogEntry {
     bedTimeISO: row.bed_time_iso,
     wakeTimeISO: row.wake_time_iso,
     feeling: row.feeling as 1 | 2 | 3,
+    ...(row.dreamed != null ? { dreamed: row.dreamed } : {}),
+    ...(row.dream_mood != null ? { dreamMood: row.dream_mood as DreamMood } : {}),
+    ...(row.dream_tags != null ? { dreamTags: row.dream_tags } : {}),
+    ...(row.dream_note != null ? { dreamNote: row.dream_note } : {}),
   };
 }
 
@@ -28,13 +39,17 @@ function entryToRow(userId: string, entry: SleepLogEntry): SleepLogRow {
     bed_time_iso: entry.bedTimeISO,
     wake_time_iso: entry.wakeTimeISO,
     feeling: entry.feeling,
+    dreamed: entry.dreamed ?? null,
+    dream_mood: entry.dreamMood ?? null,
+    dream_tags: entry.dreamTags ?? null,
+    dream_note: entry.dreamNote ?? null,
   };
 }
 
 export async function loadSleepLog(userId: string): Promise<SleepLogEntry[] | null> {
   const { data, error } = await supabase
     .from('sleep_log')
-    .select('id,user_id,date,bed_time_iso,wake_time_iso,feeling')
+    .select(SLEEP_LOG_COLUMNS)
     .eq('user_id', userId)
     .order('date', { ascending: false });
 

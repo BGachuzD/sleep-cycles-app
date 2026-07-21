@@ -1,12 +1,43 @@
 // src/domain/sleepLog.ts
 
+/** Calidad del sueño soñado: 1 = malo, 2 = bueno. */
+export type DreamMood = 1 | 2;
+
 export interface SleepLogEntry {
   id: string;
   date: string;        // YYYY-MM-DD (fecha en que DESPERTASTE)
   bedTimeISO: string;  // ISO string — hora de acostarte
   wakeTimeISO: string; // ISO string — hora de despertar
   feeling: 1 | 2 | 3; // 1=mal 2=bien 3=excelente
+  // ── Bitácora de sueños (Fase 5) — todos opcionales ──
+  /** Si el usuario reportó haber soñado esa noche. */
+  dreamed?: boolean;
+  /** Calidad del sueño (solo si dreamed). */
+  dreamMood?: DreamMood;
+  /** Sensaciones/emociones etiquetadas (subconjunto de DREAM_TAGS). */
+  dreamTags?: string[];
+  /** Nota libre del sueño. */
+  dreamNote?: string;
 }
+
+/** Sensaciones/emociones curadas para etiquetar un sueño. */
+export const DREAM_TAGS = [
+  'Feliz',
+  'Tranquilo',
+  'Emocionado',
+  'Vívido',
+  'Raro',
+  'Confuso',
+  'Ansioso',
+  'Miedo',
+  'Triste',
+  'Nostálgico',
+] as const;
+
+// Límites del tier gratuito para la bitácora. Mimebien Premium los quita.
+export const FREE_DREAM_TAG_LIMIT = 3;
+export const FREE_DREAM_NOTE_MAXLEN = 140;
+export const PREMIUM_DREAM_NOTE_MAXLEN = 1000;
 
 export interface SleepLogStats {
   avgSleepMinutes: number;
