@@ -67,7 +67,16 @@ export const InsightCard: FC<{
       ]}
     >
       <View style={styles.headerRow}>
-        <View style={[styles.iconCircle, { backgroundColor: `${color}1F` }]}>
+        <View
+          style={[
+            styles.iconCircle,
+            {
+              backgroundColor: `${color}${
+                insight.severity === 'warning' ? '33' : '1F'
+              }`,
+            },
+          ]}
+        >
           <Ionicons name={iconName} size={16} color={color} />
         </View>
         <Text

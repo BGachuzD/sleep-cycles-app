@@ -1,24 +1,35 @@
 import React, { FC } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 import { useAppTheme } from '../theme/ThemeProvider';
 import { formatDuration } from '../utils/sleep';
 import type { WeeklyRecap } from '../domain/weeklyRecap';
+import { computeDreamWeekSummary, type DreamEntry } from '../domain/dreamEntry';
 
 /**
  * Tarjeta "Tu semana": resumen de los últimos 7 días con comparación contra la
  * semana anterior. Es la superficie del resumen semanal (Sprint 3). No se
- * renderiza si no hay noches en la semana.
+ * También conecta la bitácora con la semana; se oculta sólo si no hay noches ni
+ * sueños recientes.
  */
-export const WeeklyRecapCard: FC<{ recap: WeeklyRecap }> = ({ recap }) => {
+export const WeeklyRecapCard: FC<{
+  recap: WeeklyRecap;
+  dreams?: DreamEntry[];
+  onDreamPress?: () => void;
+}> = ({ recap, dreams = [], onDreamPress }) => {
   const { theme } = useAppTheme();
-  if (recap.nights === 0) return null;
+  const dreamSummary = computeDreamWeekSummary(dreams);
+  if (recap.nights === 0 && dreamSummary.total === 0) return null;
 
-  const improving = recap.deltaMinutesVsPrev > 0;
-  const deltaAbs = Math.abs(recap.deltaMinutesVsPrev);
-  const deltaColor = improving ? theme.colors.success : theme.colors.warning;
-  const showDelta = recap.hasPrevWeek && deltaAbs >= 5;
+  const dreamDetail =
+    dreamSummary.total === 0
+      ? 'Sin registros esta semana. Anota lo que recuerdes al despertar.'
+      : dreamSummary.pleasant > dreamSummary.difficult
+        ? `${dreamSummary.total} ${dreamSummary.total === 1 ? 'sueño registrado' : 'sueños registrados'} · predominan los agradables.`
+        : dreamSummary.difficult > dreamSummary.pleasant
+          ? `${dreamSummary.total} ${dreamSummary.total === 1 ? 'sueño registrado' : 'sueños registrados'} · observa si se repite algún tema.`
+          : `${dreamSummary.total} ${dreamSummary.total === 1 ? 'sueño registrado' : 'sueños registrados'} esta semana.`;
 
   return (
     <View
@@ -35,26 +46,6 @@ export const WeeklyRecapCard: FC<{ recap: WeeklyRecap }> = ({ recap }) => {
         <Text style={[styles.eyebrow, { color: theme.colors.textMuted }]}>
           TU SEMANA
         </Text>
-        {showDelta && (
-          <View
-            style={[
-              styles.deltaChip,
-              {
-                backgroundColor: `${deltaColor}1F`,
-                borderColor: `${deltaColor}55`,
-              },
-            ]}
-          >
-            <Ionicons
-              name={improving ? 'arrow-up' : 'arrow-down'}
-              size={11}
-              color={deltaColor}
-            />
-            <Text style={[styles.deltaText, { color: deltaColor }]}>
-              {formatDuration(deltaAbs)} vs. semana pasada
-            </Text>
-          </View>
-        )}
       </View>
 
       <View style={styles.statsRow}>
@@ -95,6 +86,48 @@ export const WeeklyRecapCard: FC<{ recap: WeeklyRecap }> = ({ recap }) => {
           Tu mejor noche: {formatDuration(recap.bestNight.minutes)} de sueño.
         </Text>
       )}
+
+      <Pressable
+        accessibilityRole={onDreamPress ? 'button' : undefined}
+        accessibilityLabel="Abrir bitácora de sueños"
+        disabled={!onDreamPress}
+        onPress={onDreamPress}
+        style={({ pressed }) => [
+          styles.dreamRow,
+          {
+            borderTopColor: theme.colors.border,
+            opacity: pressed ? 0.72 : 1,
+          },
+        ]}
+      >
+        <View
+          style={[
+            styles.dreamIcon,
+            { backgroundColor: `${theme.colors.violet}1F` },
+          ]}
+        >
+          <Ionicons name="cloudy-night" size={18} color={theme.colors.violet} />
+        </View>
+        <View style={styles.dreamCopy}>
+          <Text
+            style={[styles.dreamTitle, { color: theme.colors.textPrimary }]}
+          >
+            Estado de tus sueños
+          </Text>
+          <Text
+            style={[styles.dreamDetail, { color: theme.colors.textSecondary }]}
+          >
+            {dreamDetail}
+          </Text>
+        </View>
+        {onDreamPress ? (
+          <Ionicons
+            name="chevron-forward"
+            size={17}
+            color={theme.colors.textMuted}
+          />
+        ) : null}
+      </Pressable>
     </View>
   );
 };
@@ -107,16 +140,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   eyebrow: { fontSize: 12, fontWeight: '700', letterSpacing: 1.2 },
-  deltaChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 999,
-    borderWidth: 1,
-  },
-  deltaText: { fontSize: 11, fontWeight: '700' },
   statsRow: { flexDirection: 'row', alignItems: 'center' },
   stat: { flex: 1, alignItems: 'center', gap: 2 },
   statValue: {
@@ -128,4 +151,21 @@ const styles = StyleSheet.create({
   statLabel: { fontSize: 11, fontWeight: '600' },
   divider: { width: 1, height: 30 },
   bestNight: { fontSize: 13, lineHeight: 18, fontWeight: '600' },
+  dreamRow: {
+    alignItems: 'center',
+    borderTopWidth: 1,
+    flexDirection: 'row',
+    gap: 10,
+    paddingTop: 12,
+  },
+  dreamIcon: {
+    alignItems: 'center',
+    borderRadius: 18,
+    height: 36,
+    justifyContent: 'center',
+    width: 36,
+  },
+  dreamCopy: { flex: 1, gap: 2 },
+  dreamTitle: { fontSize: 13, fontWeight: '700' },
+  dreamDetail: { fontSize: 12, lineHeight: 17 },
 });

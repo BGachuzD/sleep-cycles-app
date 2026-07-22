@@ -9,6 +9,11 @@ import { FloatingActionButton } from '../components/ui';
 import { usePressScale } from '../hooks/usePressScale';
 import { useAppTheme } from '../theme/ThemeProvider';
 import type { AppTheme } from '../theme/theme';
+import {
+  TAB_BAR_BOTTOM_OFFSET,
+  TAB_BAR_HEIGHT,
+  TAB_BAR_TOP_PADDING,
+} from './tabBarLayout';
 
 type TabMeta = {
   label: string;
@@ -120,9 +125,14 @@ export function CustomTabBar({ state, navigation }: BottomTabBarProps) {
     <View
       style={{
         backgroundColor: theme.colors.background,
-        paddingBottom: Math.max(insets.bottom, theme.spacing.sm),
+        bottom: 0,
+        left: 0,
+        paddingBottom: Math.max(insets.bottom, TAB_BAR_BOTTOM_OFFSET),
         paddingHorizontal: theme.spacing.md,
-        paddingTop: theme.spacing.sm,
+        paddingTop: TAB_BAR_TOP_PADDING,
+        position: 'absolute',
+        right: 0,
+        zIndex: 100,
       }}
     >
       <View
@@ -159,7 +169,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     flexDirection: 'row',
-    minHeight: 70,
+    minHeight: TAB_BAR_HEIGHT,
     paddingHorizontal: 4,
     paddingVertical: 6,
   },

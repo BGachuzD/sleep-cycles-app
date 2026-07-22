@@ -30,6 +30,7 @@ import { usePressScale } from '../hooks/usePressScale';
 import { scheduleSmartWakeAlarm } from '../notifications/scheduler';
 import { formatTime, formatTimeRange } from '../utils/sleep';
 import { useAppTheme } from '../theme/ThemeProvider';
+import { useTabBarContentPadding } from '../navigation/tabBarLayout';
 import type { AppTheme } from '../theme/theme';
 
 // ─────────────────────────────────────────────
@@ -338,6 +339,7 @@ const detailStyles = StyleSheet.create({
 export const NapScreen: FC = () => {
   const { theme } = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const bottomContentPadding = useTabBarContentPadding();
   const { showToast } = useToast();
 
   const [now, setNow] = useState<Date>(() => new Date());
@@ -420,14 +422,18 @@ export const NapScreen: FC = () => {
     : theme.colors.accent[400];
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <GradientBackground />
       <FloatingDrawerButton insideSafeArea />
       <FloatingHomeButton insideSafeArea />
 
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: bottomContentPadding },
+        ]}
+        scrollIndicatorInsets={{ bottom: bottomContentPadding }}
         showsVerticalScrollIndicator={false}
       >
         {/* Hero */}
@@ -482,8 +488,6 @@ export const NapScreen: FC = () => {
             </Text>
           </View>
         </Animated.View>
-
-        <View style={{ height: theme.spacing.huge }} />
       </ScrollView>
 
       {/* Bottom sheet detalle */}

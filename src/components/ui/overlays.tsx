@@ -124,6 +124,7 @@ export function BottomSheet({
       ref={ref}
       index={0}
       snapPoints={points}
+      enableDynamicSizing={false}
       onDismiss={() => {
         isPresented.current = false;
         if (visible) onClose();

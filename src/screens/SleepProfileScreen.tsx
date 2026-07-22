@@ -36,6 +36,10 @@ import {
 } from '../domain/sleepProfile';
 import { useAppTheme } from '../theme/ThemeProvider';
 import type { AppTheme } from '../theme/theme';
+import {
+  useTabBarContentPadding,
+  useTabBarOverlayHeight,
+} from '../navigation/tabBarLayout';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'SleepProfile'>;
 
@@ -239,6 +243,9 @@ export const SleepProfileScreen: FC<Props> = ({ navigation, route }) => {
   const { theme } = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const isForceSetup = route.params?.forceSetup === true;
+  const tabBarContentPadding = useTabBarContentPadding();
+  const tabBarOverlayHeight = useTabBarOverlayHeight();
+  const bottomContentPadding = isForceSetup ? 120 : 120 + tabBarOverlayHeight;
   const displayName = user?.user_metadata?.display_name as string | undefined;
 
   const [age, setAge] = useState('');
@@ -349,7 +356,10 @@ export const SleepProfileScreen: FC<Props> = ({ navigation, route }) => {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+    <SafeAreaView
+      style={styles.container}
+      edges={isForceSetup ? ['top', 'bottom'] : ['top', 'left', 'right']}
+    >
       <GradientBackground />
       {!isForceSetup && <FloatingDrawerButton insideSafeArea />}
       {!isForceSetup && <FloatingHomeButton insideSafeArea />}
@@ -359,7 +369,17 @@ export const SleepProfileScreen: FC<Props> = ({ navigation, route }) => {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[
+            styles.scrollContent,
+            {
+              paddingBottom: isForceSetup
+                ? bottomContentPadding
+                : Math.max(bottomContentPadding, tabBarContentPadding),
+            },
+          ]}
+          scrollIndicatorInsets={{
+            bottom: isForceSetup ? 0 : bottomContentPadding,
+          }}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
@@ -609,6 +629,7 @@ export const SleepProfileScreen: FC<Props> = ({ navigation, route }) => {
           style={[
             styles.footer,
             {
+              bottom: isForceSetup ? 0 : tabBarOverlayHeight,
               backgroundColor:
                 theme.name === 'dark'
                   ? 'rgba(2,6,23,0.95)'

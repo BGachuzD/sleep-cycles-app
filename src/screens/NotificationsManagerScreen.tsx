@@ -26,6 +26,7 @@ import {
 } from '../notifications/scheduler';
 import { formatTime } from '../utils/sleep';
 import { useAppTheme } from '../theme/ThemeProvider';
+import { useTabBarContentPadding } from '../navigation/tabBarLayout';
 import type { AppTheme } from '../theme/theme';
 
 type NotificationRequest = Notifications.NotificationRequest;
@@ -285,6 +286,7 @@ const cardStyles = StyleSheet.create({
 export const NotificationsManagerScreen: FC = () => {
   const { theme } = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const bottomContentPadding = useTabBarContentPadding();
   const { showToast } = useToast();
 
   const [items, setItems] = useState<NotificationRequest[]>([]);
@@ -362,14 +364,18 @@ export const NotificationsManagerScreen: FC = () => {
   const refresh = usePressScale(0.9);
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <GradientBackground />
       <FloatingDrawerButton insideSafeArea />
       <FloatingHomeButton insideSafeArea />
 
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: bottomContentPadding },
+        ]}
+        scrollIndicatorInsets={{ bottom: bottomContentPadding }}
         showsVerticalScrollIndicator={false}
       >
         {/* Hero */}
@@ -475,8 +481,6 @@ export const NotificationsManagerScreen: FC = () => {
             </Pressable>
           </Animated.View>
         )}
-
-        <View style={{ height: theme.spacing.huge }} />
       </ScrollView>
     </SafeAreaView>
   );

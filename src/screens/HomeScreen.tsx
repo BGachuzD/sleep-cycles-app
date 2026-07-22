@@ -36,6 +36,7 @@ import {
 import { computeInsights } from '../domain/sleepInsights';
 import type { AppDrawerParamList } from '../navigation/AppDrawerNavigator';
 import { navigateToScreen } from '../navigation/navigateTo';
+import { useTabBarContentPadding } from '../navigation/tabBarLayout';
 
 type TimeContext = 'evening' | 'night' | 'morning' | 'afternoon';
 
@@ -151,6 +152,7 @@ export const HomeScreen: FC = () => {
   const { user } = useAuth();
   const { theme } = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const bottomContentPadding = useTabBarContentPadding();
 
   const [now, setNow] = useState<Date>(() => new Date());
   useEffect(() => {
@@ -245,13 +247,17 @@ export const HomeScreen: FC = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <GradientBackground />
       <FloatingDrawerButton insideSafeArea />
 
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: bottomContentPadding },
+        ]}
+        scrollIndicatorInsets={{ bottom: bottomContentPadding }}
         showsVerticalScrollIndicator={false}
       >
         {/* Hero: greeting + hora gigante + frase contextual */}
@@ -349,8 +355,6 @@ export const HomeScreen: FC = () => {
             />
           ))}
         </Animated.View>
-
-        <View style={{ height: theme.spacing.xxl }} />
       </ScrollView>
     </SafeAreaView>
   );

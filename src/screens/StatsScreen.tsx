@@ -23,6 +23,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useNavigation } from '@react-navigation/native';
 import { navigateToScreen } from '../navigation/navigateTo';
+import { useTabBarContentPadding } from '../navigation/tabBarLayout';
 import Svg, {
   Circle,
   Polyline,
@@ -37,13 +38,10 @@ import { FloatingHomeButton } from '../components/FloatingHomeButton';
 import { PrimaryCTA } from '../components/PrimaryCTA';
 import { HealthKitBanner } from '../components/HealthKitBanner';
 import { InsightCard } from '../components/InsightCard';
-import { WeeklyRecapCard } from '../components/WeeklyRecapCard';
-import { AchievementStrip } from '../components/AchievementStrip';
 import { EmptyState } from '../components/ui';
 import { useHealthKit } from '../hooks/useHealthKit';
 import { useSleepLogContext } from '../context/SleepLogContext';
 import { useSleepProfileContext } from '../context/SleepProfileContext';
-import { useDreamEntriesContext } from '../context/DreamEntriesContext';
 import {
   computeCompleteCycles,
   computeSleepMinutes,
@@ -53,7 +51,6 @@ import {
 } from '../domain/sleepLog';
 import { getAdjustedCycleLengthMinutes } from '../domain/sleepProfile';
 import { computeInsights } from '../domain/sleepInsights';
-import { computeAchievements } from '../domain/achievements';
 import { computeWeeklyRecap } from '../domain/weeklyRecap';
 import { formatDuration, formatTime } from '../utils/sleep';
 import { useAppTheme } from '../theme/ThemeProvider';
@@ -63,6 +60,7 @@ import type { AppTheme } from '../theme/theme';
 // Feelings (mismo lenguaje que SleepLog)
 // ─────────────────────────────────────────────
 type FeelingLevel = 1 | 2 | 3;
+const UNDER_TARGET_COLOR = '#F7E950';
 
 const FEELING_ICON: Record<
   FeelingLevel,
@@ -143,13 +141,13 @@ const CompletionRing: FC<{
       </Svg>
       <View style={ringStyles.center} pointerEvents="none">
         <Text style={[ringStyles.value, { color: theme.colors.heroText }]}>
-          {completed}
+          {total > 0 ? Math.round((completed / total) * 100) : 0}
           <Text style={[ringStyles.over, { color: theme.colors.textMuted }]}>
-            /{total}
+            %
           </Text>
         </Text>
         <Text style={[ringStyles.label, { color: theme.colors.textMuted }]}>
-          CUMPLIDAS
+          EN OBJETIVO
         </Text>
       </View>
     </View>
@@ -276,7 +274,7 @@ const WeekChart: FC<{
             ? theme.colors.border
             : isGood
               ? theme.colors.accent[500]
-              : theme.colors.danger;
+              : UNDER_TARGET_COLOR;
         return (
           <View
             key={day.dateStr}
@@ -370,9 +368,7 @@ const CompactStat: FC<{
       {
         backgroundColor: highlight
           ? `${theme.colors.accent[500]}0D`
-          : theme.colors.surface,
-        borderColor: theme.colors.border,
-        borderWidth: 1,
+          : theme.colors.surfaceElevated,
         borderRadius: theme.radius.lg,
       },
     ]}
@@ -587,6 +583,7 @@ export const StatsScreen: FC = () => {
   const { profile } = useSleepProfileContext();
   const { theme } = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const bottomContentPadding = useTabBarContentPadding();
   const navigation = useNavigation();
 
   const hk = useHealthKit();
@@ -607,31 +604,82 @@ export const StatsScreen: FC = () => {
     [entries, cycleMins],
   );
 
-  const { dreams } = useDreamEntriesContext();
-  const achievements = useMemo(
-    () => computeAchievements(entries, stats, dreams.length),
-    [entries, stats, dreams.length],
-  );
-
   const recap = useMemo(
     () => computeWeeklyRecap(entries, cycleMins),
     [entries, cycleMins],
   );
-
-  const avgHours = stats.avgSleepMinutes / 60;
-  const debtHours = stats.debtMinutes / 60;
 
   // Cumplidas en la semana (≥ 5 ciclos)
   const targetMins = 5 * cycleMins;
   const completedThisWeek = stats.weekEntries.filter(
     (e) => computeSleepMinutes(e) >= targetMins,
   ).length;
+  const completionRate = recap.nights
+    ? Math.round((completedThisWeek / recap.nights) * 100)
+    : 0;
+  const belowTargetNights = stats.weekEntries.filter(
+    (entry) => computeSleepMinutes(entry) < targetMins,
+  ).length;
+  const debtPerShortNight = belowTargetNights
+    ? Math.round(stats.debtMinutes / belowTargetNights)
+    : 0;
 
-  // Sparkline: últimas 14 entradas (en orden cronológico antiguo → reciente)
-  const sparkValues = useMemo(() => {
-    const recent = entries.slice(0, 14).reverse();
-    return recent.map((e) => computeSleepMinutes(e) / 60);
+  // Ventana analítica: últimos 14 registros, del más antiguo al más reciente.
+  const recentWindow = useMemo(() => {
+    return [...entries]
+      .sort((a, b) => b.date.localeCompare(a.date))
+      .slice(0, 14)
+      .reverse();
   }, [entries]);
+  const sparkValues = useMemo(
+    () => recentWindow.map((entry) => computeSleepMinutes(entry) / 60),
+    [recentWindow],
+  );
+  const variabilityMinutes = useMemo(() => {
+    if (recentWindow.length < 2) return 0;
+    const minutes = recentWindow.map(computeSleepMinutes);
+    const mean =
+      minutes.reduce((sum, value) => sum + value, 0) / minutes.length;
+    const variance =
+      minutes.reduce((sum, value) => sum + (value - mean) ** 2, 0) /
+      minutes.length;
+    return Math.round(Math.sqrt(variance));
+  }, [recentWindow]);
+  const averageFeeling = useMemo(() => {
+    if (recentWindow.length === 0) return 0;
+    return (
+      recentWindow.reduce((sum, entry) => sum + entry.feeling, 0) /
+      recentWindow.length
+    );
+  }, [recentWindow]);
+  const sparkMin = sparkValues.length ? Math.min(...sparkValues) : 0;
+  const sparkMax = sparkValues.length ? Math.max(...sparkValues) : 0;
+
+  const trendDelta = recap.deltaMinutesVsPrev;
+  const trendMagnitude = Math.abs(trendDelta);
+  const hasMeaningfulTrend = recap.hasPrevWeek && trendMagnitude >= 5;
+  const trendColor = !hasMeaningfulTrend
+    ? theme.colors.textPrimary
+    : trendDelta > 0
+      ? theme.colors.success
+      : theme.colors.warning;
+  const trendValue = recap.hasPrevWeek
+    ? `${trendDelta > 0 ? '+' : trendDelta < 0 ? '−' : ''}${formatDuration(trendMagnitude)}`
+    : `${recap.nights}/7`;
+  const trendTitle = !recap.hasPrevWeek
+    ? 'Construyendo tu comparación'
+    : !hasMeaningfulTrend
+      ? 'Tu duración se mantiene estable'
+      : trendDelta > 0
+        ? 'Estás durmiendo más que la semana anterior'
+        : 'Tu duración bajó frente a la semana anterior';
+  const trendDetail = !recap.hasPrevWeek
+    ? 'Cuando completes dos periodos podremos mostrar cuánto avanzas y detectar cambios reales.'
+    : trendDelta > 0
+      ? 'La diferencia compara el promedio de los últimos 7 días contra los 7 anteriores.'
+      : trendDelta < 0
+        ? 'Revisa el gráfico para identificar qué noches rompieron tu patrón.'
+        : 'El promedio cambió menos de 5 minutos entre ambos periodos.';
 
   // La importación histórica de 30 días vive en el HealthKitProvider:
   // se dispara sola al conectar (desde cualquier pantalla) y deduplica.
@@ -654,14 +702,18 @@ export const StatsScreen: FC = () => {
   // Empty state
   if (entries.length === 0) {
     return (
-      <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+      <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
         <GradientBackground />
         <FloatingDrawerButton insideSafeArea />
         <FloatingHomeButton insideSafeArea fallbackRoute="ProgresoHome" />
 
         <ScrollView
           style={styles.scroll}
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[
+            styles.scrollContent,
+            { paddingBottom: bottomContentPadding },
+          ]}
+          scrollIndicatorInsets={{ bottom: bottomContentPadding }}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
@@ -725,14 +777,18 @@ export const StatsScreen: FC = () => {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <GradientBackground />
       <FloatingDrawerButton insideSafeArea />
       <FloatingHomeButton insideSafeArea fallbackRoute="ProgresoHome" />
 
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: bottomContentPadding },
+        ]}
+        scrollIndicatorInsets={{ bottom: bottomContentPadding }}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -771,20 +827,19 @@ export const StatsScreen: FC = () => {
           </View>
         )}
 
-        {/* Hero KPI */}
+        {/* Hero analítico: responde qué cambió, no repite el resumen general. */}
         <Animated.View entering={FadeInDown.duration(260)} style={styles.hero}>
           <View style={styles.heroTopRow}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.heroEyebrow}>PROMEDIO POR NOCHE</Text>
-              <Text style={styles.heroClock}>
-                {avgHours.toFixed(1)}
-                <Text style={styles.heroUnit}> h</Text>
+              <Text style={styles.heroEyebrow}>EVOLUCIÓN DE 7 DÍAS</Text>
+              <Text style={[styles.heroClock, { color: trendColor }]}>
+                {trendValue}
               </Text>
-              <Text style={styles.heroSubtitle}>
-                {stats.avgCycles} ciclos típicos · {stats.totalDays}{' '}
-                {stats.totalDays === 1
-                  ? 'noche registrada'
-                  : 'noches registradas'}
+              <Text style={styles.heroTitle}>{trendTitle}</Text>
+              <Text style={styles.heroSubtitle}>{trendDetail}</Text>
+              <Text style={styles.heroContext}>
+                Basado en {recap.nights}{' '}
+                {recap.nights === 1 ? 'noche reciente' : 'noches recientes'}.
               </Text>
             </View>
             <Pressable
@@ -811,13 +866,9 @@ export const StatsScreen: FC = () => {
           </View>
         </Animated.View>
 
-        {/* Resumen semanal */}
-        <Animated.View entering={FadeInUp.delay(60).duration(260)}>
-          <WeeklyRecapCard recap={recap} />
-        </Animated.View>
-
-        {/* Ring + Sparkline */}
+        {/* Diagnóstico: cumplimiento y forma de la tendencia. */}
         <Animated.View entering={FadeInUp.delay(80).duration(260)}>
+          <Text style={styles.sectionEyebrow}>LECTURA DEL PATRÓN</Text>
           <View style={styles.dashboardRow}>
             <View
               style={[
@@ -831,11 +882,11 @@ export const StatsScreen: FC = () => {
             >
               <CompletionRing
                 completed={completedThisWeek}
-                total={7}
+                total={recap.nights}
                 theme={theme}
               />
               <Text style={styles.ringCaption}>
-                noches con ≥ 5 ciclos esta semana
+                {completedThisWeek} de {recap.nights} noches registradas
               </Text>
             </View>
 
@@ -849,8 +900,10 @@ export const StatsScreen: FC = () => {
                 },
               ]}
             >
-              <Text style={styles.sparkEyebrow}>TENDENCIA</Text>
-              <Text style={styles.sparkLabel}>últimas 14 noches</Text>
+              <Text style={styles.sparkEyebrow}>DURACIÓN</Text>
+              <Text style={styles.sparkLabel}>
+                últimos {recentWindow.length} registros
+              </Text>
               <View style={styles.sparkChartWrapper}>
                 <Sparkline
                   values={sparkValues}
@@ -862,45 +915,44 @@ export const StatsScreen: FC = () => {
               </View>
               <View style={styles.sparkRange}>
                 <Text style={styles.sparkRangeText}>
-                  {Math.min(...sparkValues, 0).toFixed(1)}h
+                  {sparkMin.toFixed(1)}h
                 </Text>
                 <Text style={styles.sparkRangeText}>
-                  {Math.max(...sparkValues, 0).toFixed(1)}h
+                  {sparkMax.toFixed(1)}h
                 </Text>
               </View>
             </View>
           </View>
         </Animated.View>
 
-        {/* Compact stats row */}
+        {/* Señales que explican el resultado sin repetir rachas o promedios. */}
         <Animated.View entering={FadeInUp.delay(120).duration(260)}>
           <View style={styles.compactRow}>
             <CompactStat
-              icon="flame-outline"
-              value={String(stats.currentStreak)}
-              label="Racha"
-              highlight={stats.currentStreak > 0}
+              icon="checkmark-circle-outline"
+              value={`${completionRate}%`}
+              label="Cumplimiento"
+              highlight={completionRate >= 70}
               theme={theme}
             />
             <CompactStat
-              icon="trophy-outline"
-              value={String(stats.longestStreak)}
-              label="Mejor"
+              icon="swap-vertical-outline"
+              value={`±${variabilityMinutes}m`}
+              label="Variación"
               theme={theme}
             />
             <CompactStat
-              icon="moon-outline"
-              value={`${stats.avgCycles}`}
-              label="Ciclos prom"
+              icon="sunny-outline"
+              value={`${averageFeeling.toFixed(1)}/3`}
+              label="Sensación"
               theme={theme}
             />
           </View>
-        </Animated.View>
-
-        {/* Logros */}
-        <Animated.View entering={FadeInUp.delay(120).duration(260)}>
-          <Text style={styles.sectionEyebrow}>LOGROS</Text>
-          <AchievementStrip achievements={achievements} />
+          <Text style={styles.analysisHint}>
+            La variación mide qué tan estable fue tu duración en los últimos{' '}
+            {recentWindow.length} registros; mientras menor sea, más consistente
+            es tu descanso.
+          </Text>
         </Animated.View>
 
         {/* Deuda */}
@@ -910,8 +962,8 @@ export const StatsScreen: FC = () => {
               style={[
                 styles.debtCard,
                 {
-                  backgroundColor: `${theme.colors.danger}14`,
-                  borderColor: `${theme.colors.danger}40`,
+                  backgroundColor: `${theme.colors.warning}14`,
+                  borderColor: `${theme.colors.warning}40`,
                   borderRadius: theme.radius.lg,
                 },
               ]}
@@ -919,15 +971,22 @@ export const StatsScreen: FC = () => {
               <Ionicons
                 name="alert-circle-outline"
                 size={18}
-                color={theme.colors.danger}
+                color={theme.colors.warning}
               />
               <View style={{ flex: 1 }}>
-                <Text style={styles.debtTitle}>Deuda de sueño esta semana</Text>
+                <Text style={styles.debtTitle}>
+                  Impacto de la deuda semanal
+                </Text>
                 <Text style={styles.debtText}>
-                  Dormiste {formatDuration(stats.debtMinutes)} (
-                  {debtHours.toFixed(1)}
-                  h) menos del objetivo (5 ciclos/noche). Considera una siesta o
-                  acostarte más temprano.
+                  Acumulas {formatDuration(stats.debtMinutes)} por debajo de tu
+                  objetivo. En las {belowTargetNights}{' '}
+                  {belowTargetNights === 1 ? 'noche corta' : 'noches cortas'},
+                  el déficit promedio fue de {formatDuration(debtPerShortNight)}
+                  .
+                </Text>
+                <Text style={styles.debtAction}>
+                  Recupera gradualmente: adelanta 15–30 min tu hora de dormir;
+                  evita intentar compensarlo en una sola noche.
                 </Text>
               </View>
             </View>
@@ -966,7 +1025,7 @@ export const StatsScreen: FC = () => {
                 <View
                   style={[
                     styles.legendDot,
-                    { backgroundColor: theme.colors.danger },
+                    { backgroundColor: UNDER_TARGET_COLOR },
                   ]}
                 />
                 <Text style={styles.legendText}>Bajo objetivo</Text>
@@ -996,8 +1055,6 @@ export const StatsScreen: FC = () => {
             ))}
           </View>
         </Animated.View>
-
-        <View style={{ height: theme.spacing.huge }} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -1047,6 +1104,12 @@ const createStyles = (theme: AppTheme) =>
       fontSize: theme.type.body,
       lineHeight: 20,
       marginTop: 6,
+    },
+    heroContext: {
+      color: theme.colors.textMuted,
+      fontSize: theme.type.caption,
+      fontWeight: '600',
+      marginTop: 4,
     },
     refreshBtn: {
       width: 36,
@@ -1116,15 +1179,21 @@ const createStyles = (theme: AppTheme) =>
       flexDirection: 'row',
       gap: theme.spacing.sm,
     },
+    analysisHint: {
+      color: theme.colors.textMuted,
+      fontSize: theme.type.caption,
+      lineHeight: 17,
+      paddingHorizontal: 2,
+      paddingTop: theme.spacing.sm,
+    },
     debtCard: {
       flexDirection: 'row',
       alignItems: 'flex-start',
       gap: 10,
       padding: theme.spacing.md,
-      borderWidth: 1,
     },
     debtTitle: {
-      color: theme.colors.danger,
+      color: theme.colors.warning,
       fontSize: theme.type.body,
       fontWeight: '700',
       marginBottom: 4,
@@ -1133,6 +1202,13 @@ const createStyles = (theme: AppTheme) =>
       color: theme.colors.textSecondary,
       fontSize: theme.type.small,
       lineHeight: 18,
+    },
+    debtAction: {
+      color: theme.colors.textPrimary,
+      fontSize: theme.type.small,
+      fontWeight: '600',
+      lineHeight: 18,
+      marginTop: 6,
     },
     sectionEyebrow: {
       color: theme.colors.textMuted,

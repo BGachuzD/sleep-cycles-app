@@ -34,6 +34,7 @@ import { useSleepProfileContext } from '../context/SleepProfileContext';
 import { scheduleUniqueNotificationAtDate } from '../notifications/scheduler';
 import { isTimeOptimalForChronotype } from '../domain/sleepProfile';
 import { useAppTheme } from '../theme/ThemeProvider';
+import { useTabBarContentPadding } from '../navigation/tabBarLayout';
 import type { AppTheme } from '../theme/theme';
 import {
   formatDuration,
@@ -318,6 +319,7 @@ export const WakeAtScreen: FC = () => {
   const { profile, loading } = useSleepProfileContext();
   const { theme } = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const bottomContentPadding = useTabBarContentPadding();
   const { showToast } = useToast();
 
   const [now, setNow] = useState<Date>(() => new Date());
@@ -456,14 +458,18 @@ export const WakeAtScreen: FC = () => {
     : '';
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <GradientBackground />
       <FloatingDrawerButton insideSafeArea />
       <FloatingHomeButton insideSafeArea />
 
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: bottomContentPadding },
+        ]}
+        scrollIndicatorInsets={{ bottom: bottomContentPadding }}
         showsVerticalScrollIndicator={false}
       >
         {/* Hero + picker */}
@@ -499,8 +505,6 @@ export const WakeAtScreen: FC = () => {
             </Animated.View>
           ))}
         </View>
-
-        <View style={{ height: theme.spacing.huge }} />
       </ScrollView>
 
       {/* Bottom sheet detalle */}

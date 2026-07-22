@@ -11,6 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { navigateToScreen } from '../navigation/navigateTo';
+import { useTabBarContentPadding } from '../navigation/tabBarLayout';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 
 import { GradientBackground } from '../components/GradientBackground';
@@ -88,6 +89,7 @@ export const ProgresoScreen: FC = () => {
   const { theme } = useAppTheme();
   const navigation = useNavigation();
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const bottomContentPadding = useTabBarContentPadding();
   const [refreshing, setRefreshing] = useState(false);
 
   const cycleMins = getAdjustedCycleLengthMinutes(profile?.age ?? 30);
@@ -121,12 +123,16 @@ export const ProgresoScreen: FC = () => {
   const avgHours = stats.avgSleepMinutes / 60;
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <GradientBackground />
 
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[
+          styles.content,
+          { paddingBottom: bottomContentPadding },
+        ]}
+        scrollIndicatorInsets={{ bottom: bottomContentPadding }}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -138,7 +144,7 @@ export const ProgresoScreen: FC = () => {
       >
         {/* Hero */}
         <Animated.View entering={FadeInDown.duration(260)} style={styles.hero}>
-          <Text style={styles.heroEyebrow}>TU PROGRESO</Text>
+          <Text style={styles.heroEyebrow}>PROMEDIO GENERAL</Text>
           <Text style={styles.heroClock}>
             {avgHours.toFixed(1)}
             <Text style={styles.heroUnit}> h</Text>
@@ -154,16 +160,33 @@ export const ProgresoScreen: FC = () => {
 
         {/* Resumen semanal */}
         <Animated.View entering={FadeInUp.delay(40).duration(260)}>
-          <WeeklyRecapCard recap={recap} />
+          <WeeklyRecapCard
+            recap={recap}
+            dreams={dreams}
+            onDreamPress={() => navigateToScreen(navigation, 'DreamJournal')}
+          />
         </Animated.View>
 
-        {/* Coach */}
+        {/* Constancia */}
+        <Animated.View
+          entering={FadeInUp.delay(80).duration(260)}
+          style={styles.section}
+        >
+          <Text style={styles.sectionEyebrow}>TU CONSTANCIA</Text>
+          <StreakCalendar
+            entries={entries}
+            dreams={dreams}
+            cycleMins={cycleMins}
+          />
+        </Animated.View>
+
+        {/* Coach: aparece después de los datos para explicar qué hacer. */}
         {insights.length > 0 && (
           <Animated.View
-            entering={FadeInUp.delay(80).duration(260)}
+            entering={FadeInUp.delay(120).duration(260)}
             style={styles.section}
           >
-            <Text style={styles.sectionEyebrow}>TU COACH</Text>
+            <Text style={styles.sectionEyebrow}>QUÉ PUEDES MEJORAR</Text>
             <View style={styles.stack}>
               {insights.map((insight) => (
                 <InsightCard
@@ -176,27 +199,9 @@ export const ProgresoScreen: FC = () => {
           </Animated.View>
         )}
 
-        {/* Constancia */}
-        <Animated.View
-          entering={FadeInUp.delay(120).duration(260)}
-          style={styles.section}
-        >
-          <Text style={styles.sectionEyebrow}>TU CONSTANCIA</Text>
-          <StreakCalendar entries={entries} cycleMins={cycleMins} />
-        </Animated.View>
-
         {/* Meta */}
         <Animated.View entering={FadeInUp.delay(120).duration(260)}>
           <GoalCard />
-        </Animated.View>
-
-        {/* Logros */}
-        <Animated.View
-          entering={FadeInUp.delay(120).duration(260)}
-          style={styles.section}
-        >
-          <Text style={styles.sectionEyebrow}>LOGROS</Text>
-          <AchievementStrip achievements={achievements} />
         </Animated.View>
 
         {/* Tips educativos */}
@@ -217,12 +222,20 @@ export const ProgresoScreen: FC = () => {
           </View>
         </Animated.View>
 
+        {/* Logros: refuerzo secundario después de los consejos accionables. */}
+        <Animated.View
+          entering={FadeInUp.delay(120).duration(260)}
+          style={styles.section}
+        >
+          <AchievementStrip achievements={achievements} />
+        </Animated.View>
+
         {/* Estadísticas detalladas */}
         <Animated.View entering={FadeInUp.delay(120).duration(260)}>
           <Pressable
             onPress={() => navigateToScreen(navigation, 'Stats')}
             accessibilityRole="button"
-            accessibilityLabel="Ver estadísticas detalladas"
+            accessibilityLabel="Analizar tendencias y causas"
             style={[
               styles.statsLink,
               {
@@ -238,7 +251,7 @@ export const ProgresoScreen: FC = () => {
               color={theme.colors.accent[400]}
             />
             <Text style={styles.statsLinkText}>
-              Ver estadísticas detalladas
+              Analizar tendencias y causas
             </Text>
             <Ionicons
               name="chevron-forward"
@@ -247,8 +260,6 @@ export const ProgresoScreen: FC = () => {
             />
           </Pressable>
         </Animated.View>
-
-        <View style={{ height: theme.spacing.huge }} />
       </ScrollView>
     </SafeAreaView>
   );

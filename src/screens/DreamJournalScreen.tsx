@@ -39,6 +39,7 @@ import type { DreamEntry } from '../domain/dreamEntry';
 import { formatTime } from '../utils/sleep';
 import { useAppTheme } from '../theme/ThemeProvider';
 import type { AppTheme } from '../theme/theme';
+import { useTabBarContentPadding } from '../navigation/tabBarLayout';
 
 const Chip: FC<{
   label: string;
@@ -89,13 +90,14 @@ const Chip: FC<{
   );
 };
 
-function formatDreamWhen(loggedAtISO: string): string {
-  const d = new Date(loggedAtISO);
-  const date = d.toLocaleDateString('es-MX', {
+function formatDreamWhen(dream: DreamEntry): string {
+  const dreamDate = new Date(`${dream.date}T12:00:00`);
+  const loggedAt = new Date(dream.loggedAt);
+  const date = dreamDate.toLocaleDateString('es-MX', {
     day: 'numeric',
     month: 'short',
   });
-  return `${date} · ${formatTime(d)}`;
+  return `Sueño del ${date} · anotado ${formatTime(loggedAt)}`;
 }
 
 const DreamCard: FC<{
@@ -140,7 +142,7 @@ const DreamCard: FC<{
           <Ionicons name={moodIcon} size={14} color={moodColor} />
         </View>
         <Text style={[styles.dreamWhen, { color: theme.colors.textMuted }]}>
-          {formatDreamWhen(dream.loggedAt)}
+          {formatDreamWhen(dream)}
         </Text>
         <Pressable
           hitSlop={8}
@@ -194,6 +196,7 @@ const DreamCard: FC<{
 export const DreamJournalScreen: FC = () => {
   const { theme } = useAppTheme();
   const styles2 = useMemo(() => createStyles(theme), [theme]);
+  const bottomContentPadding = useTabBarContentPadding();
   const { isPremium, presentPaywall } = usePremium();
   const { dreams, addDream, deleteDream } = useDreamEntriesContext();
   const { showToast } = useToast();
@@ -258,13 +261,17 @@ export const DreamJournalScreen: FC = () => {
   );
 
   return (
-    <SafeAreaView style={styles2.container} edges={['top', 'bottom']}>
+    <SafeAreaView style={styles2.container} edges={['top', 'left', 'right']}>
       <GradientBackground />
       <FloatingHomeButton insideSafeArea />
 
       <ScrollView
         style={styles2.scroll}
-        contentContainerStyle={styles2.content}
+        contentContainerStyle={[
+          styles2.content,
+          { paddingBottom: bottomContentPadding },
+        ]}
+        scrollIndicatorInsets={{ bottom: bottomContentPadding }}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
@@ -272,7 +279,7 @@ export const DreamJournalScreen: FC = () => {
           <Text style={styles2.heroEyebrow}>BITÁCORA DE SUEÑOS</Text>
           <Text style={styles2.heroTitle}>¿Qué soñaste?</Text>
           <Text style={styles2.heroSubtitle}>
-            Anótalo cuando quieras — no necesitas registrar cómo dormiste.
+            Anota tu experiencia onírica.
           </Text>
         </Animated.View>
 
@@ -392,8 +399,6 @@ export const DreamJournalScreen: FC = () => {
             ))}
           </View>
         )}
-
-        <View style={{ height: theme.spacing.huge }} />
       </ScrollView>
     </SafeAreaView>
   );

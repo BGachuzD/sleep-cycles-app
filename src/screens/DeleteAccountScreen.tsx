@@ -20,6 +20,7 @@ import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabaseClient';
 import { useAppTheme } from '../theme/ThemeProvider';
 import type { AppTheme } from '../theme/theme';
+import { useTabBarContentPadding } from '../navigation/tabBarLayout';
 
 type Step = 'warning' | 'reauth' | 'deleting' | 'done';
 
@@ -28,6 +29,7 @@ export const DeleteAccountScreen: FC = () => {
   const { user, deleteAccount } = useAuth();
   const { theme } = useAppTheme();
   const styles = createStyles(theme);
+  const bottomContentPadding = useTabBarContentPadding();
 
   const [step, setStep] = useState<Step>('warning');
   const [password, setPassword] = useState('');
@@ -108,14 +110,18 @@ export const DeleteAccountScreen: FC = () => {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <GradientBackground />
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView
-          contentContainerStyle={styles.scroll}
+          contentContainerStyle={[
+            styles.scroll,
+            { paddingBottom: bottomContentPadding },
+          ]}
+          scrollIndicatorInsets={{ bottom: bottomContentPadding }}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >

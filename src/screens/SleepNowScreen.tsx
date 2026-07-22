@@ -33,6 +33,7 @@ import { useSleepProfileContext } from '../context/SleepProfileContext';
 import { scheduleSmartWakeAlarm } from '../notifications/scheduler';
 import { isTimeOptimalForChronotype } from '../domain/sleepProfile';
 import { useAppTheme } from '../theme/ThemeProvider';
+import { useTabBarContentPadding } from '../navigation/tabBarLayout';
 import type { AppTheme } from '../theme/theme';
 import {
   formatDuration,
@@ -295,6 +296,7 @@ export const SleepNowScreen: FC = () => {
   const { profile, loading } = useSleepProfileContext();
   const { theme } = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const bottomContentPadding = useTabBarContentPadding();
   const { showToast } = useToast();
 
   const [now, setNow] = useState<Date>(() => new Date());
@@ -384,14 +386,18 @@ export const SleepNowScreen: FC = () => {
     : '';
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <GradientBackground />
       <FloatingDrawerButton insideSafeArea />
       <FloatingHomeButton insideSafeArea />
 
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: bottomContentPadding },
+        ]}
+        scrollIndicatorInsets={{ bottom: bottomContentPadding }}
         showsVerticalScrollIndicator={false}
       >
         {/* Hero */}
@@ -425,8 +431,6 @@ export const SleepNowScreen: FC = () => {
             </Animated.View>
           ))}
         </View>
-
-        <View style={{ height: theme.spacing.huge }} />
       </ScrollView>
 
       {/* Bottom Sheet detalle */}

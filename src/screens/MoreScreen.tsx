@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { navigateToScreen } from '../navigation/navigateTo';
+import { useTabBarContentPadding } from '../navigation/tabBarLayout';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 
 import { GradientBackground } from '../components/GradientBackground';
@@ -51,6 +52,7 @@ export const MoreScreen: FC = () => {
   const { user, signOut } = useAuth();
   const { theme } = useAppTheme();
   const styles2 = React.useMemo(() => createStyles(theme), [theme]);
+  const bottomContentPadding = useTabBarContentPadding();
 
   const displayName =
     (user?.user_metadata?.display_name as string | undefined) ??
@@ -60,11 +62,15 @@ export const MoreScreen: FC = () => {
   const go = (route: string) => navigateToScreen(navigation, route);
 
   return (
-    <SafeAreaView style={styles2.container} edges={['top', 'bottom']}>
+    <SafeAreaView style={styles2.container} edges={['top', 'left', 'right']}>
       <GradientBackground />
       <ScrollView
         style={styles2.scroll}
-        contentContainerStyle={styles2.content}
+        contentContainerStyle={[
+          styles2.content,
+          { paddingBottom: bottomContentPadding },
+        ]}
+        scrollIndicatorInsets={{ bottom: bottomContentPadding }}
         showsVerticalScrollIndicator={false}
       >
         <Animated.View entering={FadeInDown.duration(260)} style={styles2.hero}>
@@ -117,8 +123,6 @@ export const MoreScreen: FC = () => {
             </Text>
           </Pressable>
         </Animated.View>
-
-        <View style={{ height: theme.spacing.huge }} />
       </ScrollView>
     </SafeAreaView>
   );

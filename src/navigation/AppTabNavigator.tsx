@@ -63,7 +63,10 @@ function MoreStack() {
       {/* 'MasHome' (no 'Mas') para no colisionar con el nombre del tab 'Mas'. */}
       <Stack.Screen name="MasHome" component={MoreScreen} />
       <Stack.Screen name="SleepProfile" component={SleepProfileScreen} />
-      <Stack.Screen name="Notifications" component={NotificationsManagerScreen} />
+      <Stack.Screen
+        name="Notifications"
+        component={NotificationsManagerScreen}
+      />
       <Stack.Screen name="Settings" component={SettingsScreen} />
       <Stack.Screen name="DeleteAccount" component={DeleteAccountScreen} />
     </Stack.Navigator>
@@ -76,7 +79,7 @@ export const AppTabNavigator: React.FC = () => {
   return (
     <Tab.Navigator
       tabBar={(props) => <CustomTabBar {...props} />}
-      screenOptions={{ headerShown: false }}
+      screenOptions={{ headerShown: false, tabBarHideOnKeyboard: true }}
     >
       <Tab.Screen name="Inicio" component={InicioStack} />
       <Tab.Screen name="Diario" component={DiarioStack} />

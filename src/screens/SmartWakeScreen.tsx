@@ -25,6 +25,7 @@ import {
 } from '../components/ui';
 import { WheelTimePicker } from '../components/WheelTimePicker';
 import { usePressScale } from '../hooks/usePressScale';
+import { useTabBarContentPadding } from '../navigation/tabBarLayout';
 import { useSleepProfileContext } from '../context/SleepProfileContext';
 import {
   scheduleSmartWakeAlarm,
@@ -247,6 +248,7 @@ export const SmartWakeScreen: FC = () => {
   const { profile, loading } = useSleepProfileContext();
   const { theme } = useAppTheme();
   const s = useMemo(() => createStyles(theme), [theme]);
+  const bottomContentPadding = useTabBarContentPadding();
   const { showToast } = useToast();
 
   const [now, setNow] = useState<Date>(() => new Date());
@@ -373,13 +375,17 @@ export const SmartWakeScreen: FC = () => {
   }
 
   return (
-    <SafeAreaView style={s.container} edges={['top', 'bottom']}>
+    <SafeAreaView style={s.container} edges={['top', 'left', 'right']}>
       <GradientBackground />
       <FloatingHomeButton insideSafeArea />
 
       <ScrollView
         style={s.scroll}
-        contentContainerStyle={s.content}
+        contentContainerStyle={[
+          s.content,
+          { paddingBottom: bottomContentPadding },
+        ]}
+        scrollIndicatorInsets={{ bottom: bottomContentPadding }}
         showsVerticalScrollIndicator={false}
       >
         <Animated.View entering={FadeInDown.duration(260)} style={s.hero}>
@@ -484,8 +490,6 @@ export const SmartWakeScreen: FC = () => {
             </View>
           </>
         )}
-
-        <View style={{ height: theme.spacing.huge }} />
       </ScrollView>
 
       <BottomSheet

@@ -20,6 +20,7 @@ import {
   type SleepLogEntry,
 } from '../domain/sleepLog';
 import { formatDuration, formatTime } from '../utils/sleep';
+import type { DreamEntry } from '../domain/dreamEntry';
 import {
   AppBottomSheetModal,
   Badge,
@@ -33,8 +34,30 @@ type CalendarCell = {
   key: string;
   status: Status;
   dayNum: number;
+  inMonth: boolean;
+  isFuture: boolean;
+  isToday: boolean;
   entry?: SleepLogEntry;
+  dreams?: DreamEntry[];
 };
+
+const WEEKDAYS = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
+
+function startOfMonth(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth(), 1, 12);
+}
+
+function sameMonth(a: Date, b: Date) {
+  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth();
+}
+
+function monthLabel(date: Date) {
+  const label = date.toLocaleDateString('es-MX', {
+    month: 'long',
+    year: 'numeric',
+  });
+  return label.charAt(0).toUpperCase() + label.slice(1);
+}
 
 const LegendItem: FC<{ color: string; label: string; theme: AppTheme }> = ({
   color,
@@ -97,18 +120,26 @@ function detailCopy(entry: SleepLogEntry, targetMinutes: number) {
 /** Calendario interactivo: sólo las noches con datos abren un detalle. */
 export const StreakCalendar: FC<{
   entries: SleepLogEntry[];
+  dreams?: DreamEntry[];
   cycleMins: number;
-  weeks?: number;
-}> = ({ entries, cycleMins, weeks = 5 }) => {
+}> = ({ entries, dreams = [], cycleMins }) => {
   const { theme } = useAppTheme();
   const { goals } = useSleepGoalsContext();
   const [selectedEntry, setSelectedEntry] = useState<SleepLogEntry | null>(
     null,
   );
+  const [visibleMonth, setVisibleMonth] = useState(() =>
+    startOfMonth(new Date()),
+  );
   const sheetRef = useRef<BottomSheetModal>(null);
   const configuredGoal = goals.find((goal) => goal.type === 'duration');
   const target = configuredGoal?.targetMinutes ?? 5 * cycleMins;
-  const totalDays = weeks * 7;
+  const underGoalColor = '#F7E950';
+  const underGoalForeground = '#57470F';
+  const underGoalIcon = '#79631B';
+  const today = new Date();
+  const todayKey = localDateString(today);
+  const isCurrentMonth = sameMonth(visibleMonth, today);
 
   useEffect(() => {
     if (!selectedEntry) return;
@@ -120,38 +151,79 @@ export const StreakCalendar: FC<{
     sheetRef.current?.dismiss();
   }, []);
 
-  const rows = useMemo(() => {
+  const calendar = useMemo(() => {
     const byDate = new Map(entries.map((entry) => [entry.date, entry]));
+    const dreamsByDate = new Map<string, DreamEntry[]>();
+    for (const dream of dreams) {
+      const dateDreams = dreamsByDate.get(dream.date) ?? [];
+      dateDreams.push(dream);
+      dreamsByDate.set(dream.date, dateDreams);
+    }
+
+    const year = visibleMonth.getFullYear();
+    const month = visibleMonth.getMonth();
+    const firstDay = new Date(year, month, 1, 12);
+    const lastDay = new Date(year, month + 1, 0, 12);
+    const leadingDays = (firstDay.getDay() + 6) % 7;
+    const trailingDays = 6 - ((lastDay.getDay() + 6) % 7);
+    const gridStart = new Date(year, month, 1 - leadingDays, 12);
+    const gridLength = lastDay.getDate() + leadingDays + trailingDays;
     const cells: CalendarCell[] = [];
-    for (let i = totalDays - 1; i >= 0; i--) {
-      const date = new Date();
-      date.setDate(date.getDate() - i);
+
+    let registered = 0;
+    let met = 0;
+    let dreamCount = 0;
+
+    for (let i = 0; i < gridLength; i++) {
+      const date = new Date(gridStart);
+      date.setDate(gridStart.getDate() + i);
       const dateString = localDateString(date);
-      const entry = byDate.get(dateString);
+      const inMonth = date.getFullYear() === year && date.getMonth() === month;
+      const entry = inMonth ? byDate.get(dateString) : undefined;
+      const dateDreams = inMonth ? dreamsByDate.get(dateString) : undefined;
       const status: Status = !entry
         ? 'none'
         : computeSleepMinutes(entry) >= target
           ? 'met'
           : 'under';
+
+      if (entry) {
+        registered += 1;
+        if (status === 'met') met += 1;
+      }
+      dreamCount += dateDreams?.length ?? 0;
+
       cells.push({
         key: dateString,
         status,
         dayNum: date.getDate(),
+        inMonth,
+        isFuture: dateString > todayKey,
+        isToday: dateString === todayKey,
         entry,
+        dreams: dateDreams,
       });
     }
+
     const chunked: CalendarCell[][] = [];
     for (let i = 0; i < cells.length; i += 7) {
       chunked.push(cells.slice(i, i + 7));
     }
-    return chunked;
-  }, [entries, target, totalDays]);
+    return { rows: chunked, registered, met, dreamCount };
+  }, [dreams, entries, target, todayKey, visibleMonth]);
+
+  const changeMonth = useCallback((offset: number) => {
+    setVisibleMonth(
+      (current) =>
+        new Date(current.getFullYear(), current.getMonth() + offset, 1, 12),
+    );
+  }, []);
 
   const colorFor = (status: Status) =>
     status === 'met'
       ? theme.colors.accent[500]
       : status === 'under'
-        ? `${theme.colors.warning}66`
+        ? underGoalColor
         : theme.colors.surfaceElevated;
 
   const selectedMinutes = selectedEntry
@@ -162,6 +234,9 @@ export const StreakCalendar: FC<{
     : 0;
   const selectedMet = selectedMinutes >= target;
   const selectedCopy = selectedEntry ? detailCopy(selectedEntry, target) : null;
+  const selectedDreams = selectedEntry
+    ? dreams.filter((dream) => dream.date === selectedEntry.date)
+    : [];
   const selectedDate = selectedEntry
     ? new Date(`${selectedEntry.date}T12:00:00`).toLocaleDateString('es-MX', {
         day: 'numeric',
@@ -182,8 +257,107 @@ export const StreakCalendar: FC<{
           },
         ]}
       >
+        <View style={styles.monthHeader}>
+          <CircularIconButton
+            icon="chevron-back"
+            label="Ver mes anterior"
+            onPress={() => changeMonth(-1)}
+            size={40}
+          />
+          <View style={styles.monthHeading}>
+            <Text
+              accessibilityRole="header"
+              style={[styles.monthTitle, { color: theme.colors.textPrimary }]}
+            >
+              {monthLabel(visibleMonth)}
+            </Text>
+            <Text
+              style={[styles.monthSubtitle, { color: theme.colors.textMuted }]}
+            >
+              Resumen de tus noches
+            </Text>
+          </View>
+          <CircularIconButton
+            disabled={isCurrentMonth}
+            icon="chevron-forward"
+            label="Ver mes siguiente"
+            onPress={() => changeMonth(1)}
+            size={40}
+          />
+        </View>
+
+        <View
+          style={[
+            styles.monthStats,
+            { backgroundColor: theme.colors.surfaceElevated },
+          ]}
+        >
+          {[
+            {
+              icon: 'moon-outline' as const,
+              value: calendar.registered,
+              label: 'registradas',
+              color: theme.colors.primary,
+            },
+            {
+              icon: 'checkmark-circle-outline' as const,
+              value: calendar.met,
+              label: 'en meta',
+              color: theme.colors.success,
+            },
+            {
+              icon: 'cloudy-night-outline' as const,
+              value: calendar.dreamCount,
+              label: 'sueños',
+              color: theme.colors.violet,
+            },
+          ].map((stat, index) => (
+            <React.Fragment key={stat.label}>
+              {index > 0 ? (
+                <View
+                  style={[
+                    styles.monthStatDivider,
+                    { backgroundColor: theme.colors.border },
+                  ]}
+                />
+              ) : null}
+              <View style={styles.monthStat}>
+                <Ionicons name={stat.icon} size={16} color={stat.color} />
+                <Text
+                  style={[
+                    styles.monthStatValue,
+                    { color: theme.colors.textPrimary },
+                  ]}
+                >
+                  {stat.value}
+                </Text>
+                <Text
+                  numberOfLines={1}
+                  style={[
+                    styles.monthStatLabel,
+                    { color: theme.colors.textMuted },
+                  ]}
+                >
+                  {stat.label}
+                </Text>
+              </View>
+            </React.Fragment>
+          ))}
+        </View>
+
+        <View style={styles.weekdayRow} accessibilityRole="header">
+          {WEEKDAYS.map((day, index) => (
+            <Text
+              key={`${day}-${index}`}
+              style={[styles.weekdayLabel, { color: theme.colors.textMuted }]}
+            >
+              {day}
+            </Text>
+          ))}
+        </View>
+
         <View style={styles.grid}>
-          {rows.map((week, weekIndex) => (
+          {calendar.rows.map((week, weekIndex) => (
             <View key={weekIndex} style={styles.weekRow}>
               {week.map((cell) => {
                 const cellContent = (
@@ -192,11 +366,12 @@ export const StreakCalendar: FC<{
                       style={[
                         styles.dayNum,
                         {
-                          color:
-                            cell.status === 'met'
+                          color: !cell.inMonth
+                            ? theme.colors.textMuted
+                            : cell.status === 'met'
                               ? theme.colors.white
                               : cell.status === 'under'
-                                ? theme.colors.textPrimary
+                                ? underGoalForeground
                                 : theme.colors.textMuted,
                         },
                       ]}
@@ -205,12 +380,16 @@ export const StreakCalendar: FC<{
                     </Text>
                     {cell.entry ? (
                       <Ionicons
-                        name="information-circle"
+                        name={
+                          cell.dreams?.length
+                            ? 'cloudy-night'
+                            : 'information-circle'
+                        }
                         size={10}
                         color={
                           cell.status === 'met'
                             ? theme.colors.white
-                            : theme.colors.textSecondary
+                            : underGoalIcon
                         }
                         style={styles.infoIcon}
                       />
@@ -220,11 +399,16 @@ export const StreakCalendar: FC<{
                 const cellStyle = [
                   styles.cell,
                   {
-                    backgroundColor: colorFor(cell.status),
-                    borderColor:
-                      cell.status === 'none'
+                    backgroundColor: cell.inMonth
+                      ? colorFor(cell.status)
+                      : 'transparent',
+                    borderColor: cell.isToday
+                      ? theme.colors.primary
+                      : cell.inMonth && cell.status === 'none'
                         ? theme.colors.border
                         : 'transparent',
+                    borderWidth: cell.isToday ? 2 : 1,
+                    opacity: !cell.inMonth ? 0.38 : cell.isFuture ? 0.5 : 1,
                   },
                 ];
 
@@ -232,7 +416,7 @@ export const StreakCalendar: FC<{
                   <Pressable
                     key={cell.key}
                     accessibilityRole="button"
-                    accessibilityLabel={`${cell.key}, ${cell.status === 'met' ? 'objetivo cumplido' : 'debajo del objetivo'}. Toca para ver detalles.`}
+                    accessibilityLabel={`${cell.key}, ${cell.status === 'met' ? 'objetivo cumplido' : 'debajo del objetivo'}${cell.dreams?.length ? ', con sueño registrado' : ''}. Toca para ver detalles.`}
                     hitSlop={4}
                     onPress={() => setSelectedEntry(cell.entry ?? null)}
                     style={({ pressed }) => [
@@ -259,7 +443,7 @@ export const StreakCalendar: FC<{
             theme={theme}
           />
           <LegendItem
-            color={`${theme.colors.warning}66`}
+            color={underGoalColor}
             label="Bajo objetivo"
             theme={theme}
           />
@@ -270,7 +454,8 @@ export const StreakCalendar: FC<{
           />
         </View>
         <Text style={[styles.hint, { color: theme.colors.textMuted }]}>
-          Toca una noche con registro para entender el resultado.
+          Toca una noche con datos para ver el detalle. La luna indica un sueño
+          registrado y el contorno azul marca hoy.
         </Text>
       </View>
 
@@ -419,6 +604,54 @@ export const StreakCalendar: FC<{
                 </Text>
               </View>
 
+              {selectedDreams.length > 0 ? (
+                <RoundedCard elevated={false} style={{ gap: theme.spacing.sm }}>
+                  <View style={styles.dreamHeader}>
+                    <Ionicons
+                      name="cloudy-night"
+                      size={18}
+                      color={theme.colors.violet}
+                    />
+                    <Text
+                      style={[
+                        styles.detailTitle,
+                        { color: theme.colors.textPrimary },
+                      ]}
+                    >
+                      {selectedDreams.length === 1
+                        ? 'Sueño de esta noche'
+                        : `${selectedDreams.length} sueños de esta noche`}
+                    </Text>
+                  </View>
+                  <Text
+                    style={[
+                      styles.detailBody,
+                      { color: theme.colors.textSecondary },
+                    ]}
+                  >
+                    {selectedDreams[0]?.mood === 2
+                      ? 'Lo marcaste como un sueño agradable.'
+                      : selectedDreams[0]?.mood === 1
+                        ? 'Lo marcaste como un sueño difícil.'
+                        : 'Registraste un recuerdo de esta noche.'}
+                    {selectedDreams[0]?.tags?.length
+                      ? ` Temas: ${selectedDreams[0].tags.join(', ')}.`
+                      : ''}
+                  </Text>
+                  {selectedDreams[0]?.note ? (
+                    <Text
+                      numberOfLines={3}
+                      style={[
+                        styles.dreamNote,
+                        { color: theme.colors.textMuted },
+                      ]}
+                    >
+                      “{selectedDreams[0].note}”
+                    </Text>
+                  ) : null}
+                </RoundedCard>
+              ) : null}
+
               <View
                 style={[
                   styles.advice,
@@ -462,6 +695,41 @@ export const StreakCalendar: FC<{
 
 const styles = StyleSheet.create({
   card: { borderWidth: 1, padding: 14, gap: 12 },
+  monthHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 10,
+  },
+  monthHeading: { alignItems: 'center', flex: 1, gap: 2 },
+  monthTitle: { fontSize: 18, fontWeight: '700' },
+  monthSubtitle: { fontSize: 11, fontWeight: '500' },
+  monthStats: {
+    alignItems: 'center',
+    borderRadius: 14,
+    flexDirection: 'row',
+    minHeight: 58,
+    paddingHorizontal: 8,
+  },
+  monthStat: {
+    alignItems: 'center',
+    flex: 1,
+    gap: 1,
+    justifyContent: 'center',
+  },
+  monthStatDivider: { height: 30, width: 1 },
+  monthStatValue: {
+    fontSize: 14,
+    fontWeight: '700',
+    fontVariant: ['tabular-nums'],
+  },
+  monthStatLabel: { fontSize: 10, fontWeight: '600' },
+  weekdayRow: { flexDirection: 'row', gap: 6 },
+  weekdayLabel: {
+    flex: 1,
+    fontSize: 10,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
   grid: { gap: 6 },
   weekRow: { flexDirection: 'row', gap: 6 },
   cell: {
@@ -473,8 +741,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     minHeight: 32,
   },
-  infoIcon: { position: 'absolute', right: 2, top: 2 },
-  dayNum: { fontSize: 10, fontWeight: '700', fontVariant: ['tabular-nums'] },
+  infoIcon: { position: 'absolute', right: 3, top: 3 },
+  dayNum: { fontSize: 11, fontWeight: '700', fontVariant: ['tabular-nums'] },
   legend: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -511,6 +779,8 @@ const styles = StyleSheet.create({
     padding: 14,
   },
   adviceTitle: { fontSize: 12, fontWeight: '700', letterSpacing: 0.4 },
+  dreamHeader: { alignItems: 'center', flexDirection: 'row', gap: 8 },
+  dreamNote: { fontSize: 12, fontStyle: 'italic', lineHeight: 18 },
   sheetHeader: {
     alignItems: 'center',
     flexDirection: 'row',

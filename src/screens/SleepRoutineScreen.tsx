@@ -42,6 +42,7 @@ import { type RoutineStep } from '../domain/sleepRoutine';
 import { formatTime } from '../utils/sleep';
 import { scheduleUniqueNotificationAtDate } from '../notifications/scheduler';
 import { useAppTheme } from '../theme/ThemeProvider';
+import { useTabBarContentPadding } from '../navigation/tabBarLayout';
 import type { AppTheme } from '../theme/theme';
 
 // ─────────────────────────────────────────────
@@ -70,6 +71,7 @@ export const SleepRoutineScreen: FC = () => {
   } = useSleepRoutineContext();
   const { theme } = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const bottomContentPadding = useTabBarContentPadding();
   const { showToast } = useToast();
   const optWindow = getOptimalSleepWindow(profile?.chronotype);
 
@@ -250,14 +252,18 @@ export const SleepRoutineScreen: FC = () => {
   const isLast = (index: number) => index === visibleSteps.length - 1;
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <GradientBackground />
       <FloatingDrawerButton insideSafeArea />
       <FloatingHomeButton insideSafeArea />
 
       <ScrollView
         style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: bottomContentPadding },
+        ]}
+        scrollIndicatorInsets={{ bottom: bottomContentPadding }}
         showsVerticalScrollIndicator={false}
       >
         {/* Hero */}
@@ -418,8 +424,6 @@ export const SleepRoutineScreen: FC = () => {
             </Pressable>
           </Animated.View>
         )}
-
-        <View style={{ height: theme.spacing.huge }} />
       </ScrollView>
 
       {/* BottomSheet de edición */}
