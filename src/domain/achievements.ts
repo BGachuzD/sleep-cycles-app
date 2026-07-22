@@ -45,9 +45,12 @@ function milestone(
 export function computeAchievements(
   entries: SleepLogEntry[],
   stats: SleepLogStats,
+  dreamCount = 0,
 ): Achievement[] {
   const total = entries.length;
-  const dreamNights = entries.filter((e) => e.dreamed).length;
+  // Cuenta la bitácora independiente (dreamCount) más los sueños que aún
+  // pudieran venir anotados en un registro de noche (legacy).
+  const dreamNights = entries.filter((e) => e.dreamed).length + dreamCount;
 
   const list: Achievement[] = [
     milestone('first-night', 'Primera noche', 'Registra tu primera noche', 'moon', total, 1),

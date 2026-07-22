@@ -41,6 +41,7 @@ import {
 } from '../domain/sleepProfile';
 import { computeInsights } from '../domain/sleepInsights';
 import type { AppDrawerParamList } from '../navigation/AppDrawerNavigator';
+import { navigateToScreen } from '../navigation/navigateTo';
 
 type TimeContext = 'evening' | 'night' | 'morning' | 'afternoon';
 
@@ -202,7 +203,7 @@ export const HomeScreen: FC = () => {
           headline={formatTime(bestOption.wakeDate)}
           subline={`${bestOption.cycles} ciclos · ${formatDuration(bestOption.totalMinutes)}`}
           cta="Ver opciones"
-          onPress={() => navigation.navigate('SleepNow' as any)}
+          onPress={() => navigateToScreen(navigation, 'SleepNow')}
         />
       );
     }
@@ -217,7 +218,7 @@ export const HomeScreen: FC = () => {
             headline={formatDuration(mins)}
             subline={`${computeCompleteCycles(mins, cycleMins)} ciclos completos`}
             cta="Ver historial"
-            onPress={() => navigation.navigate('Stats' as any)}
+            onPress={() => navigateToScreen(navigation, 'Stats')}
           />
         );
       }
@@ -228,7 +229,7 @@ export const HomeScreen: FC = () => {
           headline="Registra tu sueño"
           subline="Tocar para registrar cómo dormiste anoche"
           cta="Registrar"
-          onPress={() => navigation.navigate('SleepLog' as any)}
+          onPress={() => navigateToScreen(navigation, 'SleepLog')}
         />
       );
     }
@@ -241,7 +242,7 @@ export const HomeScreen: FC = () => {
           headline={`${optWindow.bedtimeStart} a ${optWindow.bedtimeEnd}`}
           subline={`Despertar entre ${optWindow.wakeStart} y ${optWindow.wakeEnd}`}
           cta="Ver rutina"
-          onPress={() => navigation.navigate('SleepRoutine' as any)}
+          onPress={() => navigateToScreen(navigation, 'SleepRoutine')}
         />
       );
     }
@@ -274,7 +275,7 @@ export const HomeScreen: FC = () => {
           <PrimaryCTA
             label={config.actionLabel}
             icon={config.actionIcon}
-            onPress={() => navigation.navigate(config.actionScreen as any)}
+            onPress={() => navigateToScreen(navigation, config.actionScreen)}
           />
         </Animated.View>
 
@@ -287,7 +288,7 @@ export const HomeScreen: FC = () => {
         {weeklyStats.totalDays > 0 && (
           <Animated.View entering={FadeInDown.delay(220).duration(500)}>
             <Pressable
-              onPress={() => navigation.navigate('Stats' as any)}
+              onPress={() => navigateToScreen(navigation, 'Stats')}
               style={styles.weeklyRow}
               accessibilityRole="button"
             >
@@ -327,9 +328,7 @@ export const HomeScreen: FC = () => {
                 <InsightCard
                   key={insight.id}
                   insight={insight}
-                  onCtaPress={(screen) =>
-                    navigation.navigate(screen as never)
-                  }
+                  onCtaPress={(screen) => navigateToScreen(navigation, screen)}
                 />
               ))}
             </View>
@@ -351,7 +350,7 @@ export const HomeScreen: FC = () => {
               key={item.screen}
               label={item.label}
               icon={item.icon}
-              onPress={() => navigation.navigate(item.screen as any)}
+              onPress={() => navigateToScreen(navigation, item.screen)}
               theme={theme}
             />
           ))}

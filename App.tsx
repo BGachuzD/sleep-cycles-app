@@ -37,6 +37,7 @@ import { OnboardingProvider } from './src/context/OnboardingContext';
 import { useSleepProfileContext } from './src/context/SleepProfileContext';
 import { SleepLogProvider } from './src/context/SleepLogContext';
 import { SleepGoalsProvider } from './src/context/SleepGoalsContext';
+import { DreamEntriesProvider } from './src/context/DreamEntriesContext';
 import { SleepRoutineProvider } from './src/context/SleepRoutineContext';
 import { HealthKitProvider } from './src/hooks/useHealthKit';
 import { PaywallHost } from './src/components/Paywall';
@@ -289,13 +290,15 @@ export default function App() {
               <SleepProfileProvider>
                 <SleepLogProvider>
                   <SleepGoalsProvider>
-                    <SleepRoutineProvider>
-                      <HealthKitProvider>
-                        <BottomSheetModalProvider>
-                          <AppNavigation />
-                        </BottomSheetModalProvider>
-                      </HealthKitProvider>
-                    </SleepRoutineProvider>
+                    <DreamEntriesProvider>
+                      <SleepRoutineProvider>
+                        <HealthKitProvider>
+                          <BottomSheetModalProvider>
+                            <AppNavigation />
+                          </BottomSheetModalProvider>
+                        </HealthKitProvider>
+                      </SleepRoutineProvider>
+                    </DreamEntriesProvider>
                   </SleepGoalsProvider>
                 </SleepLogProvider>
               </SleepProfileProvider>

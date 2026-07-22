@@ -7,7 +7,10 @@ import { SleepNowScreen } from '../screens/SleepNowScreen';
 import { WakeAtScreen } from '../screens/WakeAtScreen';
 import { NapScreen } from '../screens/NapScreen';
 import { SleepRoutineScreen } from '../screens/SleepRoutineScreen';
+import { SmartWakeScreen } from '../screens/SmartWakeScreen';
 import { SleepLogScreen } from '../screens/SleepLogScreen';
+import { DreamJournalScreen } from '../screens/DreamJournalScreen';
+import { ProgresoScreen } from '../screens/ProgresoScreen';
 import { StatsScreen } from '../screens/StatsScreen';
 import { MoreScreen } from '../screens/MoreScreen';
 import { SleepProfileScreen } from '../screens/SleepProfileScreen';
@@ -24,6 +27,7 @@ function InicioStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="Home" component={HomeScreen} />
+      <Stack.Screen name="SmartWake" component={SmartWakeScreen} />
       <Stack.Screen name="SleepNow" component={SleepNowScreen} />
       <Stack.Screen name="WakeAt" component={WakeAtScreen} />
       <Stack.Screen name="Nap" component={NapScreen} />
@@ -36,15 +40,18 @@ function DiarioStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="SleepLog" component={SleepLogScreen} />
+      <Stack.Screen name="DreamJournal" component={DreamJournalScreen} />
     </Stack.Navigator>
   );
 }
 
 function ProgresoStack() {
-  // Por ahora apunta a StatsScreen; en la Fase B se reemplaza por la pantalla
-  // Progreso rica (feed de insights, racha, logros, tendencias).
+  // OJO: el nombre de la pantalla raíz NO debe coincidir con el del tab
+  // ('Progreso'), o navigate('Progreso', { screen: 'Stats' }) se resolvería a
+  // esta pantalla en vez de subir al tab. Por eso 'ProgresoHome'.
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="ProgresoHome" component={ProgresoScreen} />
       <Stack.Screen name="Stats" component={StatsScreen} />
     </Stack.Navigator>
   );
@@ -53,7 +60,8 @@ function ProgresoStack() {
 function MoreStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="Mas" component={MoreScreen} />
+      {/* 'MasHome' (no 'Mas') para no colisionar con el nombre del tab 'Mas'. */}
+      <Stack.Screen name="MasHome" component={MoreScreen} />
       <Stack.Screen name="SleepProfile" component={SleepProfileScreen} />
       <Stack.Screen name="Notifications" component={NotificationsManagerScreen} />
       <Stack.Screen name="Settings" component={SettingsScreen} />

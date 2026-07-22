@@ -30,7 +30,8 @@ function isValidMode(value: unknown): value is ThemeMode {
 }
 
 export const ThemeProvider = ({ children }: { children: ReactNode }) => {
-  const [mode, setModeState] = useState<ThemeMode>('auto');
+  // Por defecto oscuro: es una app de sueño que se usa de noche.
+  const [mode, setModeState] = useState<ThemeMode>('dark');
 
   useEffect(() => {
     let cancelled = false;

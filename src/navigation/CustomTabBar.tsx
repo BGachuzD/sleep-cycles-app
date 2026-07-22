@@ -81,16 +81,12 @@ export function CustomTabBar({ state, navigation }: BottomTabBarProps) {
   };
 
   const onFabPress = () => {
-    const hour = new Date().getHours();
-    // De noche → planear ("Dormir ahora"); de día → registrar.
+    // El botón central es el corazón de la app: la calculadora de despertar
+    // inteligente ("¿a qué hora despierto si me duermo ahora?").
     const nav = navigation as unknown as {
       navigate: (name: string, params?: object) => void;
     };
-    if (hour >= 20 || hour < 5) {
-      nav.navigate('Inicio', { screen: 'SleepNow' });
-    } else {
-      nav.navigate('Diario', { screen: 'SleepLog' });
-    }
+    nav.navigate('Inicio', { screen: 'SmartWake' });
   };
 
   return (
@@ -124,7 +120,7 @@ export function CustomTabBar({ state, navigation }: BottomTabBarProps) {
               },
             ]}
           >
-            <Ionicons name="add" size={30} color={theme.colors.white} />
+            <Ionicons name="alarm" size={28} color={theme.colors.white} />
           </Pressable>
         </Animated.View>
       </View>
@@ -142,6 +138,11 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     paddingTop: 8,
     paddingHorizontal: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 12,
   },
   tab: {
     flex: 1,

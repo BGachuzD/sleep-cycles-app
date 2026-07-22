@@ -1,28 +1,42 @@
 import React from 'react';
 import { TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import type { DrawerNavigationProp } from '@react-navigation/drawer';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import type { AppDrawerParamList } from '../navigation/AppDrawerNavigator';
 import { useAppTheme } from '../theme/ThemeProvider';
 
 interface Props {
   insideSafeArea?: boolean;
 }
 
+/**
+ * Botón flotante de "atrás" (esquina superior izquierda).
+ *
+ * Solo se muestra cuando la pantalla fue EMPUJADA sobre su stack (index > 0);
+ * en las raíces de tab devuelve null. Antes navegaba a 'Home' y eso fallaba al
+ * presionarlo desde ciertos lugares tras la migración a tabs. Ahora usa
+ * `goBack()`, que siempre es válido cuando el botón es visible.
+ *
+ * Conserva el nombre por compatibilidad con las pantallas que ya lo renderizan.
+ */
 export const FloatingHomeButton: React.FC<Props> = ({
   insideSafeArea = false,
 }) => {
-  const navigation = useNavigation<DrawerNavigationProp<AppDrawerParamList>>();
+  const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const { theme } = useAppTheme();
   const topOffset = insets.top + (insideSafeArea ? 8 : 12);
 
+  const state = navigation.getState();
+  const canPop = state?.type === 'stack' && state.index > 0;
+  if (!canPop) return null;
+
   return (
     <TouchableOpacity
-      onPress={() => navigation.navigate('Home')}
+      onPress={() => navigation.goBack()}
       activeOpacity={0.85}
+      accessibilityRole="button"
+      accessibilityLabel="Volver"
       style={[
         styles.button,
         {
@@ -33,7 +47,7 @@ export const FloatingHomeButton: React.FC<Props> = ({
         },
       ]}
     >
-      <Ionicons name="home-outline" size={20} color={theme.colors.textPrimary} />
+      <Ionicons name="chevron-back" size={22} color={theme.colors.textPrimary} />
     </TouchableOpacity>
   );
 };

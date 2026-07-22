@@ -22,6 +22,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { useNavigation } from '@react-navigation/native';
+import { navigateToScreen } from '../navigation/navigateTo';
 import Svg, { Circle, Polyline, Defs, LinearGradient, Stop } from 'react-native-svg';
 
 import { GradientBackground } from '../components/GradientBackground';
@@ -31,9 +32,11 @@ import { PrimaryCTA } from '../components/PrimaryCTA';
 import { HealthKitBanner } from '../components/HealthKitBanner';
 import { InsightCard } from '../components/InsightCard';
 import { WeeklyRecapCard } from '../components/WeeklyRecapCard';
+import { AchievementStrip } from '../components/AchievementStrip';
 import { useHealthKit } from '../hooks/useHealthKit';
 import { useSleepLogContext } from '../context/SleepLogContext';
 import { useSleepProfileContext } from '../context/SleepProfileContext';
+import { useDreamEntriesContext } from '../context/DreamEntriesContext';
 import {
   computeCompleteCycles,
   computeSleepMinutes,
@@ -43,7 +46,7 @@ import {
 } from '../domain/sleepLog';
 import { getAdjustedCycleLengthMinutes } from '../domain/sleepProfile';
 import { computeInsights } from '../domain/sleepInsights';
-import { computeAchievements, type Achievement } from '../domain/achievements';
+import { computeAchievements } from '../domain/achievements';
 import { computeWeeklyRecap } from '../domain/weeklyRecap';
 import { formatDuration, formatTime } from '../utils/sleep';
 import { useAppTheme } from '../theme/ThemeProvider';
@@ -387,88 +390,6 @@ const compactStyles = StyleSheet.create({
 });
 
 // ─────────────────────────────────────────────
-// AchievementChip: tarjeta de logro (tira horizontal)
-// ─────────────────────────────────────────────
-const AchievementChip: FC<{ achievement: Achievement; theme: AppTheme }> = ({
-  achievement,
-  theme,
-}) => {
-  const { unlocked, icon, title, progress } = achievement;
-  const color = unlocked ? theme.colors.accent[400] : theme.colors.textMuted;
-  return (
-    <View
-      style={[
-        achievementStyles.chip,
-        {
-          backgroundColor: theme.colors.surface,
-          borderColor: unlocked ? theme.colors.accent[500] : theme.colors.border,
-          borderWidth: unlocked ? 1.5 : 1,
-          borderRadius: theme.radius.lg,
-        },
-      ]}
-    >
-      <View
-        style={[
-          achievementStyles.iconCircle,
-          {
-            backgroundColor: unlocked
-              ? `${theme.colors.accent[500]}1F`
-              : `${theme.colors.textMuted}1F`,
-          },
-        ]}
-      >
-        <Ionicons
-          name={(unlocked ? icon : 'lock-closed') as keyof typeof Ionicons.glyphMap}
-          size={18}
-          color={color}
-        />
-      </View>
-      <Text
-        style={[
-          achievementStyles.title,
-          { color: unlocked ? theme.colors.textPrimary : theme.colors.textMuted },
-        ]}
-        numberOfLines={2}
-      >
-        {title}
-      </Text>
-      {unlocked ? (
-        <View style={achievementStyles.doneRow}>
-          <Ionicons
-            name="checkmark-circle"
-            size={12}
-            color={theme.colors.success}
-          />
-          <Text style={[achievementStyles.doneText, { color: theme.colors.success }]}>
-            Logrado
-          </Text>
-        </View>
-      ) : progress ? (
-        <Text style={[achievementStyles.progressText, { color: theme.colors.textMuted }]}>
-          {progress.current}/{progress.total}
-        </Text>
-      ) : null}
-    </View>
-  );
-};
-
-const achievementStyles = StyleSheet.create({
-  strip: { gap: 10, paddingVertical: 2, paddingRight: 4 },
-  chip: { width: 122, padding: 12, gap: 8, alignItems: 'flex-start' },
-  iconCircle: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  title: { fontSize: 12, fontWeight: '800', lineHeight: 15 },
-  doneRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  doneText: { fontSize: 11, fontWeight: '700' },
-  progressText: { fontSize: 11, fontWeight: '700', fontVariant: ['tabular-nums'] },
-});
-
-// ─────────────────────────────────────────────
 // EntryRow del historial
 // ─────────────────────────────────────────────
 const EntryRow: FC<{
@@ -653,9 +574,10 @@ export const StatsScreen: FC = () => {
     [entries, cycleMins],
   );
 
+  const { dreams } = useDreamEntriesContext();
   const achievements = useMemo(
-    () => computeAchievements(entries, stats),
-    [entries, stats],
+    () => computeAchievements(entries, stats, dreams.length),
+    [entries, stats, dreams.length],
   );
 
   const recap = useMemo(
@@ -742,9 +664,7 @@ export const StatsScreen: FC = () => {
                   >
                     <InsightCard
                       insight={insight}
-                      onCtaPress={(screen) =>
-                        navigation.navigate(screen as never)
-                      }
+                      onCtaPress={(screen) => navigateToScreen(navigation, screen)}
                     />
                   </View>
                 ))}
@@ -763,7 +683,7 @@ export const StatsScreen: FC = () => {
               <PrimaryCTA
                 label="Ir al registro"
                 icon="journal-outline"
-                onPress={() => navigation.navigate('SleepLog' as never)}
+                onPress={() => navigateToScreen(navigation, 'SleepLog')}
               />
             </View>
           </Animated.View>
@@ -949,15 +869,7 @@ export const StatsScreen: FC = () => {
         {/* Logros */}
         <Animated.View entering={FadeInUp.delay(180).duration(500)}>
           <Text style={styles.sectionEyebrow}>LOGROS</Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={achievementStyles.strip}
-          >
-            {achievements.map((a) => (
-              <AchievementChip key={a.id} achievement={a} theme={theme} />
-            ))}
-          </ScrollView>
+          <AchievementStrip achievements={achievements} />
         </Animated.View>
 
         {/* Deuda */}

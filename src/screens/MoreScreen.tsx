@@ -9,6 +9,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import { navigateToScreen } from '../navigation/navigateTo';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 
 import { GradientBackground } from '../components/GradientBackground';
@@ -96,7 +97,7 @@ export const MoreScreen: FC = () => {
     user?.email ??
     'Usuario';
 
-  const go = (route: string) => navigation.navigate(route as never);
+  const go = (route: string) => navigateToScreen(navigation, route);
 
   return (
     <SafeAreaView style={styles2.container} edges={['top', 'bottom']}>
