@@ -5,8 +5,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import Animated from 'react-native-reanimated';
 
+import { FloatingActionButton } from '../components/ui';
 import { usePressScale } from '../hooks/usePressScale';
 import { useAppTheme } from '../theme/ThemeProvider';
+import type { AppTheme } from '../theme/theme';
 
 type TabMeta = {
   label: string;
@@ -29,15 +31,55 @@ const TAB_META: Record<string, TabMeta> = {
   },
 };
 
-/**
- * Barra de tabs inferior con un FAB central contextual. Las tabs reales son 4
- * (Inicio, Diario, Progreso, Más); el FAB no es una ruta, es un botón que
- * dispara la acción principal según la hora (dormir de noche / registrar de día).
- */
+function TabButton({
+  meta,
+  focused,
+  onPress,
+  theme,
+}: {
+  meta: TabMeta;
+  focused: boolean;
+  onPress: () => void;
+  theme: AppTheme;
+}) {
+  const press = usePressScale(theme.motion.pressScale, { haptic: false });
+  const color = focused ? theme.colors.textPrimary : theme.colors.textMuted;
+
+  return (
+    <Animated.View style={[styles.tabSlot, press.animatedStyle]}>
+      <Pressable
+        onPress={onPress}
+        onPressIn={press.onPressIn}
+        onPressOut={press.onPressOut}
+        style={styles.tab}
+        accessibilityRole="button"
+        accessibilityState={focused ? { selected: true } : {}}
+        accessibilityLabel={meta.label}
+      >
+        <View
+          style={[
+            styles.iconPill,
+            focused && {
+              backgroundColor: `${theme.colors.primary}1F`,
+              borderColor: `${theme.colors.primary}30`,
+            },
+          ]}
+        >
+          <Ionicons
+            name={focused ? meta.iconActive : meta.icon}
+            size={21}
+            color={focused ? theme.colors.accent[400] : color}
+          />
+        </View>
+        <Text style={[styles.label, { color }]}>{meta.label}</Text>
+      </Pressable>
+    </Animated.View>
+  );
+}
+
 export function CustomTabBar({ state, navigation }: BottomTabBarProps) {
   const { theme } = useAppTheme();
   const insets = useSafeAreaInsets();
-  const fab = usePressScale(0.9);
 
   const renderTab = (routeIndex: number) => {
     const route = state.routes[routeIndex];
@@ -47,42 +89,27 @@ export function CustomTabBar({ state, navigation }: BottomTabBarProps) {
       icon: 'ellipse-outline' as const,
       iconActive: 'ellipse' as const,
     };
-    const isFocused = state.index === routeIndex;
-    const color = isFocused ? theme.colors.accent[500] : theme.colors.textMuted;
-
-    const onPress = () => {
-      const event = navigation.emit({
-        type: 'tabPress',
-        target: route.key,
-        canPreventDefault: true,
-      });
-      if (!isFocused && !event.defaultPrevented) {
-        navigation.navigate(route.name);
-      }
-    };
-
+    const focused = state.index === routeIndex;
     return (
-      <Pressable
+      <TabButton
         key={route.key}
-        onPress={onPress}
-        style={styles.tab}
-        accessibilityRole="button"
-        accessibilityState={isFocused ? { selected: true } : {}}
-        accessibilityLabel={meta.label}
-      >
-        <Ionicons
-          name={isFocused ? meta.iconActive : meta.icon}
-          size={22}
-          color={color}
-        />
-        <Text style={[styles.label, { color }]}>{meta.label}</Text>
-      </Pressable>
+        meta={meta}
+        focused={focused}
+        theme={theme}
+        onPress={() => {
+          const event = navigation.emit({
+            type: 'tabPress',
+            target: route.key,
+            canPreventDefault: true,
+          });
+          if (!focused && !event.defaultPrevented)
+            navigation.navigate(route.name);
+        }}
+      />
     );
   };
 
   const onFabPress = () => {
-    // El botón central es el corazón de la app: la calculadora de despertar
-    // inteligente ("¿a qué hora despierto si me duermo ahora?").
     const nav = navigation as unknown as {
       navigate: (name: string, params?: object) => void;
     };
@@ -91,87 +118,67 @@ export function CustomTabBar({ state, navigation }: BottomTabBarProps) {
 
   return (
     <View
-      style={[
-        styles.container,
-        {
-          paddingBottom: insets.bottom || 8,
-          backgroundColor: theme.colors.surface,
-          borderTopColor: theme.colors.border,
-        },
-      ]}
+      style={{
+        backgroundColor: theme.colors.background,
+        paddingBottom: Math.max(insets.bottom, theme.spacing.sm),
+        paddingHorizontal: theme.spacing.md,
+        paddingTop: theme.spacing.sm,
+      }}
     >
-      {renderTab(0)}
-      {renderTab(1)}
-
-      <View style={styles.fabSlot}>
-        <Animated.View style={fab.animatedStyle}>
-          <Pressable
+      <View
+        style={[
+          styles.bar,
+          {
+            backgroundColor: `${theme.colors.surfaceElevated}F5`,
+            borderColor: theme.colors.border,
+            borderRadius: theme.radius.xl,
+            boxShadow: theme.shadows.floating,
+          },
+        ]}
+      >
+        {renderTab(0)}
+        {renderTab(1)}
+        <View style={styles.fabSlot}>
+          <FloatingActionButton
+            icon="alarm"
+            label="Acción rápida de sueño"
             onPress={onFabPress}
-            onPressIn={fab.onPressIn}
-            onPressOut={fab.onPressOut}
-            accessibilityRole="button"
-            accessibilityLabel="Acción rápida de sueño"
-            style={[
-              styles.fab,
-              {
-                backgroundColor: theme.colors.accent[500],
-                shadowColor: theme.colors.accent[600],
-                borderColor: theme.colors.surface,
-              },
-            ]}
-          >
-            <Ionicons name="alarm" size={28} color={theme.colors.white} />
-          </Pressable>
-        </Animated.View>
+            size={60}
+            style={{ marginTop: -28 }}
+          />
+        </View>
+        {renderTab(2)}
+        {renderTab(3)}
       </View>
-
-      {renderTab(2)}
-      {renderTab(3)}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  bar: {
+    alignItems: 'center',
+    borderWidth: 1,
     flexDirection: 'row',
-    alignItems: 'center',
-    borderTopWidth: 1,
-    paddingTop: 8,
+    minHeight: 70,
     paddingHorizontal: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 12,
-    elevation: 12,
+    paddingVertical: 6,
   },
+  tabSlot: { flex: 1 },
   tab: {
-    flex: 1,
     alignItems: 'center',
+    gap: 2,
     justifyContent: 'center',
-    gap: 3,
-    paddingVertical: 2,
+    minHeight: 52,
   },
-  label: {
-    fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 0.2,
-  },
-  fabSlot: {
-    width: 68,
+  iconPill: {
     alignItems: 'center',
+    borderColor: 'transparent',
+    borderRadius: 999,
+    borderWidth: 1,
+    height: 32,
     justifyContent: 'center',
+    width: 42,
   },
-  fab: {
-    width: 58,
-    height: 58,
-    borderRadius: 29,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 4,
-    marginTop: -28,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.35,
-    shadowRadius: 10,
-    elevation: 8,
-  },
+  label: { fontSize: 10, fontWeight: '600', letterSpacing: 0.1 },
+  fabSlot: { alignItems: 'center', justifyContent: 'center', width: 66 },
 });

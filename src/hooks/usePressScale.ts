@@ -20,7 +20,7 @@ export function usePressScale(min = 0.97, opts?: { haptic?: boolean }) {
     transform: [{ scale: scale.value }],
   }));
   const onPressIn = () => {
-    if (haptic) {
+    if (haptic && process.env.EXPO_OS === 'ios') {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     }
     scale.value = withSpring(min, { mass: 0.4, damping: 14, stiffness: 220 });

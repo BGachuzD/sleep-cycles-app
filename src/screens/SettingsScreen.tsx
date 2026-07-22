@@ -17,6 +17,7 @@ import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { GradientBackground } from '../components/GradientBackground';
 import { FloatingDrawerButton } from '../components/FloatingDrawerButton';
 import { FloatingHomeButton } from '../components/FloatingHomeButton';
+import { useToast } from '../components/ui';
 import { usePressScale } from '../hooks/usePressScale';
 import { usePremium } from '../context/EntitlementsContext';
 import { useHealthKit } from '../hooks/useHealthKit';
@@ -133,7 +134,7 @@ const optionStyles = StyleSheet.create({
     justifyContent: 'center',
   },
   textCol: { flex: 1 },
-  label: { fontWeight: '800' },
+  label: { fontWeight: '700' },
   description: { lineHeight: 17, marginTop: 2 },
 });
 
@@ -254,7 +255,11 @@ const HealthKitCard: FC<{ theme: AppTheme }> = ({ theme }) => {
               { backgroundColor: `${theme.colors.textMuted}1F` },
             ]}
           >
-            <Ionicons name="heart-outline" size={18} color={theme.colors.textMuted} />
+            <Ionicons
+              name="heart-outline"
+              size={18}
+              color={theme.colors.textMuted}
+            />
           </View>
           <View style={{ flex: 1 }}>
             <Text
@@ -281,8 +286,8 @@ const HealthKitCard: FC<{ theme: AppTheme }> = ({ theme }) => {
             { color: theme.colors.textMuted, fontSize: theme.type.caption },
           ]}
         >
-          Apple Salud solo está disponible en iPhone físico con iOS. En simulador
-          o Android, esta sección se mantiene inactiva.
+          Apple Salud solo está disponible en iPhone físico con iOS. En
+          simulador o Android, esta sección se mantiene inactiva.
         </Text>
       </View>
     );
@@ -406,9 +411,7 @@ const HealthKitCard: FC<{ theme: AppTheme }> = ({ theme }) => {
             name="heart"
             size={18}
             color={
-              hk.isAuthorized
-                ? theme.colors.success
-                : theme.colors.accent[400]
+              hk.isAuthorized ? theme.colors.success : theme.colors.accent[400]
             }
           />
         </View>
@@ -586,8 +589,13 @@ const hkStyles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  title: { fontWeight: '800' },
-  statusRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 2 },
+  title: { fontWeight: '700' },
+  statusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginTop: 2,
+  },
   statusDot: { width: 6, height: 6, borderRadius: 3 },
   status: { fontWeight: '700', letterSpacing: 0.3 },
   hint: { lineHeight: 16 },
@@ -603,7 +611,7 @@ const hkStyles = StyleSheet.create({
   primaryBtnText: {
     color: '#ffffff',
     fontSize: 13,
-    fontWeight: '800',
+    fontWeight: '700',
   },
   secondaryBtn: {
     flexDirection: 'row',
@@ -616,7 +624,7 @@ const hkStyles = StyleSheet.create({
   },
   secondaryBtnText: {
     fontSize: 12,
-    fontWeight: '800',
+    fontWeight: '700',
   },
   systemLink: {
     flexDirection: 'row',
@@ -639,6 +647,16 @@ export const SettingsScreen: FC = () => {
   const styles = useMemo(() => createStyles(theme), [theme]);
   const { resetOnboarding } = useOnboardingFlag();
   const { presentPaywall } = usePremium();
+  const { showToast } = useToast();
+
+  const selectTheme = (nextMode: ThemeMode, label: string) => {
+    setMode(nextMode);
+    showToast({
+      title: 'Tema actualizado',
+      message: `Ahora usas el modo ${label.toLowerCase()}.`,
+      tone: 'info',
+    });
+  };
 
   // Al resetear el flag, el navigator raíz muestra el recorrido de nuevo.
   const handleReplayTour = () => {
@@ -711,7 +729,7 @@ export const SettingsScreen: FC = () => {
         showsVerticalScrollIndicator={false}
       >
         {/* Hero */}
-        <Animated.View entering={FadeInDown.duration(500)} style={styles.hero}>
+        <Animated.View entering={FadeInDown.duration(260)} style={styles.hero}>
           <Text style={styles.heroEyebrow}>CONFIGURACIÓN</Text>
           <Text style={styles.heroTitle}>Apariencia y cuenta</Text>
           <Text style={styles.heroSubtitle}>
@@ -721,7 +739,7 @@ export const SettingsScreen: FC = () => {
 
         {/* Premium hero */}
         <Animated.View
-          entering={FadeInUp.delay(60).duration(500)}
+          entering={FadeInUp.delay(60).duration(260)}
           style={premiumScale.animatedStyle}
         >
           <Pressable
@@ -739,7 +757,7 @@ export const SettingsScreen: FC = () => {
                 styles.premiumCard,
                 {
                   borderRadius: theme.radius.xl,
-                  shadowColor: theme.colors.accent[600],
+                  boxShadow: theme.shadows.accent,
                 },
               ]}
             >
@@ -790,7 +808,7 @@ export const SettingsScreen: FC = () => {
         </Animated.View>
 
         {/* Preview tema activo */}
-        <Animated.View entering={FadeInUp.delay(120).duration(500)}>
+        <Animated.View entering={FadeInUp.delay(120).duration(260)}>
           <View
             style={[
               styles.previewCard,
@@ -826,7 +844,7 @@ export const SettingsScreen: FC = () => {
         </Animated.View>
 
         {/* Sección tema */}
-        <Animated.View entering={FadeInUp.delay(180).duration(500)}>
+        <Animated.View entering={FadeInUp.delay(120).duration(260)}>
           <Text style={styles.sectionEyebrow}>TEMA DE COLOR</Text>
           <View style={styles.optionsList}>
             {themeOptions.map((opt) => (
@@ -834,7 +852,7 @@ export const SettingsScreen: FC = () => {
                 key={opt.value}
                 {...opt}
                 selected={mode === opt.value}
-                onPress={() => setMode(opt.value)}
+                onPress={() => selectTheme(opt.value, opt.label)}
                 theme={theme}
               />
             ))}
@@ -842,13 +860,13 @@ export const SettingsScreen: FC = () => {
         </Animated.View>
 
         {/* Sección Conexiones (HealthKit) */}
-        <Animated.View entering={FadeInUp.delay(220).duration(500)}>
+        <Animated.View entering={FadeInUp.delay(120).duration(260)}>
           <Text style={styles.sectionEyebrow}>CONEXIONES</Text>
           <HealthKitCard theme={theme} />
         </Animated.View>
 
         {/* Sección Ayuda */}
-        <Animated.View entering={FadeInUp.delay(240).duration(500)}>
+        <Animated.View entering={FadeInUp.delay(120).duration(260)}>
           <Text style={styles.sectionEyebrow}>AYUDA</Text>
           <View style={styles.optionsList}>
             <LinkRow
@@ -862,7 +880,7 @@ export const SettingsScreen: FC = () => {
         </Animated.View>
 
         {/* Sección Legal y enlaces */}
-        <Animated.View entering={FadeInUp.delay(260).duration(500)}>
+        <Animated.View entering={FadeInUp.delay(120).duration(260)}>
           <Text style={styles.sectionEyebrow}>LEGAL Y ENLACES</Text>
           <View style={styles.optionsList}>
             <LinkRow
@@ -916,7 +934,7 @@ const createStyles = (theme: AppTheme) =>
     heroTitle: {
       color: theme.colors.textPrimary,
       fontSize: theme.type.title2,
-      fontWeight: '900',
+      fontWeight: '700',
       letterSpacing: -0.5,
       marginTop: 4,
     },
@@ -930,10 +948,6 @@ const createStyles = (theme: AppTheme) =>
     premiumCard: {
       padding: theme.spacing.xl,
       gap: 10,
-      shadowOffset: { width: 0, height: 8 },
-      shadowOpacity: 0.35,
-      shadowRadius: 16,
-      elevation: 6,
     },
     premiumTopRow: {
       flexDirection: 'row',
@@ -952,13 +966,13 @@ const createStyles = (theme: AppTheme) =>
     premiumBadgeText: {
       color: theme.colors.accent[700],
       fontSize: theme.type.caption,
-      fontWeight: '900',
+      fontWeight: '700',
       letterSpacing: 0.8,
     },
     premiumTitle: {
       color: '#ffffff',
       fontSize: theme.type.title3,
-      fontWeight: '900',
+      fontWeight: '700',
       letterSpacing: -0.3,
       marginTop: 4,
     },
@@ -1013,7 +1027,7 @@ const createStyles = (theme: AppTheme) =>
     previewName: {
       color: theme.colors.heroText,
       fontSize: theme.type.title3,
-      fontWeight: '900',
+      fontWeight: '700',
       letterSpacing: -0.5,
       marginTop: 2,
     },

@@ -45,8 +45,9 @@ export const InsightCard: FC<{
     if (insight.cta && onCtaPress) onCtaPress(insight.cta.screen);
   };
 
-  const iconName = (locked ? 'lock-closed' : insight.icon) as
-    | keyof typeof Ionicons.glyphMap;
+  const iconName = (
+    locked ? 'lock-closed' : insight.icon
+  ) as keyof typeof Ionicons.glyphMap;
 
   const progressPct = insight.progress
     ? Math.min(100, (insight.progress.current / insight.progress.total) * 100)
@@ -58,7 +59,9 @@ export const InsightCard: FC<{
         styles.card,
         {
           backgroundColor: theme.colors.surface,
-          borderColor: locked ? `${theme.colors.accent[500]}55` : theme.colors.border,
+          borderColor: locked
+            ? `${theme.colors.accent[500]}55`
+            : theme.colors.border,
           borderRadius: theme.radius.lg,
         },
       ]}
@@ -86,7 +89,11 @@ export const InsightCard: FC<{
               },
             ]}
           >
-            <Ionicons name="sparkles" size={9} color={theme.colors.accent[400]} />
+            <Ionicons
+              name="sparkles"
+              size={9}
+              color={theme.colors.accent[400]}
+            />
           </View>
         )}
       </View>
@@ -105,7 +112,10 @@ export const InsightCard: FC<{
       {insight.progress && !locked && (
         <View style={styles.progressRow}>
           <View
-            style={[styles.progressTrack, { backgroundColor: theme.colors.border }]}
+            style={[
+              styles.progressTrack,
+              { backgroundColor: theme.colors.border },
+            ]}
           >
             <View
               style={[
@@ -114,7 +124,9 @@ export const InsightCard: FC<{
               ]}
             />
           </View>
-          <Text style={[styles.progressLabel, { color: theme.colors.textMuted }]}>
+          <Text
+            style={[styles.progressLabel, { color: theme.colors.textMuted }]}
+          >
             {insight.progress.current}/{insight.progress.total}
           </Text>
         </View>
@@ -162,7 +174,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  title: { flex: 1, fontWeight: '800', letterSpacing: -0.2 },
+  title: { flex: 1, fontWeight: '700', letterSpacing: -0.2 },
   premiumTag: {
     width: 22,
     height: 22,

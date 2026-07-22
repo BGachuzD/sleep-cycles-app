@@ -154,7 +154,9 @@ const OptionCard: FC<{
             backgroundColor: active
               ? `${theme.colors.accent[500]}14`
               : theme.colors.surface,
-            borderColor: active ? theme.colors.accent[500] : theme.colors.border,
+            borderColor: active
+              ? theme.colors.accent[500]
+              : theme.colors.border,
             borderWidth: active ? 1.5 : 1,
             borderRadius: theme.radius.lg,
           },
@@ -217,7 +219,7 @@ const optionStyles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  label: { fontWeight: '800' },
+  label: { fontWeight: '700' },
   desc: { lineHeight: 16, marginTop: 2 },
 });
 
@@ -394,14 +396,17 @@ export const ProfileSetupScreen: FC = () => {
           keyboardShouldPersistTaps="handled"
         >
           {/* Título del paso (key para re-animar en cada cambio) */}
-          <Animated.View key={`title-${step}`} entering={FadeInDown.duration(350)}>
+          <Animated.View
+            key={`title-${step}`}
+            entering={FadeInDown.duration(240)}
+          >
             <Text style={styles.title}>{stepTitles[step].title}</Text>
             <Text style={styles.subtitle}>{stepTitles[step].subtitle}</Text>
           </Animated.View>
 
           <Animated.View
             key={`content-${step}`}
-            entering={FadeInUp.delay(80).duration(350)}
+            entering={FadeInUp.delay(80).duration(240)}
             style={styles.content}
           >
             {step === 0 && (
@@ -603,7 +608,7 @@ const createStyles = (theme: AppTheme) =>
     title: {
       color: theme.colors.textPrimary,
       fontSize: theme.type.title1,
-      fontWeight: '900',
+      fontWeight: '700',
       letterSpacing: -0.5,
     },
     subtitle: {

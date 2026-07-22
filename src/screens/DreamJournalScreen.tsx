@@ -11,7 +11,11 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import Animated, { FadeInDown, FadeInUp, LinearTransition } from 'react-native-reanimated';
+import Animated, {
+  FadeInDown,
+  FadeInUp,
+  LinearTransition,
+} from 'react-native-reanimated';
 import 'react-native-get-random-values';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -19,6 +23,7 @@ import { GradientBackground } from '../components/GradientBackground';
 import { FloatingHomeButton } from '../components/FloatingHomeButton';
 import { PrimaryCTA } from '../components/PrimaryCTA';
 import { PremiumHint } from '../components/PremiumHint';
+import { EmptyState, useToast } from '../components/ui';
 import { usePressScale } from '../hooks/usePressScale';
 import { usePremium } from '../context/EntitlementsContext';
 import { useDreamEntriesContext } from '../context/DreamEntriesContext';
@@ -65,7 +70,11 @@ const Chip: FC<{
         ]}
       >
         {icon && (
-          <Ionicons name={icon} size={16} color={active ? c : theme.colors.textMuted} />
+          <Ionicons
+            name={icon}
+            size={16}
+            color={active ? c : theme.colors.textMuted}
+          />
         )}
         <Text
           style={[
@@ -82,7 +91,10 @@ const Chip: FC<{
 
 function formatDreamWhen(loggedAtISO: string): string {
   const d = new Date(loggedAtISO);
-  const date = d.toLocaleDateString('es-MX', { day: 'numeric', month: 'short' });
+  const date = d.toLocaleDateString('es-MX', {
+    day: 'numeric',
+    month: 'short',
+  });
   return `${date} · ${formatTime(d)}`;
 }
 
@@ -117,15 +129,30 @@ const DreamCard: FC<{
     >
       <View style={styles.dreamCardHeader}>
         <View
-          style={[styles.moodPill, { backgroundColor: `${moodColor}1F`, borderColor: `${moodColor}55` }]}
+          style={[
+            styles.moodPill,
+            {
+              backgroundColor: `${moodColor}1F`,
+              borderColor: `${moodColor}55`,
+            },
+          ]}
         >
           <Ionicons name={moodIcon} size={14} color={moodColor} />
         </View>
         <Text style={[styles.dreamWhen, { color: theme.colors.textMuted }]}>
           {formatDreamWhen(dream.loggedAt)}
         </Text>
-        <Pressable hitSlop={8} onPress={onDelete} accessibilityRole="button" accessibilityLabel="Eliminar sueño">
-          <Ionicons name="trash-outline" size={16} color={theme.colors.textMuted} />
+        <Pressable
+          hitSlop={8}
+          onPress={onDelete}
+          accessibilityRole="button"
+          accessibilityLabel="Eliminar sueño"
+        >
+          <Ionicons
+            name="trash-outline"
+            size={16}
+            color={theme.colors.textMuted}
+          />
         </Pressable>
       </View>
 
@@ -134,16 +161,31 @@ const DreamCard: FC<{
           {dream.tags.map((t) => (
             <View
               key={t}
-              style={[styles.tagPill, { backgroundColor: `${theme.colors.accent[500]}14`, borderColor: `${theme.colors.accent[500]}33` }]}
+              style={[
+                styles.tagPill,
+                {
+                  backgroundColor: `${theme.colors.accent[500]}14`,
+                  borderColor: `${theme.colors.accent[500]}33`,
+                },
+              ]}
             >
-              <Text style={[styles.tagPillText, { color: theme.colors.accent[300] }]}>{t}</Text>
+              <Text
+                style={[
+                  styles.tagPillText,
+                  { color: theme.colors.accent[300] },
+                ]}
+              >
+                {t}
+              </Text>
             </View>
           ))}
         </View>
       )}
 
       {!!dream.note && (
-        <Text style={[styles.dreamNote, { color: theme.colors.textSecondary }]}>{dream.note}</Text>
+        <Text style={[styles.dreamNote, { color: theme.colors.textSecondary }]}>
+          {dream.note}
+        </Text>
       )}
     </View>
   );
@@ -154,11 +196,14 @@ export const DreamJournalScreen: FC = () => {
   const styles2 = useMemo(() => createStyles(theme), [theme]);
   const { isPremium, presentPaywall } = usePremium();
   const { dreams, addDream, deleteDream } = useDreamEntriesContext();
+  const { showToast } = useToast();
 
   const [mood, setMood] = useState<DreamMood>(2);
   const [tags, setTags] = useState<string[]>([]);
   const [note, setNote] = useState('');
-  const noteMaxLen = isPremium ? PREMIUM_DREAM_NOTE_MAXLEN : FREE_DREAM_NOTE_MAXLEN;
+  const noteMaxLen = isPremium
+    ? PREMIUM_DREAM_NOTE_MAXLEN
+    : FREE_DREAM_NOTE_MAXLEN;
 
   const toggleTag = useCallback(
     (tag: string) => {
@@ -189,15 +234,24 @@ export const DreamJournalScreen: FC = () => {
     setMood(2);
     setTags([]);
     setNote('');
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-    Alert.alert('Sueño anotado', 'Quedó guardado en tu bitácora.');
-  }, [mood, tags, note, addDream]);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
+      () => {},
+    );
+    showToast({
+      title: 'Sueño anotado',
+      message: 'Quedó guardado en tu bitácora.',
+    });
+  }, [mood, tags, note, addDream, showToast]);
 
   const handleDelete = useCallback(
     (dream: DreamEntry) => {
       Alert.alert('Eliminar sueño', '¿Eliminar esta anotación?', [
         { text: 'Cancelar', style: 'cancel' },
-        { text: 'Eliminar', style: 'destructive', onPress: () => deleteDream(dream.id) },
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: () => deleteDream(dream.id),
+        },
       ]);
     },
     [deleteDream],
@@ -214,7 +268,7 @@ export const DreamJournalScreen: FC = () => {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        <Animated.View entering={FadeInDown.duration(500)} style={styles2.hero}>
+        <Animated.View entering={FadeInDown.duration(260)} style={styles2.hero}>
           <Text style={styles2.heroEyebrow}>BITÁCORA DE SUEÑOS</Text>
           <Text style={styles2.heroTitle}>¿Qué soñaste?</Text>
           <Text style={styles2.heroSubtitle}>
@@ -223,7 +277,10 @@ export const DreamJournalScreen: FC = () => {
         </Animated.View>
 
         {/* Form */}
-        <Animated.View entering={FadeInDown.delay(80).duration(500)} style={styles2.formCard}>
+        <Animated.View
+          entering={FadeInDown.delay(80).duration(260)}
+          style={styles2.formCard}
+        >
           <Text style={styles2.fieldLabel}>¿CÓMO FUE?</Text>
           <View style={styles2.row}>
             <Chip
@@ -297,7 +354,11 @@ export const DreamJournalScreen: FC = () => {
           )}
 
           <View style={{ marginTop: theme.spacing.xs }}>
-            <PrimaryCTA label="Guardar sueño" icon="cloudy-night-outline" onPress={handleSave} />
+            <PrimaryCTA
+              label="Guardar sueño"
+              icon="cloudy-night-outline"
+              onPress={handleSave}
+            />
           </View>
         </Animated.View>
 
@@ -307,19 +368,26 @@ export const DreamJournalScreen: FC = () => {
         </View>
 
         {dreams.length === 0 ? (
-          <View style={styles2.emptyBox}>
-            <Ionicons name="cloudy-night-outline" size={28} color={theme.colors.textMuted} />
-            <Text style={styles2.emptyText}>Aún no anotas sueños. ¡Empieza hoy!</Text>
-          </View>
+          <EmptyState
+            icon="cloudy-night-outline"
+            title="Tu bitácora está en calma"
+            description="Cuando anotes un sueño, aparecerá aquí para que puedas recordarlo."
+          />
         ) : (
           <View style={styles2.list}>
             {dreams.map((dream, index) => (
               <Animated.View
                 key={dream.id}
-                entering={FadeInUp.delay(index * 30).duration(220)}
+                entering={FadeInUp.delay(Math.min(index * 30, 120)).duration(
+                  220,
+                )}
                 layout={LinearTransition.duration(200)}
               >
-                <DreamCard dream={dream} onDelete={() => handleDelete(dream)} theme={theme} />
+                <DreamCard
+                  dream={dream}
+                  onDelete={() => handleDelete(dream)}
+                  theme={theme}
+                />
               </Animated.View>
             ))}
           </View>
@@ -383,7 +451,7 @@ const createStyles = (theme: AppTheme) =>
     heroTitle: {
       color: theme.colors.textPrimary,
       fontSize: theme.type.title2,
-      fontWeight: '900',
+      fontWeight: '700',
       letterSpacing: -0.5,
       marginTop: 4,
     },

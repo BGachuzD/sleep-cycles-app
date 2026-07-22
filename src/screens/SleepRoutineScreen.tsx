@@ -1,5 +1,12 @@
 // src/screens/SleepRoutineScreen.tsx
-import React, { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  FC,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -16,16 +23,15 @@ import Animated, { FadeInDown, FadeInLeft } from 'react-native-reanimated';
 import 'react-native-get-random-values';
 import { v4 as uuidv4 } from 'uuid';
 import {
-  BottomSheetBackdrop,
   BottomSheetModal,
   BottomSheetTextInput,
   BottomSheetView,
-  type BottomSheetBackdropProps,
 } from '@gorhom/bottom-sheet';
 
 import { GradientBackground } from '../components/GradientBackground';
 import { FloatingDrawerButton } from '../components/FloatingDrawerButton';
 import { FloatingHomeButton } from '../components/FloatingHomeButton';
+import { AppBottomSheetModal, useToast } from '../components/ui';
 import { PrimaryCTA } from '../components/PrimaryCTA';
 import { Bumper } from '../components/Bumper';
 import { usePressScale } from '../hooks/usePressScale';
@@ -64,11 +70,13 @@ export const SleepRoutineScreen: FC = () => {
   } = useSleepRoutineContext();
   const { theme } = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const { showToast } = useToast();
   const optWindow = getOptimalSleepWindow(profile?.chronotype);
 
   const [editMode, setEditMode] = useState(false);
   const [editingStep, setEditingStep] = useState<RoutineStep | null>(null);
   const [isNewStep, setIsNewStep] = useState(false);
+  const [draftError, setDraftError] = useState<string | null>(null);
   const [draft, setDraft] = useState<StepDraft>({
     title: '',
     description: '',
@@ -118,19 +126,6 @@ export const SleepRoutineScreen: FC = () => {
     sheetRef.current?.dismiss();
   }, []);
 
-  const renderBackdrop = useCallback(
-    (props: BottomSheetBackdropProps) => (
-      <BottomSheetBackdrop
-        {...props}
-        appearsOnIndex={0}
-        disappearsOnIndex={-1}
-        opacity={0.6}
-        pressBehavior="close"
-      />
-    ),
-    [],
-  );
-
   // ── Acciones ────────────────────────────────
   const handleScheduleAll = useCallback(async () => {
     let count = 0;
@@ -147,11 +142,11 @@ export const SleepRoutineScreen: FC = () => {
       }
     }
     setScheduledSteps(new Set(visibleSteps.map((s) => s.id)));
-    Alert.alert(
-      'Rutina programada',
-      `${count} recordatorios configurados para esta noche.`,
-    );
-  }, [visibleSteps, stepTime]);
+    showToast({
+      title: 'Rutina programada',
+      message: `${count} recordatorios configurados para esta noche.`,
+    });
+  }, [visibleSteps, stepTime, showToast]);
 
   const handleScheduleStep = useCallback(
     async (step: RoutineStep) => {
@@ -170,12 +165,16 @@ export const SleepRoutineScreen: FC = () => {
         date: time,
       });
       setScheduledSteps((prev) => new Set([...prev, step.id]));
-      Alert.alert('Recordatorio', `Programado para las ${formatTime(time)}`);
+      showToast({
+        title: 'Recordatorio programado',
+        message: `Te avisaremos a las ${formatTime(time)}.`,
+      });
     },
-    [stepTime],
+    [stepTime, showToast],
   );
 
   const openEdit = useCallback((step: RoutineStep) => {
+    setDraftError(null);
     setIsNewStep(false);
     setDraft({
       title: step.title,
@@ -186,6 +185,7 @@ export const SleepRoutineScreen: FC = () => {
   }, []);
 
   const openAdd = useCallback(() => {
+    setDraftError(null);
     const newStep: RoutineStep = {
       id: uuidv4(),
       minutesBefore: 30,
@@ -204,9 +204,10 @@ export const SleepRoutineScreen: FC = () => {
   const handleSaveDraft = useCallback(async () => {
     if (!editingStep) return;
     if (!draft.title.trim()) {
-      Alert.alert('Campo requerido', 'El título no puede estar vacío.');
+      setDraftError('Escribe un título para guardar este paso.');
       return;
     }
+    setDraftError(null);
     const updated: RoutineStep = {
       ...editingStep,
       title: draft.title.trim(),
@@ -260,7 +261,7 @@ export const SleepRoutineScreen: FC = () => {
         showsVerticalScrollIndicator={false}
       >
         {/* Hero */}
-        <Animated.View entering={FadeInDown.duration(500)} style={styles.hero}>
+        <Animated.View entering={FadeInDown.duration(260)} style={styles.hero}>
           <View style={styles.heroTopRow}>
             <View style={{ flex: 1 }}>
               <Text style={styles.heroEyebrow}>RUTINA PARA DORMIR A LAS</Text>
@@ -301,7 +302,9 @@ export const SleepRoutineScreen: FC = () => {
                   },
                 ]}
                 accessibilityRole="button"
-                accessibilityLabel={editMode ? 'Salir de edición' : 'Editar rutina'}
+                accessibilityLabel={
+                  editMode ? 'Salir de edición' : 'Editar rutina'
+                }
               >
                 <Ionicons
                   name={editMode ? 'checkmark-outline' : 'pencil-outline'}
@@ -332,7 +335,7 @@ export const SleepRoutineScreen: FC = () => {
 
         {/* Acción contextual */}
         {!editMode ? (
-          <Animated.View entering={FadeInDown.delay(80).duration(500)}>
+          <Animated.View entering={FadeInDown.delay(80).duration(260)}>
             <PrimaryCTA
               label="Programar toda la rutina"
               icon="notifications-outline"
@@ -341,7 +344,7 @@ export const SleepRoutineScreen: FC = () => {
           </Animated.View>
         ) : (
           <Animated.View
-            entering={FadeInDown.duration(300)}
+            entering={FadeInDown.duration(240)}
             style={styles.resetWrapper}
           >
             <Pressable
@@ -368,7 +371,7 @@ export const SleepRoutineScreen: FC = () => {
             return (
               <Animated.View
                 key={step.id}
-                entering={FadeInLeft.delay(index * 60)
+                entering={FadeInLeft.delay(Math.min(index * 36, 120))
                   .springify()
                   .damping(14)}
               >
@@ -394,7 +397,7 @@ export const SleepRoutineScreen: FC = () => {
 
         {/* Añadir paso (en edit mode) */}
         {editMode && (
-          <Animated.View entering={FadeInDown.delay(100).duration(300)}>
+          <Animated.View entering={FadeInDown.delay(100).duration(240)}>
             <Pressable
               style={[
                 styles.addStepBtn,
@@ -420,16 +423,16 @@ export const SleepRoutineScreen: FC = () => {
       </ScrollView>
 
       {/* BottomSheet de edición */}
-      <BottomSheetModal
+      <AppBottomSheetModal
         ref={sheetRef}
         snapPoints={snapPoints}
         enableDynamicSizing={false}
         keyboardBehavior="interactive"
         keyboardBlurBehavior="restore"
-        backgroundStyle={{ backgroundColor: theme.colors.surface }}
-        handleIndicatorStyle={{ backgroundColor: theme.colors.textMuted }}
-        backdropComponent={renderBackdrop}
-        onDismiss={() => setEditingStep(null)}
+        onDismiss={() => {
+          setEditingStep(null);
+          setDraftError(null);
+        }}
       >
         <BottomSheetView style={styles.sheetContent}>
           {editingStep && (
@@ -443,17 +446,37 @@ export const SleepRoutineScreen: FC = () => {
                 <BottomSheetTextInput
                   style={styles.input}
                   value={draft.title}
-                  onChangeText={(t) => setDraft((d) => ({ ...d, title: t }))}
+                  onChangeText={(t) => {
+                    setDraft((d) => ({ ...d, title: t }));
+                    if (draftError) setDraftError(null);
+                  }}
+                  accessibilityLabel="Título del paso"
+                  aria-invalid={Boolean(draftError)}
                   placeholder="Ej. Ducha relajante"
                   placeholderTextColor={theme.colors.textMuted}
                   maxLength={50}
                 />
+                {draftError ? (
+                  <Text
+                    accessibilityLiveRegion="polite"
+                    style={{
+                      color: theme.colors.danger,
+                      fontSize: theme.type.caption,
+                      lineHeight: theme.lineHeight.caption,
+                    }}
+                  >
+                    {draftError}
+                  </Text>
+                ) : null}
               </View>
 
               <View style={styles.field}>
                 <Text style={styles.fieldLabel}>Descripción</Text>
                 <BottomSheetTextInput
-                  style={[styles.input, { height: 72, textAlignVertical: 'top' }]}
+                  style={[
+                    styles.input,
+                    { height: 72, textAlignVertical: 'top' },
+                  ]}
                   value={draft.description}
                   onChangeText={(t) =>
                     setDraft((d) => ({ ...d, description: t }))
@@ -466,7 +489,9 @@ export const SleepRoutineScreen: FC = () => {
               </View>
 
               <View style={styles.field}>
-                <Text style={styles.fieldLabel}>Minutos antes de acostarse</Text>
+                <Text style={styles.fieldLabel}>
+                  Minutos antes de acostarse
+                </Text>
                 <View style={styles.minutesRow}>
                   <Bumper
                     icon="remove"
@@ -506,7 +531,7 @@ export const SleepRoutineScreen: FC = () => {
             </>
           )}
         </BottomSheetView>
-      </BottomSheetModal>
+      </AppBottomSheetModal>
     </SafeAreaView>
   );
 };
@@ -548,7 +573,9 @@ const StepRow: FC<{
         <View style={rowStyles.timelineCol}>
           <View style={[rowStyles.dot, { backgroundColor: step.color }]} />
           {!isLast && (
-            <View style={[rowStyles.line, { backgroundColor: `${step.color}40` }]} />
+            <View
+              style={[rowStyles.line, { backgroundColor: `${step.color}40` }]}
+            />
           )}
         </View>
       )}
@@ -568,7 +595,12 @@ const StepRow: FC<{
               borderWidth: isScheduled ? 1.5 : 1,
               borderRadius: theme.radius.lg,
               padding: theme.spacing.lg,
-              opacity: !step.enabled && editMode ? 0.55 : isPast && !editMode ? 0.55 : 1,
+              opacity:
+                !step.enabled && editMode
+                  ? 0.55
+                  : isPast && !editMode
+                    ? 0.55
+                    : 1,
               marginLeft: editMode ? 0 : 10,
             },
           ]}
@@ -604,7 +636,10 @@ const StepRow: FC<{
                 <Text
                   style={[
                     rowStyles.timeText,
-                    { color: theme.colors.textMuted, fontSize: theme.type.micro },
+                    {
+                      color: theme.colors.textMuted,
+                      fontSize: theme.type.micro,
+                    },
                   ]}
                 >
                   {formatTime(time)}
@@ -664,7 +699,10 @@ const StepRow: FC<{
               <Text
                 style={[
                   rowStyles.descText,
-                  { color: theme.colors.textSecondary, fontSize: theme.type.small },
+                  {
+                    color: theme.colors.textSecondary,
+                    fontSize: theme.type.small,
+                  },
                 ]}
               >
                 {step.description}
@@ -786,7 +824,7 @@ const createStyles = (theme: AppTheme) =>
     heroClock: {
       color: theme.colors.heroText,
       fontSize: theme.type.title1,
-      fontWeight: '900',
+      fontWeight: '700',
       letterSpacing: -1,
       marginTop: 4,
       fontVariant: ['tabular-nums'],
@@ -902,7 +940,7 @@ const createStyles = (theme: AppTheme) =>
     minutesValue: {
       color: theme.colors.textPrimary,
       fontSize: theme.type.title3,
-      fontWeight: '800',
+      fontWeight: '700',
       minWidth: 100,
       textAlign: 'center',
       fontVariant: ['tabular-nums'],

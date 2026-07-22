@@ -15,6 +15,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 
 import { usePremium } from '../context/EntitlementsContext';
 import { useAppTheme } from '../theme/ThemeProvider';
+import { useToast } from './ui';
 import type { AppTheme } from '../theme/theme';
 import {
   getOfferings,
@@ -29,7 +30,10 @@ const PREMIUM_BENEFITS: Array<{
   text: string;
 }> = [
   { icon: 'sparkles-outline', text: 'Análisis de tus sueños con IA' },
-  { icon: 'git-compare-outline', text: 'Correlaciones avanzadas de sueño y hábitos' },
+  {
+    icon: 'git-compare-outline',
+    text: 'Correlaciones avanzadas de sueño y hábitos',
+  },
   { icon: 'trending-up-outline', text: 'Tendencias mensuales y anuales' },
   { icon: 'cloudy-night-outline', text: 'Bitácora de sueños sin límites' },
   { icon: 'flag-outline', text: 'Metas múltiples y coach proactivo' },
@@ -81,7 +85,7 @@ const planStyles = StyleSheet.create({
     padding: 14,
     gap: 12,
   },
-  title: { fontSize: 15, fontWeight: '800' },
+  title: { fontSize: 15, fontWeight: '700' },
   price: { fontSize: 13, fontWeight: '600', marginTop: 2 },
 });
 
@@ -93,6 +97,7 @@ const PaywallContent: FC<{
   const { theme } = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const configured = isPurchasesConfigured();
+  const { showToast } = useToast();
 
   const [packages, setPackages] = useState<PurchasePackage[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -148,7 +153,10 @@ const PaywallContent: FC<{
       const res = await restorePurchases();
       if (res.isPremium) {
         await onPurchased();
-        Alert.alert('Listo', 'Tu suscripción Premium fue restaurada.');
+        showToast({
+          title: 'Suscripción restaurada',
+          message: 'Tus funciones Premium ya están disponibles.',
+        });
         onClose();
       } else {
         Alert.alert(
@@ -192,7 +200,9 @@ const PaywallContent: FC<{
             />
             <Text style={styles.heroBadgeText}>PREMIUM</Text>
           </View>
-          <Text style={styles.heroTitle}>Lleva tu sueño al siguiente nivel</Text>
+          <Text style={styles.heroTitle}>
+            Lleva tu sueño al siguiente nivel
+          </Text>
           <Text style={styles.heroSubtitle}>
             {context ??
               'Desbloquea análisis profundo, IA de sueños e historial ilimitado.'}
@@ -326,11 +336,7 @@ const createStyles = (theme: AppTheme) =>
     hero: {
       padding: theme.spacing.xl,
       gap: 8,
-      shadowColor: theme.colors.accent[600],
-      shadowOffset: { width: 0, height: 8 },
-      shadowOpacity: 0.3,
-      shadowRadius: 16,
-      elevation: 6,
+      boxShadow: theme.shadows.accent,
     },
     heroBadge: {
       flexDirection: 'row',
@@ -345,13 +351,13 @@ const createStyles = (theme: AppTheme) =>
     heroBadgeText: {
       color: theme.colors.accent[700],
       fontSize: theme.type.caption,
-      fontWeight: '900',
+      fontWeight: '700',
       letterSpacing: 0.8,
     },
     heroTitle: {
       color: '#ffffff',
       fontSize: theme.type.title2,
-      fontWeight: '900',
+      fontWeight: '700',
       letterSpacing: -0.5,
       marginTop: 6,
     },
@@ -401,7 +407,7 @@ const createStyles = (theme: AppTheme) =>
     ctaText: {
       color: '#ffffff',
       fontSize: theme.type.bodyLarge,
-      fontWeight: '800',
+      fontWeight: '700',
     },
     restoreBtn: { alignItems: 'center', paddingVertical: 6 },
     restoreText: {

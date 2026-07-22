@@ -77,7 +77,6 @@ export const ForgotPasswordScreen: FC<Props> = ({ navigation }) => {
             styles.ambientGlow,
             {
               backgroundColor: theme.colors.accent[600],
-              shadowColor: theme.colors.accent[600],
             },
           ]}
         />
@@ -94,7 +93,7 @@ export const ForgotPasswordScreen: FC<Props> = ({ navigation }) => {
           keyboardShouldPersistTaps="handled"
         >
           {/* Hero */}
-          <Animated.View entering={FadeInDown.duration(500)}>
+          <Animated.View entering={FadeInDown.duration(260)}>
             <AuthHero
               icon={sentToEmail ? 'mail-open-outline' : 'key-outline'}
             />
@@ -102,7 +101,7 @@ export const ForgotPasswordScreen: FC<Props> = ({ navigation }) => {
 
           {/* Title */}
           <Animated.View
-            entering={FadeInDown.delay(100).duration(500)}
+            entering={FadeInDown.delay(100).duration(260)}
             style={styles.titleBlock}
           >
             <Text style={styles.eyebrow}>
@@ -122,7 +121,7 @@ export const ForgotPasswordScreen: FC<Props> = ({ navigation }) => {
           {!sentToEmail ? (
             <>
               <Animated.View
-                entering={FadeInUp.delay(180).duration(500)}
+                entering={FadeInUp.delay(120).duration(260)}
                 style={styles.form}
               >
                 <FieldInput
@@ -137,7 +136,7 @@ export const ForgotPasswordScreen: FC<Props> = ({ navigation }) => {
               </Animated.View>
 
               {error && (
-                <Animated.View entering={FadeInUp.duration(300)}>
+                <Animated.View entering={FadeInUp.duration(240)}>
                   <View
                     style={[
                       styles.alertBox,
@@ -154,10 +153,7 @@ export const ForgotPasswordScreen: FC<Props> = ({ navigation }) => {
                       color={theme.colors.danger}
                     />
                     <Text
-                      style={[
-                        styles.alertText,
-                        { color: theme.colors.danger },
-                      ]}
+                      style={[styles.alertText, { color: theme.colors.danger }]}
                     >
                       {error}
                     </Text>
@@ -165,7 +161,7 @@ export const ForgotPasswordScreen: FC<Props> = ({ navigation }) => {
                 </Animated.View>
               )}
 
-              <Animated.View entering={FadeInUp.delay(240).duration(500)}>
+              <Animated.View entering={FadeInUp.delay(120).duration(260)}>
                 {loading ? (
                   <View style={styles.loadingWrapper}>
                     <ActivityIndicator color={theme.colors.accent[500]} />
@@ -181,7 +177,7 @@ export const ForgotPasswordScreen: FC<Props> = ({ navigation }) => {
               </Animated.View>
             </>
           ) : (
-            <Animated.View entering={FadeInUp.delay(180).duration(500)}>
+            <Animated.View entering={FadeInUp.delay(120).duration(260)}>
               <View
                 style={[
                   styles.tipBlock,
@@ -199,9 +195,9 @@ export const ForgotPasswordScreen: FC<Props> = ({ navigation }) => {
                   style={{ marginTop: 1 }}
                 />
                 <Text style={styles.tipText}>
-                  Si no ves el correo en unos minutos, revisa también la
-                  carpeta de spam o promociones. El enlace expira por
-                  seguridad después de un tiempo limitado.
+                  Si no ves el correo en unos minutos, revisa también la carpeta
+                  de spam o promociones. El enlace expira por seguridad después
+                  de un tiempo limitado.
                 </Text>
               </View>
 
@@ -219,7 +215,7 @@ export const ForgotPasswordScreen: FC<Props> = ({ navigation }) => {
           {/* Link de regreso (solo si aún no envió) */}
           {!sentToEmail && (
             <Animated.View
-              entering={FadeInUp.delay(320).duration(500)}
+              entering={FadeInUp.delay(120).duration(260)}
               style={[styles.linkWrapper, linkScale.animatedStyle]}
             >
               <Pressable
@@ -258,9 +254,6 @@ const createStyles = (theme: AppTheme) =>
       height: AMBIENT_DIAMETER,
       borderRadius: AMBIENT_DIAMETER / 2,
       opacity: 0.22,
-      shadowOffset: { width: 0, height: 0 },
-      shadowOpacity: 0.5,
-      shadowRadius: 200,
     },
     scrollContent: {
       flexGrow: 1,
@@ -279,7 +272,7 @@ const createStyles = (theme: AppTheme) =>
     title: {
       color: theme.colors.textPrimary,
       fontSize: theme.type.title1,
-      fontWeight: '900',
+      fontWeight: '700',
       letterSpacing: -0.5,
       marginTop: 6,
       textAlign: 'center',
@@ -338,6 +331,6 @@ const createStyles = (theme: AppTheme) =>
     },
     linkTextHighlight: {
       color: theme.colors.accent[400],
-      fontWeight: '800',
+      fontWeight: '700',
     },
   });

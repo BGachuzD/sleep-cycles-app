@@ -115,7 +115,11 @@ const HeroComposition: FC<{
 
   // Parallax / scale del slide entero según scrollX
   const containerStyle = useAnimatedStyle(() => {
-    const inputRange = [(index - 1) * width, index * width, (index + 1) * width];
+    const inputRange = [
+      (index - 1) * width,
+      index * width,
+      (index + 1) * width,
+    ];
     const scale = interpolate(
       scrollX.value,
       inputRange,
@@ -147,7 +151,6 @@ const HeroComposition: FC<{
         style={[
           heroStyles.outerGlow,
           {
-            shadowColor: theme.colors.accent[500],
             backgroundColor: theme.colors.accent[500],
           },
           breathStyle,
@@ -210,9 +213,6 @@ const heroStyles = StyleSheet.create({
     height: HERO_DIAMETER * 1.4,
     borderRadius: HERO_DIAMETER,
     opacity: 0.3,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.6,
-    shadowRadius: 80,
   },
   middleRing: {
     position: 'absolute',
@@ -227,11 +227,6 @@ const heroStyles = StyleSheet.create({
     borderRadius: HERO_DIAMETER,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    elevation: 8,
   },
   particleLayer: {
     ...StyleSheet.absoluteFillObject,
@@ -252,7 +247,11 @@ const SlideTextLayer: FC<{
   theme: AppTheme;
 }> = ({ title, description, scrollX, index, theme }) => {
   const titleStyle = useAnimatedStyle(() => {
-    const inputRange = [(index - 1) * width, index * width, (index + 1) * width];
+    const inputRange = [
+      (index - 1) * width,
+      index * width,
+      (index + 1) * width,
+    ];
     return {
       transform: [
         {
@@ -274,7 +273,11 @@ const SlideTextLayer: FC<{
   });
 
   const descStyle = useAnimatedStyle(() => {
-    const inputRange = [(index - 1) * width, index * width, (index + 1) * width];
+    const inputRange = [
+      (index - 1) * width,
+      index * width,
+      (index + 1) * width,
+    ];
     return {
       transform: [
         {
@@ -328,7 +331,7 @@ const SlideTextLayer: FC<{
 const textStyles = StyleSheet.create({
   wrapper: { paddingHorizontal: 28, alignItems: 'center' },
   title: {
-    fontWeight: '900',
+    fontWeight: '700',
     letterSpacing: -0.5,
     textAlign: 'center',
     marginBottom: 12,
@@ -348,7 +351,11 @@ const SlideCycles: FC<{
   theme: AppTheme;
 }> = ({ scrollX, index, theme }) => {
   const chipsStyle = useAnimatedStyle(() => {
-    const inputRange = [(index - 1) * width, index * width, (index + 1) * width];
+    const inputRange = [
+      (index - 1) * width,
+      index * width,
+      (index + 1) * width,
+    ];
     return {
       transform: [
         {
@@ -377,7 +384,12 @@ const SlideCycles: FC<{
 
   return (
     <SlideShell>
-      <HeroComposition icon="moon-outline" scrollX={scrollX} index={index} theme={theme} />
+      <HeroComposition
+        icon="moon-outline"
+        scrollX={scrollX}
+        index={index}
+        theme={theme}
+      />
       <SlideTextLayer
         title="Duerme en ciclos, despierta mejor"
         description="Tu sueño se organiza en ciclos de ~90 min. Calculamos las horas exactas para que despiertes al final de uno, en fase ligera, no desde lo más profundo."
@@ -414,7 +426,10 @@ const SlideCycles: FC<{
             <Text
               style={[
                 cyclesStyles.chipD,
-                { color: theme.colors.textSecondary, fontSize: theme.type.small },
+                {
+                  color: theme.colors.textSecondary,
+                  fontSize: theme.type.small,
+                },
               ]}
             >
               {c.d}
@@ -448,7 +463,7 @@ const cyclesStyles = StyleSheet.create({
     gap: 4,
   },
   chipN: {
-    fontWeight: '900',
+    fontWeight: '700',
     letterSpacing: -1,
     fontVariant: ['tabular-nums'],
   },
@@ -496,7 +511,11 @@ const SlideHowItWorks: FC<{
   theme: AppTheme;
 }> = ({ scrollX, index, theme }) => {
   const listStyle = useAnimatedStyle(() => {
-    const inputRange = [(index - 1) * width, index * width, (index + 1) * width];
+    const inputRange = [
+      (index - 1) * width,
+      index * width,
+      (index + 1) * width,
+    ];
     return {
       transform: [
         {
@@ -519,7 +538,12 @@ const SlideHowItWorks: FC<{
 
   return (
     <SlideShell>
-      <HeroComposition icon="map-outline" scrollX={scrollX} index={index} theme={theme} />
+      <HeroComposition
+        icon="map-outline"
+        scrollX={scrollX}
+        index={index}
+        theme={theme}
+      />
       <SlideTextLayer
         title="Tu kit para dormir mejor"
         description="Dos calculadoras, un diario y tus estadísticas. Todo gira alrededor de tus ciclos."
@@ -615,7 +639,11 @@ const SlideApprox: FC<{
   theme: AppTheme;
 }> = ({ scrollX, index, onStart, theme }) => {
   const cardStyle = useAnimatedStyle(() => {
-    const inputRange = [(index - 1) * width, index * width, (index + 1) * width];
+    const inputRange = [
+      (index - 1) * width,
+      index * width,
+      (index + 1) * width,
+    ];
     return {
       transform: [
         {
@@ -638,7 +666,12 @@ const SlideApprox: FC<{
 
   return (
     <SlideShell>
-      <HeroComposition icon="telescope-outline" scrollX={scrollX} index={index} theme={theme} />
+      <HeroComposition
+        icon="telescope-outline"
+        scrollX={scrollX}
+        index={index}
+        theme={theme}
+      />
       <SlideTextLayer
         title="Horas aproximadas, resultados reales"
         description="Cada sugerencia es una aproximación pensada para que despiertes en fase ligera, no una promesa exacta. Síguelas con constancia y registra cómo te sientes: la meta es que notes la diferencia al despertar."
@@ -651,7 +684,7 @@ const SlideApprox: FC<{
           approxStyles.card,
           {
             backgroundColor: theme.colors.surface,
-            borderColor: theme.colors.accent[500],
+            borderColor: theme.colors.border,
             borderRadius: theme.radius.xl,
           },
           cardStyle,
@@ -742,10 +775,14 @@ const approxStyles = StyleSheet.create({
     marginHorizontal: 28,
     marginTop: 28,
     padding: 18,
-    borderWidth: 1.5,
+    borderWidth: 1,
     alignSelf: 'stretch',
   },
-  time: { fontWeight: '900', letterSpacing: -0.5, fontVariant: ['tabular-nums'] },
+  time: {
+    fontWeight: '700',
+    letterSpacing: -0.5,
+    fontVariant: ['tabular-nums'],
+  },
   cycles: { fontWeight: '700', letterSpacing: 0.5 },
   right: { alignItems: 'flex-end', gap: 8 },
   stars: { flexDirection: 'row', gap: 2 },
@@ -755,7 +792,7 @@ const approxStyles = StyleSheet.create({
     borderRadius: 999,
     borderWidth: 1,
   },
-  badgeText: { fontSize: 10, fontWeight: '800', letterSpacing: 0.5 },
+  badgeText: { fontSize: 10, fontWeight: '700', letterSpacing: 0.5 },
   hint: {
     textAlign: 'center',
     marginTop: 12,
@@ -783,7 +820,11 @@ const Dot: FC<{
   theme: AppTheme;
 }> = ({ index, scrollX, theme }) => {
   const animatedStyle = useAnimatedStyle(() => {
-    const inputRange = [(index - 1) * width, index * width, (index + 1) * width];
+    const inputRange = [
+      (index - 1) * width,
+      index * width,
+      (index + 1) * width,
+    ];
     const widthVal = interpolate(
       scrollX.value,
       inputRange,
@@ -889,10 +930,7 @@ export const OnboardingScreen: FC<Props> = () => {
 
   return (
     <SafeAreaView
-      style={[
-        styles.container,
-        { backgroundColor: theme.colors.background },
-      ]}
+      style={[styles.container, { backgroundColor: theme.colors.background }]}
       edges={['top', 'bottom']}
     >
       {/* Glow de fondo (ambient) */}
@@ -902,7 +940,6 @@ export const OnboardingScreen: FC<Props> = () => {
             styles.ambientGlow,
             {
               backgroundColor: theme.colors.accent[600],
-              shadowColor: theme.colors.accent[600],
             },
           ]}
         />
@@ -922,10 +959,7 @@ export const OnboardingScreen: FC<Props> = () => {
       />
 
       {/* Footer: dots */}
-      <Animated.View
-        entering={FadeInDown.duration(500)}
-        style={styles.footer}
-      >
+      <Animated.View entering={FadeInDown.duration(260)} style={styles.footer}>
         <View style={styles.dotsRow}>
           {slides.map((_, i) => (
             <Dot key={i} index={i} scrollX={scrollX} theme={theme} />
@@ -952,9 +986,6 @@ const styles = StyleSheet.create({
     height: AMBIENT_DIAMETER,
     borderRadius: AMBIENT_DIAMETER / 2,
     opacity: 0.25,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.5,
-    shadowRadius: 200,
   },
   footer: {
     position: 'absolute',

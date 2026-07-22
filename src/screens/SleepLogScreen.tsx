@@ -40,6 +40,7 @@ import { FloatingDrawerButton } from '../components/FloatingDrawerButton';
 import { TimeWheel } from '../components/TimeWheel';
 import { PrimaryCTA } from '../components/PrimaryCTA';
 import { HealthKitBanner } from '../components/HealthKitBanner';
+import { EmptyState, useToast } from '../components/ui';
 import { usePressScale } from '../hooks/usePressScale';
 import { useHealthKit } from '../hooks/useHealthKit';
 import { useSleepLogContext } from '../context/SleepLogContext';
@@ -125,7 +126,9 @@ const TimeField: FC<{
               ? `${theme.colors.accent[500]}14`
               : theme.colors.surfaceElevated,
             borderRadius: theme.radius.lg,
-            borderColor: active ? theme.colors.accent[500] : theme.colors.border,
+            borderColor: active
+              ? theme.colors.accent[500]
+              : theme.colors.border,
             borderWidth: active ? 1.5 : 1,
           },
         ]}
@@ -182,7 +185,7 @@ const timeStyles = StyleSheet.create({
   },
   label: { fontWeight: '700', letterSpacing: 0.8, textTransform: 'uppercase' },
   value: {
-    fontWeight: '900',
+    fontWeight: '700',
     letterSpacing: -0.5,
     fontVariant: ['tabular-nums'],
   },
@@ -357,7 +360,7 @@ const dayStyles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 8,
   },
-  label: { fontWeight: '800' },
+  label: { fontWeight: '700' },
   caption: { fontWeight: '600' },
 });
 
@@ -519,7 +522,7 @@ const historyStyles = StyleSheet.create({
   },
   sourceBadgeText: {
     fontSize: 9,
-    fontWeight: '800',
+    fontWeight: '700',
     letterSpacing: 0.4,
     textTransform: 'uppercase',
   },
@@ -548,6 +551,7 @@ export const SleepLogScreen: FC = () => {
   const styles = useMemo(() => createStyles(theme), [theme]);
   const scrollRef = useRef<ScrollView>(null);
   const navigation = useNavigation();
+  const { showToast } = useToast();
 
   const hk = useHealthKit();
   const [autoPopulatedFromHK, setAutoPopulatedFromHK] = useState(false);
@@ -569,20 +573,17 @@ export const SleepLogScreen: FC = () => {
   const [daysAgo, setDaysAgo] = useState<0 | 1>(0);
   const logDate = dateStringDaysAgo(daysAgo);
 
-  const selectDay = useCallback(
-    (next: 0 | 1) => {
-      setDaysAgo((prev) => {
-        if (prev === next) return prev;
-        // Conservar las horas elegidas, desplazando el datetime real ±24 h.
-        const deltaMs = (prev - next) * 24 * 60 * 60 * 1000;
-        setBedTime((b) => new Date(b.getTime() + deltaMs));
-        setWakeTime((w) => new Date(w.getTime() + deltaMs));
-        return next;
-      });
-      setAutoPopulatedFromHK(false);
-    },
-    [],
-  );
+  const selectDay = useCallback((next: 0 | 1) => {
+    setDaysAgo((prev) => {
+      if (prev === next) return prev;
+      // Conservar las horas elegidas, desplazando el datetime real ±24 h.
+      const deltaMs = (prev - next) * 24 * 60 * 60 * 1000;
+      setBedTime((b) => new Date(b.getTime() + deltaMs));
+      setWakeTime((w) => new Date(w.getTime() + deltaMs));
+      return next;
+    });
+    setAutoPopulatedFromHK(false);
+  }, []);
 
   // Auto-poblar desde HealthKit cuando hay permisos, no estamos editando y
   // el usuario aún no tocó los campos manualmente.
@@ -723,10 +724,13 @@ export const SleepLogScreen: FC = () => {
       await updateEntry(updated);
       setEditingEntry(null);
       setActiveField(null);
-      Haptics.notificationAsync(
-        Haptics.NotificationFeedbackType.Success,
-      ).catch(() => {});
-      Alert.alert('Actualizado', 'Tu registro ha sido actualizado.');
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
+        () => {},
+      );
+      showToast({
+        title: 'Registro actualizado',
+        message: 'Tus cambios ya están guardados.',
+      });
     } else {
       const newId = uuidv4();
       const entry: SleepLogEntry = {
@@ -745,10 +749,13 @@ export const SleepLogScreen: FC = () => {
       setHasUserEdited(false);
       setDaysAgo(0);
       setActiveField(null);
-      Haptics.notificationAsync(
-        Haptics.NotificationFeedbackType.Success,
-      ).catch(() => {});
-      Alert.alert('Guardado', 'Tu sueño quedó registrado.');
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
+        () => {},
+      );
+      showToast({
+        title: 'Sueño registrado',
+        message: 'Ya forma parte de tu historial.',
+      });
     }
   }, [
     wakeTime,
@@ -761,6 +768,7 @@ export const SleepLogScreen: FC = () => {
     updateEntry,
     autoPopulatedFromHK,
     hk,
+    showToast,
   ]);
 
   const handleDelete = useCallback(
@@ -801,7 +809,7 @@ export const SleepLogScreen: FC = () => {
         }
       >
         {/* Hero */}
-        <Animated.View entering={FadeInDown.duration(500)} style={styles.hero}>
+        <Animated.View entering={FadeInDown.duration(260)} style={styles.hero}>
           <Text style={styles.heroEyebrow}>REGISTRO DE SUEÑO</Text>
           <Text style={styles.heroTitle}>
             {editingEntry ? 'Editar registro' : '¿Cómo dormiste?'}
@@ -848,12 +856,11 @@ export const SleepLogScreen: FC = () => {
 
         {/* Form */}
         <Animated.View
-          entering={FadeInDown.delay(80).duration(500)}
+          entering={FadeInDown.delay(80).duration(260)}
           style={[
             styles.formCard,
             editingEntry && {
-              borderColor: theme.colors.accent[500],
-              borderWidth: 1.5,
+              backgroundColor: `${theme.colors.accent[500]}0A`,
             },
           ]}
         >
@@ -1061,16 +1068,10 @@ export const SleepLogScreen: FC = () => {
         </View>
 
         {entries.length === 0 ? (
-          <View style={styles.emptyBox}>
-            <Ionicons
-              name="moon-outline"
-              size={28}
-              color={theme.colors.textMuted}
-            />
-            <Text style={styles.emptyText}>
-              Aún no hay registros. ¡Empieza hoy!
-            </Text>
-          </View>
+          <EmptyState
+            title="Aún no hay noches registradas"
+            description="Tu historial y tus patrones de sueño aparecerán aquí después de tu primer registro."
+          />
         ) : (
           <View style={styles.historyList}>
             {entries.slice(0, 14).map((entry, index) => {
@@ -1078,7 +1079,9 @@ export const SleepLogScreen: FC = () => {
               return (
                 <Animated.View
                   key={entry.id}
-                  entering={FadeIn.delay(index * 30).duration(220)}
+                  entering={FadeIn.delay(Math.min(index * 30, 120)).duration(
+                    220,
+                  )}
                   exiting={FadeOut.duration(180)}
                   layout={LinearTransition.duration(200)}
                 >
@@ -1125,7 +1128,7 @@ const createStyles = (theme: AppTheme) =>
     heroTitle: {
       color: theme.colors.textPrimary,
       fontSize: theme.type.title2,
-      fontWeight: '900',
+      fontWeight: '700',
       letterSpacing: -0.5,
       marginTop: 4,
     },
@@ -1149,7 +1152,7 @@ const createStyles = (theme: AppTheme) =>
     dreamLinkTitle: {
       color: theme.colors.textPrimary,
       fontSize: theme.type.body,
-      fontWeight: '800',
+      fontWeight: '700',
     },
     dreamLinkSubtitle: {
       color: theme.colors.textMuted,
@@ -1263,7 +1266,7 @@ const createStyles = (theme: AppTheme) =>
     },
     importedBadgeText: {
       fontSize: theme.type.caption,
-      fontWeight: '800',
+      fontWeight: '700',
       letterSpacing: 0.4,
     },
   });

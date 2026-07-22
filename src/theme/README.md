@@ -1,34 +1,32 @@
-# Theme System
+# Sistema visual
 
-Este proyecto ya tiene una base centralizada para tema en:
+La aplicación usa un sistema centralizado y semántico:
 
-- `src/theme/theme.ts`: tokens semánticos (`background`, `surface`, `textPrimary`, etc.) y definiciones `light`/`dark`.
-- `src/theme/ThemeProvider.tsx`: estado global de modo (`auto`, `light`, `dark`) y hook `useAppTheme()`.
+- `theme.ts`: paleta, espaciado, radios, tipografía, movimiento y sombras para los modos oscuro y claro.
+- `ThemeProvider.tsx`: preferencia global (`dark`, `light` o `auto`) y hook `useAppTheme()`.
+- `../components/ui/`: primitives reutilizables para superficies, botones, cabeceras, listas, avatares, estados vacíos y overlays.
 
-## Uso recomendado en screens/components
+El modo inicial es oscuro. La paleta principal se construye con cuatro niveles de azul grisáceo, texto de alto contraste y acentos índigo, violeta y azul pastel.
 
-1. Obtén el tema:
+## Uso
 
 ```tsx
 const { theme } = useAppTheme();
+
+<View
+  style={{
+    backgroundColor: theme.colors.surface,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.lg,
+    padding: theme.spacing.lg,
+  }}
+/>;
 ```
 
-2. Crea estilos con fábrica:
+Para patrones comunes, importa desde `@/components/ui` en lugar de repetir estilos:
 
 ```tsx
-const styles = useMemo(() => createStyles(theme), [theme]);
+import { EmptyState, PillButton, RoundedCard } from '@/components/ui';
 ```
 
-3. Evita hex hardcodeados y usa `theme.colors.*`.
-
-## Modos soportados
-
-- `auto`: cambia por hora local del dispositivo (`07:00-18:59 => light`, otro horario => `dark`).
-- `light`
-- `dark`
-
-## Siguiente iteración sugerida
-
-- Guardar preferencia de tema del usuario en storage o perfil remoto.
-- Agregar selector de tema en pantalla de configuración/perfil.
-- Terminar la migración de todas las screens para eliminar colores hardcodeados restantes.
+Mantén áreas táctiles de al menos 44 px, usa `theme.motion.pressScale` para feedback de presión y evita colores, radios o sombras hardcodeados en pantallas nuevas.

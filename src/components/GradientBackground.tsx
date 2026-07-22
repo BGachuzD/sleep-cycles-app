@@ -1,53 +1,43 @@
-import React, { FC, useEffect } from 'react';
-import { StyleSheet, View, Dimensions } from 'react-native';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withRepeat,
-  withTiming,
-  Easing,
-  interpolate,
-} from 'react-native-reanimated';
+import React, { type FC } from 'react';
+import { StyleSheet, View, useWindowDimensions } from 'react-native';
+
 import { useAppTheme } from '../theme/ThemeProvider';
 
-const { width, height } = Dimensions.get('window');
-
-const GLOW_DIAMETER = Math.max(width, height) * 1.2;
-
+/** Fondo oscuro con halos pastel muy sutiles; no compite con el contenido. */
 export const GradientBackground: FC = () => {
   const { theme } = useAppTheme();
-  const breath = useSharedValue(0);
-
-  useEffect(() => {
-    breath.value = withRepeat(
-      withTiming(1, { duration: 8000, easing: Easing.inOut(Easing.sin) }),
-      -1,
-      true,
-    );
-  }, [breath]);
-
-  const glowStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(breath.value, [0, 1], [0.35, 0.6]),
-    transform: [{ scale: interpolate(breath.value, [0, 1], [0.95, 1.05]) }],
-  }));
-
-  const glowColor = theme.name === 'dark'
-    ? theme.colors.accent[600]
-    : theme.colors.accent[400];
+  const { width, height } = useWindowDimensions();
+  const diameter = Math.max(width, height) * 0.72;
 
   return (
     <View
       style={[styles.container, { backgroundColor: theme.colors.background }]}
       pointerEvents="none"
     >
-      <Animated.View
+      <View
         style={[
           styles.glow,
           {
-            backgroundColor: glowColor,
-            shadowColor: glowColor,
+            backgroundColor: theme.colors.violet,
+            height: diameter,
+            left: -diameter * 0.52,
+            opacity: theme.name === 'dark' ? 0.08 : 0.05,
+            top: -diameter * 0.28,
+            width: diameter,
           },
-          glowStyle,
+        ]}
+      />
+      <View
+        style={[
+          styles.glow,
+          {
+            backgroundColor: theme.colors.blue,
+            bottom: -diameter * 0.5,
+            height: diameter * 0.82,
+            opacity: theme.name === 'dark' ? 0.055 : 0.035,
+            right: -diameter * 0.54,
+            width: diameter * 0.82,
+          },
         ]}
       />
     </View>
@@ -60,15 +50,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   glow: {
+    borderRadius: 999,
     position: 'absolute',
-    top: -GLOW_DIAMETER * 0.45,
-    left: (width - GLOW_DIAMETER) / 2,
-    width: GLOW_DIAMETER,
-    height: GLOW_DIAMETER,
-    borderRadius: GLOW_DIAMETER / 2,
-    opacity: 0.35,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.6,
-    shadowRadius: 200,
   },
 });

@@ -1,11 +1,5 @@
 import React, { FC } from 'react';
-import {
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -13,7 +7,7 @@ import { navigateToScreen } from '../navigation/navigateTo';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 
 import { GradientBackground } from '../components/GradientBackground';
-import { usePressScale } from '../hooks/usePressScale';
+import { ListItem } from '../components/ui';
 import { useAuth } from '../context/AuthContext';
 import { useAppTheme } from '../theme/ThemeProvider';
 import type { AppTheme } from '../theme/theme';
@@ -32,59 +26,25 @@ const TOOLS: RowDef[] = [
 ];
 
 const ACCOUNT: RowDef[] = [
-  { icon: 'person-circle-outline', label: 'Perfil de sueño', route: 'SleepProfile' },
-  { icon: 'notifications-outline', label: 'Notificaciones', route: 'Notifications' },
+  {
+    icon: 'person-circle-outline',
+    label: 'Perfil de sueño',
+    route: 'SleepProfile',
+  },
+  {
+    icon: 'notifications-outline',
+    label: 'Notificaciones',
+    route: 'Notifications',
+  },
   { icon: 'settings-outline', label: 'Configuración', route: 'Settings' },
 ];
 
 const Row: FC<{
   def: RowDef;
   onPress: () => void;
-  theme: AppTheme;
-}> = ({ def, onPress, theme }) => {
-  const { animatedStyle, onPressIn, onPressOut } = usePressScale(0.97);
-  return (
-    <Animated.View style={animatedStyle}>
-      <Pressable
-        onPress={onPress}
-        onPressIn={onPressIn}
-        onPressOut={onPressOut}
-        accessibilityRole="button"
-        accessibilityLabel={def.label}
-        style={[
-          styles.row,
-          {
-            backgroundColor: theme.colors.surface,
-            borderColor: theme.colors.border,
-            borderRadius: theme.radius.lg,
-          },
-        ]}
-      >
-        <View
-          style={[
-            styles.iconCircle,
-            { backgroundColor: `${theme.colors.accent[500]}1A` },
-          ]}
-        >
-          <Ionicons name={def.icon} size={18} color={theme.colors.accent[400]} />
-        </View>
-        <Text
-          style={[
-            styles.rowLabel,
-            { color: theme.colors.textPrimary, fontSize: theme.type.body },
-          ]}
-        >
-          {def.label}
-        </Text>
-        <Ionicons
-          name="chevron-forward"
-          size={16}
-          color={theme.colors.textMuted}
-        />
-      </Pressable>
-    </Animated.View>
-  );
-};
+}> = ({ def, onPress }) => (
+  <ListItem title={def.label} icon={def.icon} onPress={onPress} />
+);
 
 export const MoreScreen: FC = () => {
   const navigation = useNavigation();
@@ -107,7 +67,7 @@ export const MoreScreen: FC = () => {
         contentContainerStyle={styles2.content}
         showsVerticalScrollIndicator={false}
       >
-        <Animated.View entering={FadeInDown.duration(500)} style={styles2.hero}>
+        <Animated.View entering={FadeInDown.duration(260)} style={styles2.hero}>
           <Text style={styles2.heroEyebrow}>MÁS</Text>
           <Text style={styles2.heroTitle}>Hola, {displayName}</Text>
           <Text style={styles2.heroSubtitle}>
@@ -115,25 +75,25 @@ export const MoreScreen: FC = () => {
           </Text>
         </Animated.View>
 
-        <Animated.View entering={FadeInUp.delay(60).duration(500)}>
+        <Animated.View entering={FadeInUp.delay(60).duration(260)}>
           <Text style={styles2.sectionEyebrow}>HERRAMIENTAS</Text>
           <View style={styles2.list}>
             {TOOLS.map((def) => (
-              <Row key={def.route} def={def} onPress={() => go(def.route)} theme={theme} />
+              <Row key={def.route} def={def} onPress={() => go(def.route)} />
             ))}
           </View>
         </Animated.View>
 
-        <Animated.View entering={FadeInUp.delay(120).duration(500)}>
+        <Animated.View entering={FadeInUp.delay(120).duration(260)}>
           <Text style={styles2.sectionEyebrow}>CUENTA</Text>
           <View style={styles2.list}>
             {ACCOUNT.map((def) => (
-              <Row key={def.route} def={def} onPress={() => go(def.route)} theme={theme} />
+              <Row key={def.route} def={def} onPress={() => go(def.route)} />
             ))}
           </View>
         </Animated.View>
 
-        <Animated.View entering={FadeInUp.delay(180).duration(500)}>
+        <Animated.View entering={FadeInUp.delay(120).duration(260)}>
           <Pressable
             onPress={signOut}
             accessibilityRole="button"
@@ -164,25 +124,6 @@ export const MoreScreen: FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-    borderWidth: 1,
-  },
-  iconCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  rowLabel: { flex: 1, fontWeight: '700' },
-});
-
 const createStyles = (theme: AppTheme) =>
   StyleSheet.create({
     container: { flex: 1, backgroundColor: theme.colors.background },
@@ -203,7 +144,7 @@ const createStyles = (theme: AppTheme) =>
     heroTitle: {
       color: theme.colors.textPrimary,
       fontSize: theme.type.title2,
-      fontWeight: '900',
+      fontWeight: '700',
       letterSpacing: -0.5,
       marginTop: 4,
     },
@@ -229,5 +170,5 @@ const createStyles = (theme: AppTheme) =>
       borderWidth: 1,
       marginTop: theme.spacing.sm,
     },
-    signOutText: { fontSize: theme.type.body, fontWeight: '800' },
+    signOutText: { fontSize: theme.type.body, fontWeight: '700' },
   });

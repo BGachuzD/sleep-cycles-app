@@ -51,7 +51,11 @@ const TipCard: FC<{ title: string; body: string; theme: AppTheme }> = ({
         { backgroundColor: `${theme.colors.accent[500]}1F` },
       ]}
     >
-      <Ionicons name="bulb-outline" size={16} color={theme.colors.accent[400]} />
+      <Ionicons
+        name="bulb-outline"
+        size={16}
+        color={theme.colors.accent[400]}
+      />
     </View>
     <View style={{ flex: 1 }}>
       <Text style={[tipStyles.title, { color: theme.colors.textPrimary }]}>
@@ -73,7 +77,7 @@ const tipStyles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  title: { fontSize: 14, fontWeight: '800' },
+  title: { fontSize: 14, fontWeight: '700' },
   body: { fontSize: 13, lineHeight: 18, marginTop: 2 },
 });
 
@@ -133,7 +137,7 @@ export const ProgresoScreen: FC = () => {
         }
       >
         {/* Hero */}
-        <Animated.View entering={FadeInDown.duration(500)} style={styles.hero}>
+        <Animated.View entering={FadeInDown.duration(260)} style={styles.hero}>
           <Text style={styles.heroEyebrow}>TU PROGRESO</Text>
           <Text style={styles.heroClock}>
             {avgHours.toFixed(1)}
@@ -144,20 +148,19 @@ export const ProgresoScreen: FC = () => {
             {stats.currentStreak > 0
               ? `racha de ${stats.currentStreak}`
               : 'sin racha activa'}{' '}
-            · {stats.totalDays}{' '}
-            {stats.totalDays === 1 ? 'noche' : 'noches'}
+            · {stats.totalDays} {stats.totalDays === 1 ? 'noche' : 'noches'}
           </Text>
         </Animated.View>
 
         {/* Resumen semanal */}
-        <Animated.View entering={FadeInUp.delay(40).duration(500)}>
+        <Animated.View entering={FadeInUp.delay(40).duration(260)}>
           <WeeklyRecapCard recap={recap} />
         </Animated.View>
 
         {/* Coach */}
         {insights.length > 0 && (
           <Animated.View
-            entering={FadeInUp.delay(80).duration(500)}
+            entering={FadeInUp.delay(80).duration(260)}
             style={styles.section}
           >
             <Text style={styles.sectionEyebrow}>TU COACH</Text>
@@ -175,7 +178,7 @@ export const ProgresoScreen: FC = () => {
 
         {/* Constancia */}
         <Animated.View
-          entering={FadeInUp.delay(120).duration(500)}
+          entering={FadeInUp.delay(120).duration(260)}
           style={styles.section}
         >
           <Text style={styles.sectionEyebrow}>TU CONSTANCIA</Text>
@@ -183,13 +186,13 @@ export const ProgresoScreen: FC = () => {
         </Animated.View>
 
         {/* Meta */}
-        <Animated.View entering={FadeInUp.delay(160).duration(500)}>
+        <Animated.View entering={FadeInUp.delay(120).duration(260)}>
           <GoalCard />
         </Animated.View>
 
         {/* Logros */}
         <Animated.View
-          entering={FadeInUp.delay(200).duration(500)}
+          entering={FadeInUp.delay(120).duration(260)}
           style={styles.section}
         >
           <Text style={styles.sectionEyebrow}>LOGROS</Text>
@@ -198,19 +201,24 @@ export const ProgresoScreen: FC = () => {
 
         {/* Tips educativos */}
         <Animated.View
-          entering={FadeInUp.delay(240).duration(500)}
+          entering={FadeInUp.delay(120).duration(260)}
           style={styles.section}
         >
           <Text style={styles.sectionEyebrow}>PARA DORMIR MEJOR</Text>
           <View style={styles.stack}>
             {tips.map((tip) => (
-              <TipCard key={tip.title} title={tip.title} body={tip.body} theme={theme} />
+              <TipCard
+                key={tip.title}
+                title={tip.title}
+                body={tip.body}
+                theme={theme}
+              />
             ))}
           </View>
         </Animated.View>
 
         {/* Estadísticas detalladas */}
-        <Animated.View entering={FadeInUp.delay(280).duration(500)}>
+        <Animated.View entering={FadeInUp.delay(120).duration(260)}>
           <Pressable
             onPress={() => navigateToScreen(navigation, 'Stats')}
             accessibilityRole="button"
@@ -229,7 +237,9 @@ export const ProgresoScreen: FC = () => {
               size={18}
               color={theme.colors.accent[400]}
             />
-            <Text style={styles.statsLinkText}>Ver estadísticas detalladas</Text>
+            <Text style={styles.statsLinkText}>
+              Ver estadísticas detalladas
+            </Text>
             <Ionicons
               name="chevron-forward"
               size={16}
@@ -264,7 +274,7 @@ const createStyles = (theme: AppTheme) =>
     heroClock: {
       color: theme.colors.heroText,
       fontSize: theme.type.display,
-      fontWeight: '800',
+      fontWeight: '700',
       letterSpacing: -2,
       marginTop: 4,
       fontVariant: ['tabular-nums'],

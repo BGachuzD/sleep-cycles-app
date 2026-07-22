@@ -108,7 +108,6 @@ export const ResetPasswordScreen: FC = () => {
             styles.ambientGlow,
             {
               backgroundColor: theme.colors.accent[600],
-              shadowColor: theme.colors.accent[600],
             },
           ]}
         />
@@ -125,13 +124,13 @@ export const ResetPasswordScreen: FC = () => {
           keyboardShouldPersistTaps="handled"
         >
           {/* Hero */}
-          <Animated.View entering={FadeInDown.duration(500)}>
+          <Animated.View entering={FadeInDown.duration(260)}>
             <AuthHero icon="lock-closed-outline" />
           </Animated.View>
 
           {/* Title */}
           <Animated.View
-            entering={FadeInDown.delay(100).duration(500)}
+            entering={FadeInDown.delay(100).duration(260)}
             style={styles.titleBlock}
           >
             <Text style={styles.eyebrow}>NUEVA CONTRASEÑA</Text>
@@ -143,7 +142,7 @@ export const ResetPasswordScreen: FC = () => {
 
           {/* Form */}
           <Animated.View
-            entering={FadeInUp.delay(180).duration(500)}
+            entering={FadeInUp.delay(120).duration(260)}
             style={styles.form}
           >
             <FieldInput
@@ -168,7 +167,7 @@ export const ResetPasswordScreen: FC = () => {
 
           {/* Error */}
           {error && (
-            <Animated.View entering={FadeInUp.duration(300)}>
+            <Animated.View entering={FadeInUp.duration(240)}>
               <View
                 style={[
                   styles.alertBox,
@@ -184,7 +183,9 @@ export const ResetPasswordScreen: FC = () => {
                   size={16}
                   color={theme.colors.danger}
                 />
-                <Text style={[styles.alertText, { color: theme.colors.danger }]}>
+                <Text
+                  style={[styles.alertText, { color: theme.colors.danger }]}
+                >
                   {error}
                 </Text>
               </View>
@@ -192,7 +193,7 @@ export const ResetPasswordScreen: FC = () => {
           )}
 
           {/* CTA */}
-          <Animated.View entering={FadeInUp.delay(240).duration(500)}>
+          <Animated.View entering={FadeInUp.delay(120).duration(260)}>
             {loading ? (
               <View style={styles.loadingWrapper}>
                 <ActivityIndicator color={theme.colors.accent[500]} />
@@ -209,7 +210,7 @@ export const ResetPasswordScreen: FC = () => {
 
           {/* Cancel */}
           <Animated.View
-            entering={FadeInUp.delay(320).duration(500)}
+            entering={FadeInUp.delay(120).duration(260)}
             style={[styles.linkWrapper, cancelScale.animatedStyle]}
           >
             <Pressable
@@ -245,9 +246,6 @@ const createStyles = (theme: AppTheme) =>
       height: AMBIENT_DIAMETER,
       borderRadius: AMBIENT_DIAMETER / 2,
       opacity: 0.22,
-      shadowOffset: { width: 0, height: 0 },
-      shadowOpacity: 0.5,
-      shadowRadius: 200,
     },
     scrollContent: {
       flexGrow: 1,
@@ -266,7 +264,7 @@ const createStyles = (theme: AppTheme) =>
     title: {
       color: theme.colors.textPrimary,
       fontSize: theme.type.title1,
-      fontWeight: '900',
+      fontWeight: '700',
       letterSpacing: -0.5,
       marginTop: 6,
       textAlign: 'center',

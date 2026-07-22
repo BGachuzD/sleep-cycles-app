@@ -66,7 +66,9 @@ export const WeeklyRecapCard: FC<{ recap: WeeklyRecap }> = ({ recap }) => {
             noches
           </Text>
         </View>
-        <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
+        <View
+          style={[styles.divider, { backgroundColor: theme.colors.border }]}
+        />
         <View style={styles.stat}>
           <Text style={[styles.statValue, { color: theme.colors.heroText }]}>
             {(recap.avgMinutes / 60).toFixed(1)}h
@@ -75,7 +77,9 @@ export const WeeklyRecapCard: FC<{ recap: WeeklyRecap }> = ({ recap }) => {
             promedio
           </Text>
         </View>
-        <View style={[styles.divider, { backgroundColor: theme.colors.border }]} />
+        <View
+          style={[styles.divider, { backgroundColor: theme.colors.border }]}
+        />
         <View style={styles.stat}>
           <Text style={[styles.statValue, { color: theme.colors.heroText }]}>
             {recap.completedNights}
@@ -117,7 +121,7 @@ const styles = StyleSheet.create({
   stat: { flex: 1, alignItems: 'center', gap: 2 },
   statValue: {
     fontSize: 22,
-    fontWeight: '900',
+    fontWeight: '700',
     letterSpacing: -0.5,
     fontVariant: ['tabular-nums'],
   },

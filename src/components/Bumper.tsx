@@ -48,7 +48,11 @@ export const Bumper: FC<Props> = ({
           },
         ]}
       >
-        <Ionicons name={icon} size={iconSize} color={theme.colors.accent[400]} />
+        <Ionicons
+          name={icon}
+          size={iconSize}
+          color={theme.colors.accent[400]}
+        />
       </Pressable>
     </Animated.View>
   );

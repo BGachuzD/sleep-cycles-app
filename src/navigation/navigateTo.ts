@@ -34,6 +34,13 @@ const SCREEN_TO_TAB: Record<string, TabName> = {
   DeleteAccount: 'Mas',
 };
 
+const TAB_ROOT_SCREEN: Record<TabName, string> = {
+  Inicio: 'Home',
+  Diario: 'SleepLog',
+  Progreso: 'ProgresoHome',
+  Mas: 'MasHome',
+};
+
 /**
  * Navega a `screen` resolviendo su tab. Acepta cualquier objeto de navegación
  * (el tipado de useNavigation es demasiado estricto para pasarlo directo).
@@ -44,7 +51,12 @@ export function navigateToScreen(navigation: unknown, screen: string): void {
   };
   const tab = SCREEN_TO_TAB[screen];
   if (tab) {
-    nav.navigate(tab, { screen });
+    nav.navigate(tab, {
+      screen,
+      // Al entrar directamente a un detalle de otro tab, conserva primero la
+      // pantalla raíz en su stack para que el gesto y el botón Volver existan.
+      ...(screen !== TAB_ROOT_SCREEN[tab] ? { initial: false } : {}),
+    });
   } else {
     nav.navigate(screen);
   }

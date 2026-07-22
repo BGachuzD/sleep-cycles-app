@@ -51,7 +51,7 @@ export const HealthKitBanner: FC<HealthKitBannerProps> = ({
   const dismissScale = usePressScale(0.97);
 
   return (
-    <Animated.View entering={FadeIn.duration(400)}>
+    <Animated.View entering={FadeIn.duration(240)}>
       <View style={styles.card}>
         <View style={styles.headerRow}>
           <View style={styles.iconWrapper}>
@@ -68,7 +68,9 @@ export const HealthKitBanner: FC<HealthKitBannerProps> = ({
 
         <View style={styles.actionsRow}>
           {/* CTA: Conectar */}
-          <Animated.View style={[styles.connectWrapper, connectScale.animatedStyle]}>
+          <Animated.View
+            style={[styles.connectWrapper, connectScale.animatedStyle]}
+          >
             <Pressable
               onPress={onConnect}
               onPressIn={connectScale.onPressIn}
@@ -110,7 +112,7 @@ const createStyles = (theme: AppTheme) =>
   StyleSheet.create({
     card: {
       backgroundColor: theme.colors.surface,
-      borderColor: theme.colors.accent[500],
+      borderColor: theme.colors.border,
       borderWidth: 1,
       borderRadius: theme.radius.lg,
       padding: theme.spacing.lg,
@@ -131,7 +133,7 @@ const createStyles = (theme: AppTheme) =>
     title: {
       color: theme.colors.textPrimary,
       fontSize: theme.type.subhead,
-      fontWeight: '800',
+      fontWeight: '700',
       letterSpacing: -0.2,
     },
     description: {
@@ -156,7 +158,7 @@ const createStyles = (theme: AppTheme) =>
     connectText: {
       color: '#ffffff',
       fontSize: theme.type.body,
-      fontWeight: '800',
+      fontWeight: '700',
     },
     dismissBtn: {
       paddingHorizontal: theme.spacing.lg,

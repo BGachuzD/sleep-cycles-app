@@ -47,7 +47,6 @@ export const AuthHero: FC<Props> = ({ icon }) => {
           styles.glow,
           {
             backgroundColor: theme.colors.accent[500],
-            shadowColor: theme.colors.accent[500],
           },
           breathStyle,
         ]}
@@ -65,7 +64,7 @@ export const AuthHero: FC<Props> = ({ icon }) => {
         colors={[theme.colors.accent[500], theme.colors.accent[700]]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={styles.inner}
+        style={[styles.inner, { boxShadow: theme.shadows.accent }]}
       >
         <Ionicons name={icon} size={40} color={theme.colors.white} />
       </LinearGradient>
@@ -87,9 +86,6 @@ const styles = StyleSheet.create({
     height: HERO_SIZE * 1.4,
     borderRadius: HERO_SIZE,
     opacity: 0.3,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.6,
-    shadowRadius: 60,
   },
   ring: {
     position: 'absolute',
@@ -104,10 +100,5 @@ const styles = StyleSheet.create({
     borderRadius: HERO_SIZE,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 6,
   },
 });

@@ -1,5 +1,12 @@
 // src/screens/NapScreen.tsx
-import React, { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  FC,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import {
   Alert,
   Pressable,
@@ -12,16 +19,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
-import {
-  BottomSheetBackdrop,
-  BottomSheetModal,
-  BottomSheetView,
-  type BottomSheetBackdropProps,
-} from '@gorhom/bottom-sheet';
+import { BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
 
 import { GradientBackground } from '../components/GradientBackground';
 import { FloatingDrawerButton } from '../components/FloatingDrawerButton';
 import { FloatingHomeButton } from '../components/FloatingHomeButton';
+import { AppBottomSheetModal, useToast } from '../components/ui';
 import { PrimaryCTA } from '../components/PrimaryCTA';
 import { usePressScale } from '../hooks/usePressScale';
 import { scheduleSmartWakeAlarm } from '../notifications/scheduler';
@@ -145,10 +148,7 @@ const NapCard: FC<{
         ]}
       >
         <View
-          style={[
-            cardStyles.iconCircle,
-            { backgroundColor: `${color}1F` },
-          ]}
+          style={[cardStyles.iconCircle, { backgroundColor: `${color}1F` }]}
         >
           <Ionicons name={option.icon} size={22} color={color} />
         </View>
@@ -158,7 +158,10 @@ const NapCard: FC<{
             <Text
               style={[
                 cardStyles.label,
-                { color: theme.colors.textPrimary, fontSize: theme.type.bodyLarge },
+                {
+                  color: theme.colors.textPrimary,
+                  fontSize: theme.type.bodyLarge,
+                },
               ]}
             >
               {option.label}
@@ -212,7 +215,10 @@ const NapCard: FC<{
               <Text
                 style={[
                   cardStyles.scheduledText,
-                  { color: theme.colors.accent[300], fontSize: theme.type.caption },
+                  {
+                    color: theme.colors.accent[300],
+                    fontSize: theme.type.caption,
+                  },
                 ]}
               >
                 Alarma activa para las {scheduledWake}
@@ -259,14 +265,14 @@ const cardStyles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
-  label: { fontWeight: '800', flex: 1 },
+  label: { fontWeight: '700', flex: 1 },
   durationBadge: {
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderWidth: 1,
   },
   durationText: {
-    fontWeight: '800',
+    fontWeight: '700',
     letterSpacing: 0.3,
     fontVariant: ['tabular-nums'],
   },
@@ -332,6 +338,7 @@ const detailStyles = StyleSheet.create({
 export const NapScreen: FC = () => {
   const { theme } = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const { showToast } = useToast();
 
   const [now, setNow] = useState<Date>(() => new Date());
   useEffect(() => {
@@ -357,19 +364,6 @@ export const NapScreen: FC = () => {
   const openOption = useCallback((option: NapOption) => {
     setSelectedOption(option);
   }, []);
-
-  const renderBackdrop = useCallback(
-    (props: BottomSheetBackdropProps) => (
-      <BottomSheetBackdrop
-        {...props}
-        appearsOnIndex={0}
-        disappearsOnIndex={-1}
-        opacity={0.6}
-        pressBehavior="close"
-      />
-    ),
-    [],
-  );
 
   const handleSchedule = useCallback(async () => {
     if (!selectedOption) return;
@@ -401,15 +395,15 @@ export const NapScreen: FC = () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
       () => {},
     );
-    Alert.alert(
-      'Siesta programada',
-      `Despertarás a las ${formatTime(wakeTime)} (ventana ${formatTimeRange(
+    showToast({
+      title: 'Siesta programada',
+      message: `Despertarás a las ${formatTime(wakeTime)} · ventana ${formatTimeRange(
         windowStart,
         windowEnd,
-      )}).`,
-    );
+      )}`,
+    });
     closeSheet();
-  }, [selectedOption, closeSheet]);
+  }, [selectedOption, closeSheet, showToast]);
 
   // Cálculos derivados para el sheet
   const sheetWakeTime = selectedOption
@@ -437,7 +431,7 @@ export const NapScreen: FC = () => {
         showsVerticalScrollIndicator={false}
       >
         {/* Hero */}
-        <Animated.View entering={FadeInDown.duration(500)} style={styles.hero}>
+        <Animated.View entering={FadeInDown.duration(260)} style={styles.hero}>
           <Text style={styles.heroEyebrow}>MODO SIESTA</Text>
           <Text style={styles.heroTitle}>¿Cuánto tiempo tienes?</Text>
           <Text style={styles.heroSubtitle}>
@@ -450,7 +444,7 @@ export const NapScreen: FC = () => {
           {NAP_OPTIONS.map((option, index) => (
             <Animated.View
               key={option.id}
-              entering={FadeInUp.delay(index * 70).duration(400)}
+              entering={FadeInUp.delay(Math.min(index * 36, 120)).duration(240)}
             >
               <NapCard
                 option={option}
@@ -464,7 +458,7 @@ export const NapScreen: FC = () => {
         </View>
 
         {/* Science note */}
-        <Animated.View entering={FadeInUp.delay(NAP_OPTIONS.length * 70 + 80).duration(500)}>
+        <Animated.View entering={FadeInUp.delay(120).duration(260)}>
           <View
             style={[
               styles.scienceCard,
@@ -493,96 +487,94 @@ export const NapScreen: FC = () => {
       </ScrollView>
 
       {/* Bottom sheet detalle */}
-      <BottomSheetModal
+      <AppBottomSheetModal
         ref={sheetRef}
         snapPoints={snapPoints}
         enableDynamicSizing={false}
-        backgroundStyle={{ backgroundColor: theme.colors.surface }}
-        handleIndicatorStyle={{ backgroundColor: theme.colors.textMuted }}
-        backdropComponent={renderBackdrop}
         onDismiss={() => setSelectedOption(null)}
       >
         <BottomSheetView style={styles.sheetContent}>
-          {selectedOption && sheetWakeTime && sheetWindowStart && sheetWindowEnd && (
-            <>
-              <View style={styles.sheetHeader}>
+          {selectedOption &&
+            sheetWakeTime &&
+            sheetWindowStart &&
+            sheetWindowEnd && (
+              <>
+                <View style={styles.sheetHeader}>
+                  <View
+                    style={[
+                      styles.sheetIconCircle,
+                      { backgroundColor: `${sheetColor}1F` },
+                    ]}
+                  >
+                    <Ionicons
+                      name={selectedOption.icon}
+                      size={26}
+                      color={sheetColor}
+                    />
+                  </View>
+                  <Text style={styles.sheetEyebrow}>
+                    SIESTA DE {selectedOption.durationMinutes} MIN
+                  </Text>
+                  <Text style={styles.sheetClock}>
+                    {formatTime(sheetWakeTime)}
+                  </Text>
+                  <Text style={styles.sheetLabel}>{selectedOption.label}</Text>
+                </View>
+
+                <View style={styles.sheetDetails}>
+                  <DetailRow
+                    icon="time-outline"
+                    label="Duración"
+                    value={`${selectedOption.durationMinutes} min`}
+                    theme={theme}
+                  />
+                  <DetailRow
+                    icon="alarm-outline"
+                    label="Despertarás a las"
+                    value={formatTime(sheetWakeTime)}
+                    theme={theme}
+                  />
+                  <DetailRow
+                    icon="sunny-outline"
+                    label="Ventana inteligente"
+                    value={formatTimeRange(sheetWindowStart, sheetWindowEnd)}
+                    theme={theme}
+                  />
+                </View>
+
+                <Text style={styles.sheetDescription}>
+                  {selectedOption.longDesc}
+                </Text>
+
                 <View
                   style={[
-                    styles.sheetIconCircle,
-                    { backgroundColor: `${sheetColor}1F` },
+                    styles.tipBlock,
+                    {
+                      backgroundColor: `${sheetColor}14`,
+                      borderColor: `${sheetColor}40`,
+                    },
                   ]}
                 >
                   <Ionicons
-                    name={selectedOption.icon}
-                    size={26}
+                    name="information-circle-outline"
+                    size={16}
                     color={sheetColor}
+                    style={{ marginTop: 1 }}
+                  />
+                  <Text style={styles.tipText}>{selectedOption.tip}</Text>
+                </View>
+
+                <View style={styles.sheetCtaWrapper}>
+                  <PrimaryCTA
+                    label="Programar alarma"
+                    icon="alarm-outline"
+                    onPress={handleSchedule}
                   />
                 </View>
-                <Text style={styles.sheetEyebrow}>
-                  SIESTA DE {selectedOption.durationMinutes} MIN
-                </Text>
-                <Text style={styles.sheetClock}>
-                  {formatTime(sheetWakeTime)}
-                </Text>
-                <Text style={styles.sheetLabel}>
-                  {selectedOption.label}
-                </Text>
-              </View>
-
-              <View style={styles.sheetDetails}>
-                <DetailRow
-                  icon="time-outline"
-                  label="Duración"
-                  value={`${selectedOption.durationMinutes} min`}
-                  theme={theme}
-                />
-                <DetailRow
-                  icon="alarm-outline"
-                  label="Despertarás a las"
-                  value={formatTime(sheetWakeTime)}
-                  theme={theme}
-                />
-                <DetailRow
-                  icon="sunny-outline"
-                  label="Ventana inteligente"
-                  value={formatTimeRange(sheetWindowStart, sheetWindowEnd)}
-                  theme={theme}
-                />
-              </View>
-
-              <Text style={styles.sheetDescription}>
-                {selectedOption.longDesc}
-              </Text>
-
-              <View
-                style={[
-                  styles.tipBlock,
-                  {
-                    backgroundColor: `${sheetColor}14`,
-                    borderColor: `${sheetColor}40`,
-                  },
-                ]}
-              >
-                <Ionicons
-                  name="information-circle-outline"
-                  size={16}
-                  color={sheetColor}
-                  style={{ marginTop: 1 }}
-                />
-                <Text style={styles.tipText}>{selectedOption.tip}</Text>
-              </View>
-
-              <View style={styles.sheetCtaWrapper}>
-                <PrimaryCTA
-                  label="Programar alarma"
-                  icon="alarm-outline"
-                  onPress={handleSchedule}
-                />
-              </View>
-            </>
-          )}
+              </>
+            )}
         </BottomSheetView>
-      </BottomSheetModal>
+      </AppBottomSheetModal>
     </SafeAreaView>
   );
 };
@@ -607,7 +599,7 @@ const createStyles = (theme: AppTheme) =>
     heroTitle: {
       color: theme.colors.textPrimary,
       fontSize: theme.type.title2,
-      fontWeight: '900',
+      fontWeight: '700',
       letterSpacing: -0.5,
       marginTop: 4,
     },
@@ -656,7 +648,7 @@ const createStyles = (theme: AppTheme) =>
     sheetClock: {
       color: theme.colors.heroText,
       fontSize: theme.type.title1,
-      fontWeight: '900',
+      fontWeight: '700',
       letterSpacing: -1,
       fontVariant: ['tabular-nums'],
       marginTop: 4,

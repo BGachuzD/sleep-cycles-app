@@ -157,9 +157,7 @@ const WheelColumn = forwardRef<
       }),
       [extended.length],
     );
-    const [window, setWindow] = useState(() =>
-      makeWindow(base + initialIndex),
-    );
+    const [window, setWindow] = useState(() => makeWindow(base + initialIndex));
     const applyWindow = useCallback(
       (center: number) => setWindow(makeWindow(center)),
       [makeWindow],
@@ -290,7 +288,9 @@ const WheelColumn = forwardRef<
       >
         <View style={{ height: window.start * ITEM_HEIGHT }} />
         {items}
-        <View style={{ height: (extended.length - window.end) * ITEM_HEIGHT }} />
+        <View
+          style={{ height: (extended.length - window.end) * ITEM_HEIGHT }}
+        />
       </Animated.ScrollView>
     );
   },
@@ -416,10 +416,7 @@ export const WheelTimePicker: FC<Props> = ({ value, onChange }) => {
         onSettle={settleHour}
       />
       <Text
-        style={[
-          styles.separator,
-          { color: digitColor, fontSize: digitSize },
-        ]}
+        style={[styles.separator, { color: digitColor, fontSize: digitSize }]}
         allowFontScaling={false}
       >
         :
@@ -469,11 +466,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   itemText: {
-    fontWeight: '800',
+    fontWeight: '700',
     fontVariant: ['tabular-nums'],
   },
   separator: {
-    fontWeight: '800',
+    fontWeight: '700',
     marginHorizontal: 2,
     marginTop: -6,
   },

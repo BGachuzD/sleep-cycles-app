@@ -18,7 +18,9 @@ const AchievementChip: FC<{ achievement: Achievement; theme: AppTheme }> = ({
         styles.chip,
         {
           backgroundColor: theme.colors.surface,
-          borderColor: unlocked ? theme.colors.accent[500] : theme.colors.border,
+          borderColor: unlocked
+            ? theme.colors.accent[500]
+            : theme.colors.border,
           borderWidth: unlocked ? 1.5 : 1,
           borderRadius: theme.radius.lg,
         },
@@ -35,7 +37,9 @@ const AchievementChip: FC<{ achievement: Achievement; theme: AppTheme }> = ({
         ]}
       >
         <Ionicons
-          name={(unlocked ? icon : 'lock-closed') as keyof typeof Ionicons.glyphMap}
+          name={
+            (unlocked ? icon : 'lock-closed') as keyof typeof Ionicons.glyphMap
+          }
           size={18}
           color={color}
         />
@@ -43,7 +47,9 @@ const AchievementChip: FC<{ achievement: Achievement; theme: AppTheme }> = ({
       <Text
         style={[
           styles.title,
-          { color: unlocked ? theme.colors.textPrimary : theme.colors.textMuted },
+          {
+            color: unlocked ? theme.colors.textPrimary : theme.colors.textMuted,
+          },
         ]}
         numberOfLines={2}
       >
@@ -51,7 +57,11 @@ const AchievementChip: FC<{ achievement: Achievement; theme: AppTheme }> = ({
       </Text>
       {unlocked ? (
         <View style={styles.doneRow}>
-          <Ionicons name="checkmark-circle" size={12} color={theme.colors.success} />
+          <Ionicons
+            name="checkmark-circle"
+            size={12}
+            color={theme.colors.success}
+          />
           <Text style={[styles.doneText, { color: theme.colors.success }]}>
             Logrado
           </Text>
@@ -93,8 +103,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  title: { fontSize: 12, fontWeight: '800', lineHeight: 15 },
+  title: { fontSize: 12, fontWeight: '700', lineHeight: 15 },
   doneRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   doneText: { fontSize: 11, fontWeight: '700' },
-  progressText: { fontSize: 11, fontWeight: '700', fontVariant: ['tabular-nums'] },
+  progressText: {
+    fontSize: 11,
+    fontWeight: '700',
+    fontVariant: ['tabular-nums'],
+  },
 });

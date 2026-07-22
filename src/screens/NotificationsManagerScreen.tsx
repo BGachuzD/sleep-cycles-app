@@ -18,6 +18,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { GradientBackground } from '../components/GradientBackground';
 import { FloatingDrawerButton } from '../components/FloatingDrawerButton';
 import { FloatingHomeButton } from '../components/FloatingHomeButton';
+import { EmptyState, useToast } from '../components/ui';
 import { usePressScale } from '../hooks/usePressScale';
 import {
   cancelNotification,
@@ -80,7 +81,9 @@ const NotificationCard: FC<{
   const trash = usePressScale(0.85);
   const triggerDate = getTriggerDate(request.trigger);
   const timeString = triggerDate ? formatTime(triggerDate) : 'Sin hora';
-  const relativeString = triggerDate ? formatRelativeDate(triggerDate) : 'sin fecha';
+  const relativeString = triggerDate
+    ? formatRelativeDate(triggerDate)
+    : 'sin fecha';
   const isPast = triggerDate ? triggerDate.getTime() < Date.now() : false;
 
   const title = request.content?.title ?? 'Recordatorio';
@@ -117,7 +120,10 @@ const NotificationCard: FC<{
           <Text
             style={[
               cardStyles.title,
-              { color: theme.colors.textPrimary, fontSize: theme.type.bodyLarge },
+              {
+                color: theme.colors.textPrimary,
+                fontSize: theme.type.bodyLarge,
+              },
             ]}
             numberOfLines={2}
           >
@@ -230,7 +236,7 @@ const cardStyles = StyleSheet.create({
     flexShrink: 0,
   },
   titleCol: { flex: 1, gap: 2 },
-  title: { fontWeight: '800' },
+  title: { fontWeight: '700' },
   body: { lineHeight: 18 },
   trashBtn: {
     width: 34,
@@ -254,7 +260,7 @@ const cardStyles = StyleSheet.create({
     letterSpacing: 1,
   },
   timeValue: {
-    fontWeight: '900',
+    fontWeight: '700',
     fontVariant: ['tabular-nums'],
     letterSpacing: -0.5,
   },
@@ -279,6 +285,7 @@ const cardStyles = StyleSheet.create({
 export const NotificationsManagerScreen: FC = () => {
   const { theme } = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const { showToast } = useToast();
 
   const [items, setItems] = useState<NotificationRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -290,8 +297,10 @@ export const NotificationsManagerScreen: FC = () => {
     );
     // ordenar por fecha de envío ascendente
     scheduled.sort((a, b) => {
-      const da = getTriggerDate(a.trigger)?.getTime() ?? Number.MAX_SAFE_INTEGER;
-      const db = getTriggerDate(b.trigger)?.getTime() ?? Number.MAX_SAFE_INTEGER;
+      const da =
+        getTriggerDate(a.trigger)?.getTime() ?? Number.MAX_SAFE_INTEGER;
+      const db =
+        getTriggerDate(b.trigger)?.getTime() ?? Number.MAX_SAFE_INTEGER;
       return da - db;
     });
     setItems(scheduled);
@@ -307,23 +316,24 @@ export const NotificationsManagerScreen: FC = () => {
   const handleCancel = useCallback(
     (request: NotificationRequest) => {
       const title = request.content?.title ?? 'Recordatorio';
-      Alert.alert(
-        'Cancelar alerta',
-        `¿Cancelar "${title}"?`,
-        [
-          { text: 'Conservar', style: 'cancel' },
-          {
-            text: 'Cancelar alerta',
-            style: 'destructive',
-            onPress: async () => {
-              await cancelNotification(request.identifier);
-              load();
-            },
+      Alert.alert('Cancelar alerta', `¿Cancelar "${title}"?`, [
+        { text: 'Conservar', style: 'cancel' },
+        {
+          text: 'Cancelar alerta',
+          style: 'destructive',
+          onPress: async () => {
+            await cancelNotification(request.identifier);
+            await load();
+            showToast({
+              title: 'Alerta cancelada',
+              message: title,
+              tone: 'info',
+            });
           },
-        ],
-      );
+        },
+      ]);
     },
-    [load],
+    [load, showToast],
   );
 
   const handleCancelAll = useCallback(() => {
@@ -363,7 +373,7 @@ export const NotificationsManagerScreen: FC = () => {
         showsVerticalScrollIndicator={false}
       >
         {/* Hero */}
-        <Animated.View entering={FadeInDown.duration(500)} style={styles.hero}>
+        <Animated.View entering={FadeInDown.duration(260)} style={styles.hero}>
           <View style={styles.heroTopRow}>
             <View style={{ flex: 1 }}>
               <Text style={styles.heroEyebrow}>ALERTAS PROGRAMADAS</Text>
@@ -408,18 +418,14 @@ export const NotificationsManagerScreen: FC = () => {
 
         {/* Empty state */}
         {!isLoading && items.length === 0 && (
-          <Animated.View entering={FadeInUp.delay(80).duration(500)}>
-            <View style={styles.emptyBox}>
-              <Ionicons
-                name="notifications-off-outline"
-                size={36}
-                color={theme.colors.textMuted}
-              />
-              <Text style={styles.emptyText}>
-                No tienes alarmas ni recordatorios de sueño pendientes.
-                Programa una desde "Dormir ahora", "Despertar a" o tu rutina.
-              </Text>
-            </View>
+          <Animated.View entering={FadeInUp.delay(80).duration(260)}>
+            <EmptyState
+              icon="notifications-off-outline"
+              title="Todo está tranquilo"
+              description={
+                'No tienes alarmas pendientes. Programa una desde “Dormir ahora”, “Despertar a” o tu rutina.'
+              }
+            />
           </Animated.View>
         )}
 
@@ -429,7 +435,9 @@ export const NotificationsManagerScreen: FC = () => {
             {items.map((request, index) => (
               <Animated.View
                 key={request.identifier}
-                entering={FadeInUp.delay(80 + index * 40).duration(400)}
+                entering={FadeInUp.delay(
+                  Math.min(80 + index * 24, 120),
+                ).duration(240)}
               >
                 <NotificationCard
                   request={request}
@@ -443,7 +451,7 @@ export const NotificationsManagerScreen: FC = () => {
 
         {/* Cancel all */}
         {items.length > 0 && (
-          <Animated.View entering={FadeInUp.delay(200).duration(400)}>
+          <Animated.View entering={FadeInUp.delay(120).duration(240)}>
             <Pressable
               onPress={handleCancelAll}
               style={[
@@ -495,7 +503,7 @@ const createStyles = (theme: AppTheme) =>
     heroTitle: {
       color: theme.colors.textPrimary,
       fontSize: theme.type.title2,
-      fontWeight: '900',
+      fontWeight: '700',
       letterSpacing: -0.5,
       marginTop: 4,
     },
@@ -545,7 +553,7 @@ const createStyles = (theme: AppTheme) =>
     cancelAllText: {
       color: theme.colors.danger,
       fontSize: theme.type.body,
-      fontWeight: '800',
+      fontWeight: '700',
       letterSpacing: 0.3,
     },
   });

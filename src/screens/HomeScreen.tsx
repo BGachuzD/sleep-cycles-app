@@ -1,12 +1,6 @@
 // src/screens/HomeScreen.tsx
 import React, { FC, useEffect, useMemo, useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  Pressable,
-  ScrollView,
-} from 'react-native';
+import { View, Text, StyleSheet, Pressable, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeInDown } from 'react-native-reanimated';
@@ -96,10 +90,10 @@ const QUICK_NAV: Array<{
   icon: keyof typeof Ionicons.glyphMap;
   screen: keyof AppDrawerParamList;
 }> = [
-  { label: 'Dormir',    icon: 'moon-outline',  screen: 'SleepNow' },
+  { label: 'Dormir', icon: 'moon-outline', screen: 'SleepNow' },
   { label: 'Despertar', icon: 'alarm-outline', screen: 'WakeAt' },
-  { label: 'Siesta',    icon: 'bed-outline',   screen: 'Nap' },
-  { label: 'Rutina',    icon: 'list-outline',  screen: 'SleepRoutine' },
+  { label: 'Siesta', icon: 'bed-outline', screen: 'Nap' },
+  { label: 'Rutina', icon: 'list-outline', screen: 'SleepRoutine' },
 ];
 
 // ─────────────────────────────────────────────
@@ -261,7 +255,7 @@ export const HomeScreen: FC = () => {
         showsVerticalScrollIndicator={false}
       >
         {/* Hero: greeting + hora gigante + frase contextual */}
-        <Animated.View entering={FadeInDown.duration(500)} style={styles.hero}>
+        <Animated.View entering={FadeInDown.duration(260)} style={styles.hero}>
           <Text style={styles.heroGreeting}>
             {config.greeting}
             {displayName ? `, ${displayName}` : ''}
@@ -271,7 +265,7 @@ export const HomeScreen: FC = () => {
         </Animated.View>
 
         {/* CTA principal full-width gradient */}
-        <Animated.View entering={FadeInDown.delay(80).duration(500)}>
+        <Animated.View entering={FadeInDown.delay(80).duration(260)}>
           <PrimaryCTA
             label={config.actionLabel}
             icon={config.actionIcon}
@@ -280,13 +274,13 @@ export const HomeScreen: FC = () => {
         </Animated.View>
 
         {/* Card ancla por contexto */}
-        <Animated.View entering={FadeInDown.delay(160).duration(500)}>
+        <Animated.View entering={FadeInDown.delay(120).duration(260)}>
           {renderAnchorCard()}
         </Animated.View>
 
         {/* Resumen semanal compacto (siempre, si hay datos) */}
         {weeklyStats.totalDays > 0 && (
-          <Animated.View entering={FadeInDown.delay(220).duration(500)}>
+          <Animated.View entering={FadeInDown.delay(120).duration(260)}>
             <Pressable
               onPress={() => navigateToScreen(navigation, 'Stats')}
               style={styles.weeklyRow}
@@ -319,7 +313,7 @@ export const HomeScreen: FC = () => {
         {/* Tu coach: insights personalizados */}
         {insights.length > 0 && (
           <Animated.View
-            entering={FadeInDown.delay(240).duration(500)}
+            entering={FadeInDown.delay(120).duration(260)}
             style={styles.coachSection}
           >
             <Text style={styles.coachEyebrow}>TU COACH</Text>
@@ -336,13 +330,13 @@ export const HomeScreen: FC = () => {
         )}
 
         {/* Tu meta */}
-        <Animated.View entering={FadeInDown.delay(270).duration(500)}>
+        <Animated.View entering={FadeInDown.delay(120).duration(260)}>
           <GoalCard />
         </Animated.View>
 
         {/* Grid 2×2 atajos */}
         <Animated.View
-          entering={FadeInDown.delay(320).duration(500)}
+          entering={FadeInDown.delay(120).duration(260)}
           style={styles.quickGrid}
         >
           {QUICK_NAV.map((item) => (
@@ -437,7 +431,7 @@ const AnchorCard: FC<{
 const anchorStyles = StyleSheet.create({
   card: { borderWidth: 1, gap: 6 },
   eyebrow: { fontWeight: '700', letterSpacing: 1 },
-  headline: { fontWeight: '900', marginTop: 4 },
+  headline: { fontWeight: '700', marginTop: 4 },
   subline: { marginTop: 2 },
   ctaRow: {
     flexDirection: 'row',
@@ -470,7 +464,7 @@ const createStyles = (theme: AppTheme) =>
     heroClock: {
       color: theme.colors.heroText,
       fontSize: theme.type.display,
-      fontWeight: '800',
+      fontWeight: '700',
       letterSpacing: -2,
       marginTop: 4,
       fontVariant: ['tabular-nums'],
@@ -494,7 +488,7 @@ const createStyles = (theme: AppTheme) =>
     weeklyValue: {
       color: theme.colors.textPrimary,
       fontSize: theme.type.subhead,
-      fontWeight: '900',
+      fontWeight: '700',
     },
     weeklyLabel: {
       color: theme.colors.textMuted,

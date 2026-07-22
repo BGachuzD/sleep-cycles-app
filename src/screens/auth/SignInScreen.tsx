@@ -66,7 +66,6 @@ export const SignInScreen: FC<Props> = ({ navigation }) => {
             styles.ambientGlow,
             {
               backgroundColor: theme.colors.accent[600],
-              shadowColor: theme.colors.accent[600],
             },
           ]}
         />
@@ -83,13 +82,13 @@ export const SignInScreen: FC<Props> = ({ navigation }) => {
           keyboardShouldPersistTaps="handled"
         >
           {/* Hero */}
-          <Animated.View entering={FadeInDown.duration(500)}>
+          <Animated.View entering={FadeInDown.duration(260)}>
             <AuthHero icon="moon-outline" />
           </Animated.View>
 
           {/* Title */}
           <Animated.View
-            entering={FadeInDown.delay(100).duration(500)}
+            entering={FadeInDown.delay(100).duration(260)}
             style={styles.titleBlock}
           >
             <Text style={styles.eyebrow}>BIENVENIDO DE NUEVO</Text>
@@ -101,7 +100,7 @@ export const SignInScreen: FC<Props> = ({ navigation }) => {
 
           {/* Form */}
           <Animated.View
-            entering={FadeInUp.delay(180).duration(500)}
+            entering={FadeInUp.delay(120).duration(260)}
             style={styles.form}
           >
             <FieldInput
@@ -126,7 +125,7 @@ export const SignInScreen: FC<Props> = ({ navigation }) => {
 
           {/* Error */}
           {error && (
-            <Animated.View entering={FadeInUp.duration(300)}>
+            <Animated.View entering={FadeInUp.duration(240)}>
               <View
                 style={[
                   styles.errorBox,
@@ -149,7 +148,7 @@ export const SignInScreen: FC<Props> = ({ navigation }) => {
 
           {/* Forgot password link */}
           <Animated.View
-            entering={FadeInUp.delay(220).duration(500)}
+            entering={FadeInUp.delay(120).duration(260)}
             style={[styles.forgotWrapper, forgotScale.animatedStyle]}
           >
             <Pressable
@@ -165,7 +164,7 @@ export const SignInScreen: FC<Props> = ({ navigation }) => {
           </Animated.View>
 
           {/* CTA */}
-          <Animated.View entering={FadeInUp.delay(260).duration(500)}>
+          <Animated.View entering={FadeInUp.delay(120).duration(260)}>
             {loading ? (
               <View style={styles.loadingWrapper}>
                 <ActivityIndicator color={theme.colors.accent[500]} />
@@ -182,7 +181,7 @@ export const SignInScreen: FC<Props> = ({ navigation }) => {
 
           {/* Link a SignUp */}
           <Animated.View
-            entering={FadeInUp.delay(320).duration(500)}
+            entering={FadeInUp.delay(120).duration(260)}
             style={[styles.linkWrapper, linkScale.animatedStyle]}
           >
             <Pressable
@@ -220,9 +219,6 @@ const createStyles = (theme: AppTheme) =>
       height: AMBIENT_DIAMETER,
       borderRadius: AMBIENT_DIAMETER / 2,
       opacity: 0.22,
-      shadowOffset: { width: 0, height: 0 },
-      shadowOpacity: 0.5,
-      shadowRadius: 200,
     },
     scrollContent: {
       flexGrow: 1,
@@ -241,7 +237,7 @@ const createStyles = (theme: AppTheme) =>
     title: {
       color: theme.colors.textPrimary,
       fontSize: theme.type.title1,
-      fontWeight: '900',
+      fontWeight: '700',
       letterSpacing: -0.5,
       marginTop: 6,
       textAlign: 'center',
@@ -288,7 +284,7 @@ const createStyles = (theme: AppTheme) =>
     },
     linkTextHighlight: {
       color: theme.colors.accent[400],
-      fontWeight: '800',
+      fontWeight: '700',
     },
     forgotWrapper: { alignSelf: 'flex-end', marginTop: -theme.spacing.xs },
     forgotText: {

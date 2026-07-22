@@ -15,6 +15,14 @@ import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 
 import { GradientBackground } from '../components/GradientBackground';
 import { FloatingHomeButton } from '../components/FloatingHomeButton';
+import {
+  Badge,
+  BottomSheet,
+  LoadingState,
+  PillButton,
+  RoundedCard,
+  useToast,
+} from '../components/ui';
 import { WheelTimePicker } from '../components/WheelTimePicker';
 import { usePressScale } from '../hooks/usePressScale';
 import { useSleepProfileContext } from '../context/SleepProfileContext';
@@ -25,6 +33,7 @@ import {
 import {
   formatDuration,
   formatTime,
+  formatTimeRange,
   getSleepTimesForWakeDateForProfile,
   getWakeTimesFromNowForProfile,
 } from '../utils/sleep';
@@ -32,6 +41,33 @@ import { useAppTheme } from '../theme/ThemeProvider';
 import type { AppTheme } from '../theme/theme';
 
 type Mode = 'now' | 'wake';
+
+type SmartOption = {
+  kind: 'wake' | 'sleep';
+  time: Date;
+  cycles: number;
+  totalMinutes: number;
+  score: number;
+  recommended: boolean;
+  windowStart: Date;
+  windowEnd: Date;
+};
+
+function recommendationReason(cycles: number, recommended: boolean): string {
+  const prefix = recommended
+    ? 'Esta es la mejor combinación disponible según tu perfil, duración y hora.'
+    : 'Esta alternativa también termina cerca del final de un ciclo completo.';
+  if (cycles <= 3) {
+    return `${prefix} Es una duración corta y puede dejar deuda de sueño; úsala sólo cuando no tengas una ventana mayor.`;
+  }
+  if (cycles === 4) {
+    return `${prefix} Cuatro ciclos ofrecen un descanso aceptable, aunque podrías conservar algo de fatiga.`;
+  }
+  if (cycles === 5) {
+    return `${prefix} Cinco ciclos equilibran recuperación física, memoria y una hora de despertar práctica.`;
+  }
+  return `${prefix} Seis o más ciclos favorecen una recuperación amplia, especialmente tras noches cortas.`;
+}
 
 function buildFuture(hour: number, minute: number, now: Date): Date {
   const next = new Date(now);
@@ -101,7 +137,10 @@ const ModeToggle: FC<{
     <View
       style={[
         styles.toggle,
-        { backgroundColor: theme.colors.surfaceElevated, borderRadius: theme.radius.lg },
+        {
+          backgroundColor: theme.colors.surfaceElevated,
+          borderRadius: theme.radius.lg,
+        },
       ]}
     >
       {item('now', 'Me duermo ahora')}
@@ -118,24 +157,43 @@ const OptionCard: FC<{
   recommended: boolean;
   past?: boolean;
   sub: string;
-  onPress: () => void;
+  onPress?: () => void;
   theme: AppTheme;
-}> = ({ time, cycles, totalMinutes, score, recommended, past, sub, onPress, theme }) => {
+}> = ({
+  time,
+  cycles,
+  totalMinutes,
+  score,
+  recommended,
+  past,
+  sub,
+  onPress,
+  theme,
+}) => {
   const { animatedStyle, onPressIn, onPressOut } = usePressScale(0.97);
+  const interactive = Boolean(onPress) && !past;
   return (
     <Animated.View style={animatedStyle}>
       <Pressable
         onPress={onPress}
+        disabled={!interactive}
         onPressIn={onPressIn}
         onPressOut={onPressOut}
-        accessibilityRole="button"
+        accessibilityRole={interactive ? 'button' : undefined}
+        accessibilityState={{ disabled: !interactive }}
+        accessibilityHint={
+          interactive ? 'Abre los detalles antes de programar' : undefined
+        }
         accessibilityLabel={`${formatTime(time)}, ${cycles} ciclos`}
         style={[
           styles.card,
           {
             backgroundColor: theme.colors.surface,
-            borderColor: recommended ? theme.colors.accent[500] : theme.colors.border,
-            borderWidth: recommended ? 1.5 : 1,
+            borderColor:
+              recommended && interactive
+                ? theme.colors.accent[500]
+                : theme.colors.border,
+            borderWidth: recommended && interactive ? 1.5 : 1,
             borderRadius: theme.radius.xl,
             opacity: past ? 0.5 : 1,
           },
@@ -146,7 +204,8 @@ const OptionCard: FC<{
             {formatTime(time)}
           </Text>
           <Text style={[styles.cardCycles, { color: theme.colors.textMuted }]}>
-            {cycles} {cycles === 1 ? 'CICLO' : 'CICLOS'} · {formatDuration(totalMinutes)}
+            {cycles} {cycles === 1 ? 'CICLO' : 'CICLOS'} ·{' '}
+            {formatDuration(totalMinutes)}
           </Text>
           <Text style={[styles.cardSub, { color: theme.colors.textSecondary }]}>
             {sub}
@@ -164,12 +223,20 @@ const OptionCard: FC<{
                 },
               ]}
             >
-              <Text style={[styles.idealText, { color: theme.colors.accent[300] }]}>
+              <Text
+                style={[styles.idealText, { color: theme.colors.accent[300] }]}
+              >
                 IDEAL
               </Text>
             </View>
           )}
-          <Ionicons name="chevron-forward" size={18} color={theme.colors.textMuted} />
+          {interactive ? (
+            <Ionicons
+              name="chevron-forward"
+              size={18}
+              color={theme.colors.textMuted}
+            />
+          ) : null}
         </View>
       </Pressable>
     </Animated.View>
@@ -180,6 +247,7 @@ export const SmartWakeScreen: FC = () => {
   const { profile, loading } = useSleepProfileContext();
   const { theme } = useAppTheme();
   const s = useMemo(() => createStyles(theme), [theme]);
+  const { showToast } = useToast();
 
   const [now, setNow] = useState<Date>(() => new Date());
   useEffect(() => {
@@ -188,6 +256,9 @@ export const SmartWakeScreen: FC = () => {
   }, []);
 
   const [mode, setMode] = useState<Mode>('now');
+  const [selectedOption, setSelectedOption] = useState<SmartOption | null>(
+    null,
+  );
 
   const initialWake = useMemo(() => {
     if (
@@ -213,30 +284,51 @@ export const SmartWakeScreen: FC = () => {
   );
 
   const nowOptions = useMemo(
-    () => (profile ? getWakeTimesFromNowForProfile(profile, now, [2, 3, 4, 5, 6]) : []),
+    () =>
+      profile
+        ? getWakeTimesFromNowForProfile(profile, now, [2, 3, 4, 5, 6])
+        : [],
     [profile, now],
   );
   const wakeOptions = useMemo(
     () =>
-      profile ? getSleepTimesForWakeDateForProfile(profile, wakeDate, [3, 4, 5, 6, 7]) : [],
+      profile
+        ? getSleepTimesForWakeDateForProfile(profile, wakeDate, [3, 4, 5, 6, 7])
+        : [],
     [profile, wakeDate],
   );
 
   const scheduleWake = useCallback(
     async (windowStart: Date, windowEnd: Date, wake: Date) => {
-      await scheduleSmartWakeAlarm({ keyBase: 'smartwake', windowStart, windowEnd });
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-      Alert.alert(
-        'Alarma programada',
-        `Te despertaremos alrededor de las ${formatTime(wake)}.`,
+      const { centerId } = await scheduleSmartWakeAlarm({
+        keyBase: 'smartwake',
+        windowStart,
+        windowEnd,
+      });
+      if (!centerId) {
+        Alert.alert(
+          'No se pudo programar',
+          'Revisa los permisos de notificación o la hora seleccionada.',
+        );
+        return false;
+      }
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
+        () => {},
       );
+      showToast({
+        title: 'Alarma programada',
+        message: `Te despertaremos alrededor de las ${formatTime(wake)}.`,
+      });
+      return true;
     },
-    [],
+    [showToast],
   );
 
   const scheduleSleep = useCallback(
     async (windowStart: Date, windowEnd: Date, sleep: Date) => {
-      const center = new Date((windowStart.getTime() + windowEnd.getTime()) / 2);
+      const center = new Date(
+        (windowStart.getTime() + windowEnd.getTime()) / 2,
+      );
       const pre = new Date(windowStart.getTime() - 30 * 60_000);
       if (pre.getTime() > Date.now()) {
         await scheduleUniqueNotificationAtDate({
@@ -253,25 +345,29 @@ export const SmartWakeScreen: FC = () => {
         date: center,
       });
       if (!id) {
-        Alert.alert('No se pudo programar', 'Revisa los permisos de notificación.');
+        Alert.alert(
+          'No se pudo programar',
+          'Revisa los permisos de notificación.',
+        );
         return;
       }
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
-      Alert.alert(
-        'Recordatorio programado',
-        `Te avisaremos para acostarte a las ${formatTime(sleep)}.`,
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
+        () => {},
       );
+      showToast({
+        title: 'Recordatorio programado',
+        message: `Te avisaremos para acostarte a las ${formatTime(sleep)}.`,
+      });
+      return true;
     },
-    [wakeDate],
+    [wakeDate, showToast],
   );
 
   if (loading || !profile) {
     return (
       <View style={s.container}>
         <GradientBackground />
-        <View style={s.loadingCenter}>
-          <ActivityIndicator color={theme.colors.accent[500]} size="large" />
-        </View>
+        <LoadingState label="Calculando tus mejores horarios…" />
       </View>
     );
   }
@@ -286,20 +382,25 @@ export const SmartWakeScreen: FC = () => {
         contentContainerStyle={s.content}
         showsVerticalScrollIndicator={false}
       >
-        <Animated.View entering={FadeInDown.duration(500)} style={s.hero}>
-          <Text style={s.heroEyebrow}>SON LAS {formatTime(now).toUpperCase()}</Text>
+        <Animated.View entering={FadeInDown.duration(260)} style={s.hero}>
+          <Text style={s.heroEyebrow}>
+            SON LAS {formatTime(now).toUpperCase()}
+          </Text>
           <ModeToggle mode={mode} onChange={setMode} theme={theme} />
         </Animated.View>
 
         {mode === 'now' ? (
           <>
             <Text style={s.lead}>
-              Si te acuestas ahora, elige a qué hora despertar. Cada opción cae al
-              final de un ciclo completo, para no despertar aturdido.
+              Si te acuestas ahora, elige a qué hora despertar. Cada opción cae
+              al final de un ciclo completo, para no despertar aturdido.
             </Text>
             <View style={s.list}>
               {nowOptions.map((opt, i) => (
-                <Animated.View key={opt.cycles} entering={FadeInUp.delay(i * 60).duration(400)}>
+                <Animated.View
+                  key={opt.cycles}
+                  entering={FadeInUp.delay(Math.min(i * 36, 120)).duration(240)}
+                >
                   <OptionCard
                     time={opt.wakeDate}
                     cycles={opt.cycles}
@@ -308,7 +409,16 @@ export const SmartWakeScreen: FC = () => {
                     recommended={opt.isRecommended}
                     sub={`Despiertas en ${formatDuration(minutesUntil(opt.wakeDate, now))}`}
                     onPress={() =>
-                      scheduleWake(opt.windowStart, opt.windowEnd, opt.wakeDate)
+                      setSelectedOption({
+                        kind: 'wake',
+                        time: opt.wakeDate,
+                        cycles: opt.cycles,
+                        totalMinutes: opt.totalMinutes,
+                        score: opt.score,
+                        recommended: opt.isRecommended,
+                        windowStart: opt.windowStart,
+                        windowEnd: opt.windowEnd,
+                      })
                     }
                     theme={theme}
                   />
@@ -318,19 +428,27 @@ export const SmartWakeScreen: FC = () => {
           </>
         ) : (
           <>
-            <Animated.View entering={FadeInDown.duration(400)} style={s.pickerWrap}>
+            <Animated.View
+              entering={FadeInDown.duration(240)}
+              style={s.pickerWrap}
+            >
               <Text style={s.lead}>¿A qué hora quieres despertar?</Text>
               <WheelTimePicker value={wakeDate} onChange={onPickWake} />
             </Animated.View>
             <Text style={s.lead}>
-              Para despertar a las {formatTime(wakeDate)}, acuéstate a una de estas
-              horas:
+              Para despertar a las {formatTime(wakeDate)}, acuéstate a una de
+              estas horas:
             </Text>
             <View style={s.list}>
               {wakeOptions.map((opt, i) => {
                 const past = opt.sleepDate.getTime() < now.getTime();
                 return (
-                  <Animated.View key={opt.cycles} entering={FadeInUp.delay(i * 60).duration(400)}>
+                  <Animated.View
+                    key={opt.cycles}
+                    entering={FadeInUp.delay(Math.min(i * 36, 120)).duration(
+                      240,
+                    )}
+                  >
                     <OptionCard
                       time={opt.sleepDate}
                       cycles={opt.cycles}
@@ -343,10 +461,20 @@ export const SmartWakeScreen: FC = () => {
                           ? 'Esta hora ya pasó'
                           : `Acuéstate en ${formatDuration(minutesUntil(opt.sleepDate, now))}`
                       }
-                      onPress={() =>
+                      onPress={
                         past
                           ? undefined
-                          : scheduleSleep(opt.windowStart, opt.windowEnd, opt.sleepDate)
+                          : () =>
+                              setSelectedOption({
+                                kind: 'sleep',
+                                time: opt.sleepDate,
+                                cycles: opt.cycles,
+                                totalMinutes: opt.totalMinutes,
+                                score: opt.score,
+                                recommended: opt.isRecommended,
+                                windowStart: opt.windowStart,
+                                windowEnd: opt.windowEnd,
+                              })
                       }
                       theme={theme}
                     />
@@ -359,6 +487,128 @@ export const SmartWakeScreen: FC = () => {
 
         <View style={{ height: theme.spacing.huge }} />
       </ScrollView>
+
+      <BottomSheet
+        visible={Boolean(selectedOption)}
+        onClose={() => setSelectedOption(null)}
+        title={
+          selectedOption?.kind === 'wake'
+            ? 'Detalle de la alarma'
+            : 'Detalle del recordatorio'
+        }
+        snapPoints={['72%']}
+      >
+        {selectedOption ? (
+          <View style={{ gap: theme.spacing.lg }}>
+            <View style={{ alignItems: 'center', gap: theme.spacing.sm }}>
+              {selectedOption.recommended ? (
+                <Badge label="Mejor opción" tone="accent" />
+              ) : null}
+              <Text
+                style={{
+                  color: theme.colors.heroText,
+                  fontSize: theme.type.title1,
+                  fontWeight: '700',
+                  fontVariant: ['tabular-nums'],
+                }}
+              >
+                {formatTime(selectedOption.time)}
+              </Text>
+              <Text
+                style={{
+                  color: theme.colors.textSecondary,
+                  fontSize: theme.type.body,
+                }}
+              >
+                {selectedOption.kind === 'wake'
+                  ? 'Hora para despertar'
+                  : 'Hora para acostarte'}
+              </Text>
+            </View>
+
+            <View style={s.detailMetrics}>
+              <View style={s.detailMetric}>
+                <Text style={s.detailMetricValue}>{selectedOption.cycles}</Text>
+                <Text style={s.detailMetricLabel}>ciclos</Text>
+              </View>
+              <View
+                style={[
+                  s.detailDivider,
+                  { backgroundColor: theme.colors.border },
+                ]}
+              />
+              <View style={s.detailMetric}>
+                <Text style={s.detailMetricValue}>
+                  {formatDuration(selectedOption.totalMinutes)}
+                </Text>
+                <Text style={s.detailMetricLabel}>descanso</Text>
+              </View>
+              <View
+                style={[
+                  s.detailDivider,
+                  { backgroundColor: theme.colors.border },
+                ]}
+              />
+              <View style={s.detailMetric}>
+                <Stars n={scoreToStars(selectedOption.score)} theme={theme} />
+                <Text style={s.detailMetricLabel}>ajuste</Text>
+              </View>
+            </View>
+
+            <RoundedCard elevated={false} style={{ gap: theme.spacing.sm }}>
+              <Text style={s.detailTitle}>¿Por qué esta hora?</Text>
+              <Text style={s.detailBody}>
+                {recommendationReason(
+                  selectedOption.cycles,
+                  selectedOption.recommended,
+                )}
+              </Text>
+              <View style={s.windowRow}>
+                <Ionicons
+                  name="time-outline"
+                  size={18}
+                  color={theme.colors.accent[400]}
+                />
+                <Text style={s.detailBody}>
+                  Ventana flexible:{' '}
+                  {formatTimeRange(
+                    selectedOption.windowStart,
+                    selectedOption.windowEnd,
+                  )}
+                </Text>
+              </View>
+            </RoundedCard>
+
+            <PillButton
+              label={
+                selectedOption.kind === 'wake'
+                  ? 'Programar alarma'
+                  : 'Programar recordatorio'
+              }
+              icon={
+                selectedOption.kind === 'wake'
+                  ? 'alarm-outline'
+                  : 'moon-outline'
+              }
+              onPress={async () => {
+                const didSchedule =
+                  selectedOption.kind === 'wake'
+                    ? await scheduleWake(
+                        selectedOption.windowStart,
+                        selectedOption.windowEnd,
+                        selectedOption.time,
+                      )
+                    : await scheduleSleep(
+                        selectedOption.windowStart,
+                        selectedOption.windowEnd,
+                        selectedOption.time,
+                      );
+                if (didSchedule) setSelectedOption(null);
+              }}
+            />
+          </View>
+        ) : null}
+      </BottomSheet>
     </SafeAreaView>
   );
 };
@@ -372,7 +622,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 10,
   },
-  toggleText: { fontSize: 13, fontWeight: '800' },
+  toggleText: { fontSize: 13, fontWeight: '700' },
   card: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -381,13 +631,13 @@ const styles = StyleSheet.create({
   },
   cardTime: {
     fontSize: 26,
-    fontWeight: '900',
+    fontWeight: '700',
     letterSpacing: -0.5,
     fontVariant: ['tabular-nums'],
   },
   cardCycles: {
     fontSize: 11,
-    fontWeight: '800',
+    fontWeight: '700',
     letterSpacing: 0.5,
     marginTop: 2,
   },
@@ -399,7 +649,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     borderWidth: 1,
   },
-  idealText: { fontSize: 10, fontWeight: '800', letterSpacing: 0.5 },
+  idealText: { fontSize: 10, fontWeight: '700', letterSpacing: 0.5 },
 });
 
 const createStyles = (theme: AppTheme) =>
@@ -427,4 +677,32 @@ const createStyles = (theme: AppTheme) =>
     },
     pickerWrap: { gap: theme.spacing.sm },
     list: { gap: theme.spacing.md },
+    detailMetrics: { alignItems: 'center', flexDirection: 'row' },
+    detailMetric: { alignItems: 'center', flex: 1, gap: 4 },
+    detailMetricValue: {
+      color: theme.colors.textPrimary,
+      fontSize: theme.type.subhead,
+      fontWeight: '600',
+      fontVariant: ['tabular-nums'],
+    },
+    detailMetricLabel: {
+      color: theme.colors.textMuted,
+      fontSize: theme.type.caption,
+    },
+    detailDivider: { height: 32, width: 1 },
+    detailTitle: {
+      color: theme.colors.textPrimary,
+      fontSize: theme.type.subhead,
+      fontWeight: '600',
+    },
+    detailBody: {
+      color: theme.colors.textSecondary,
+      fontSize: theme.type.small,
+      lineHeight: 19,
+    },
+    windowRow: {
+      alignItems: 'center',
+      flexDirection: 'row',
+      gap: theme.spacing.sm,
+    },
   });

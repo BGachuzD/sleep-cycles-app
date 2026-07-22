@@ -5,7 +5,7 @@ import 'react-native-url-polyfill/auto';
 import 'react-native-get-random-values';
 
 import { useEffect } from 'react';
-import { ActivityIndicator, Linking, Platform, View } from 'react-native';
+import { Linking, Platform, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import {
   NavigationContainer,
@@ -15,6 +15,7 @@ import {
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import * as Notifications from 'expo-notifications';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 
 import { AppTabNavigator } from './src/navigation/AppTabNavigator';
@@ -46,6 +47,7 @@ import {
   scheduleWeeklyRecapReminder,
 } from './src/notifications/scheduler';
 import { ThemeProvider, useAppTheme } from './src/theme/ThemeProvider';
+import { LoadingState, ToastProvider } from './src/components/ui';
 
 export type RootStackParamList = {
   Onboarding: undefined;
@@ -187,7 +189,7 @@ function RootNavigator() {
           alignItems: 'center',
         }}
       >
-        <ActivityIndicator color={theme.colors.textPrimary} />
+        <LoadingState label="Preparando Mimebien…" />
       </View>
     );
   }
@@ -283,29 +285,33 @@ function AppNavigation() {
 export default function App() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <ThemeProvider>
-        <AuthProvider>
-          <EntitlementsProvider>
-            <OnboardingProvider>
-              <SleepProfileProvider>
-                <SleepLogProvider>
-                  <SleepGoalsProvider>
-                    <DreamEntriesProvider>
-                      <SleepRoutineProvider>
-                        <HealthKitProvider>
-                          <BottomSheetModalProvider>
-                            <AppNavigation />
-                          </BottomSheetModalProvider>
-                        </HealthKitProvider>
-                      </SleepRoutineProvider>
-                    </DreamEntriesProvider>
-                  </SleepGoalsProvider>
-                </SleepLogProvider>
-              </SleepProfileProvider>
-            </OnboardingProvider>
-          </EntitlementsProvider>
-        </AuthProvider>
-      </ThemeProvider>
+      <SafeAreaProvider>
+        <ThemeProvider>
+          <AuthProvider>
+            <EntitlementsProvider>
+              <OnboardingProvider>
+                <SleepProfileProvider>
+                  <SleepLogProvider>
+                    <SleepGoalsProvider>
+                      <DreamEntriesProvider>
+                        <SleepRoutineProvider>
+                          <HealthKitProvider>
+                            <BottomSheetModalProvider>
+                              <ToastProvider>
+                                <AppNavigation />
+                              </ToastProvider>
+                            </BottomSheetModalProvider>
+                          </HealthKitProvider>
+                        </SleepRoutineProvider>
+                      </DreamEntriesProvider>
+                    </SleepGoalsProvider>
+                  </SleepLogProvider>
+                </SleepProfileProvider>
+              </OnboardingProvider>
+            </EntitlementsProvider>
+          </AuthProvider>
+        </ThemeProvider>
+      </SafeAreaProvider>
     </GestureHandlerRootView>
   );
 }

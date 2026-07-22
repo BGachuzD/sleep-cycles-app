@@ -170,7 +170,6 @@ export const SignUpScreen: FC<Props> = ({ navigation }) => {
               styles.ambientGlow,
               {
                 backgroundColor: theme.colors.accent[600],
-                shadowColor: theme.colors.accent[600],
               },
             ]}
           />
@@ -181,12 +180,12 @@ export const SignUpScreen: FC<Props> = ({ navigation }) => {
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          <Animated.View entering={FadeInDown.duration(500)}>
+          <Animated.View entering={FadeInDown.duration(260)}>
             <AuthHero icon="mail-unread-outline" />
           </Animated.View>
 
           <Animated.View
-            entering={FadeInDown.delay(100).duration(500)}
+            entering={FadeInDown.delay(100).duration(260)}
             style={styles.titleBlock}
           >
             <Text style={styles.eyebrow}>CUENTA CREADA</Text>
@@ -198,7 +197,7 @@ export const SignUpScreen: FC<Props> = ({ navigation }) => {
           </Animated.View>
 
           <Animated.View
-            entering={FadeInUp.delay(180).duration(500)}
+            entering={FadeInUp.delay(120).duration(260)}
             style={styles.stepsCard}
           >
             {[
@@ -227,7 +226,7 @@ export const SignUpScreen: FC<Props> = ({ navigation }) => {
             ))}
           </Animated.View>
 
-          <Animated.View entering={FadeInUp.delay(260).duration(500)}>
+          <Animated.View entering={FadeInUp.delay(120).duration(260)}>
             <PrimaryCTA
               label="Ir a iniciar sesión"
               icon="log-in-outline"
@@ -236,7 +235,7 @@ export const SignUpScreen: FC<Props> = ({ navigation }) => {
           </Animated.View>
 
           <Animated.View
-            entering={FadeInUp.delay(340).duration(500)}
+            entering={FadeInUp.delay(120).duration(260)}
             style={styles.linkWrapper}
           >
             <Text style={styles.linkText}>
@@ -258,7 +257,6 @@ export const SignUpScreen: FC<Props> = ({ navigation }) => {
             styles.ambientGlow,
             {
               backgroundColor: theme.colors.accent[600],
-              shadowColor: theme.colors.accent[600],
             },
           ]}
         />
@@ -275,13 +273,13 @@ export const SignUpScreen: FC<Props> = ({ navigation }) => {
           keyboardShouldPersistTaps="handled"
         >
           {/* Hero */}
-          <Animated.View entering={FadeInDown.duration(500)}>
+          <Animated.View entering={FadeInDown.duration(260)}>
             <AuthHero icon="sparkles-outline" />
           </Animated.View>
 
           {/* Title */}
           <Animated.View
-            entering={FadeInDown.delay(100).duration(500)}
+            entering={FadeInDown.delay(100).duration(260)}
             style={styles.titleBlock}
           >
             <Text style={styles.eyebrow}>CREAR CUENTA</Text>
@@ -294,7 +292,7 @@ export const SignUpScreen: FC<Props> = ({ navigation }) => {
 
           {/* Form */}
           <Animated.View
-            entering={FadeInUp.delay(180).duration(500)}
+            entering={FadeInUp.delay(120).duration(260)}
             style={styles.form}
           >
             <FieldInput
@@ -321,6 +319,9 @@ export const SignUpScreen: FC<Props> = ({ navigation }) => {
               placeholder="Mínimo 6 caracteres"
               secureTextEntry
               showToggle
+              helperText="Usa al menos 6 caracteres."
+              textContentType="newPassword"
+              autoComplete="new-password"
               large={false}
             />
             <FieldInput
@@ -330,13 +331,20 @@ export const SignUpScreen: FC<Props> = ({ navigation }) => {
               placeholder="Repite la contraseña"
               secureTextEntry
               showToggle
+              error={
+                passwordConfirm && password !== passwordConfirm
+                  ? 'Las contraseñas no coinciden.'
+                  : undefined
+              }
+              textContentType="newPassword"
+              autoComplete="new-password"
               large={false}
             />
           </Animated.View>
 
           {/* Cronotipo */}
           <Animated.View
-            entering={FadeInUp.delay(240).duration(500)}
+            entering={FadeInUp.delay(120).duration(260)}
             style={styles.chronoSection}
           >
             <Text style={styles.sectionEyebrow}>CRONOTIPO (RECOMENDADO)</Text>
@@ -365,7 +373,7 @@ export const SignUpScreen: FC<Props> = ({ navigation }) => {
 
           {/* Error */}
           {error && (
-            <Animated.View entering={FadeInUp.duration(300)}>
+            <Animated.View entering={FadeInUp.duration(240)}>
               <View
                 style={[
                   styles.alertBox,
@@ -391,7 +399,7 @@ export const SignUpScreen: FC<Props> = ({ navigation }) => {
           )}
 
           {/* CTA */}
-          <Animated.View entering={FadeInUp.delay(300).duration(500)}>
+          <Animated.View entering={FadeInUp.delay(120).duration(260)}>
             {loading ? (
               <View style={styles.loadingWrapper}>
                 <ActivityIndicator color={theme.colors.accent[500]} />
@@ -408,7 +416,7 @@ export const SignUpScreen: FC<Props> = ({ navigation }) => {
 
           {/* Link a SignIn */}
           <Animated.View
-            entering={FadeInUp.delay(380).duration(500)}
+            entering={FadeInUp.delay(120).duration(260)}
             style={[styles.linkWrapper, linkScale.animatedStyle]}
           >
             <Pressable
@@ -446,9 +454,6 @@ const createStyles = (theme: AppTheme) =>
       height: AMBIENT_DIAMETER,
       borderRadius: AMBIENT_DIAMETER / 2,
       opacity: 0.22,
-      shadowOffset: { width: 0, height: 0 },
-      shadowOpacity: 0.5,
-      shadowRadius: 200,
     },
     scrollContent: {
       flexGrow: 1,
@@ -467,7 +472,7 @@ const createStyles = (theme: AppTheme) =>
     title: {
       color: theme.colors.textPrimary,
       fontSize: theme.type.title1,
-      fontWeight: '900',
+      fontWeight: '700',
       letterSpacing: -0.5,
       marginTop: 6,
       textAlign: 'center',
@@ -482,7 +487,7 @@ const createStyles = (theme: AppTheme) =>
     },
     subtitleStrong: {
       color: theme.colors.textPrimary,
-      fontWeight: '800',
+      fontWeight: '700',
     },
     stepsCard: {
       backgroundColor: theme.colors.surface,
@@ -507,7 +512,7 @@ const createStyles = (theme: AppTheme) =>
     },
     stepBulletText: {
       fontSize: theme.type.small,
-      fontWeight: '900',
+      fontWeight: '700',
     },
     stepText: {
       flex: 1,
@@ -561,6 +566,6 @@ const createStyles = (theme: AppTheme) =>
     },
     linkTextHighlight: {
       color: theme.colors.accent[400],
-      fontWeight: '800',
+      fontWeight: '700',
     },
   });

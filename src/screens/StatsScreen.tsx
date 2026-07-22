@@ -23,7 +23,13 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useNavigation } from '@react-navigation/native';
 import { navigateToScreen } from '../navigation/navigateTo';
-import Svg, { Circle, Polyline, Defs, LinearGradient, Stop } from 'react-native-svg';
+import Svg, {
+  Circle,
+  Polyline,
+  Defs,
+  LinearGradient,
+  Stop,
+} from 'react-native-svg';
 
 import { GradientBackground } from '../components/GradientBackground';
 import { FloatingDrawerButton } from '../components/FloatingDrawerButton';
@@ -33,6 +39,7 @@ import { HealthKitBanner } from '../components/HealthKitBanner';
 import { InsightCard } from '../components/InsightCard';
 import { WeeklyRecapCard } from '../components/WeeklyRecapCard';
 import { AchievementStrip } from '../components/AchievementStrip';
+import { EmptyState } from '../components/ui';
 import { useHealthKit } from '../hooks/useHealthKit';
 import { useSleepLogContext } from '../context/SleepLogContext';
 import { useSleepProfileContext } from '../context/SleepProfileContext';
@@ -59,7 +66,10 @@ type FeelingLevel = 1 | 2 | 3;
 
 const FEELING_ICON: Record<
   FeelingLevel,
-  { icon: keyof typeof Ionicons.glyphMap; colorKey: 'danger' | 'warning' | 'success' }
+  {
+    icon: keyof typeof Ionicons.glyphMap;
+    colorKey: 'danger' | 'warning' | 'success';
+  }
 > = {
   1: { icon: 'cloud-outline', colorKey: 'danger' },
   2: { icon: 'partly-sunny-outline', colorKey: 'warning' },
@@ -134,9 +144,7 @@ const CompletionRing: FC<{
       <View style={ringStyles.center} pointerEvents="none">
         <Text style={[ringStyles.value, { color: theme.colors.heroText }]}>
           {completed}
-          <Text
-            style={[ringStyles.over, { color: theme.colors.textMuted }]}
-          >
+          <Text style={[ringStyles.over, { color: theme.colors.textMuted }]}>
             /{total}
           </Text>
         </Text>
@@ -156,14 +164,14 @@ const ringStyles = StyleSheet.create({
   },
   value: {
     fontSize: 28,
-    fontWeight: '900',
+    fontWeight: '700',
     fontVariant: ['tabular-nums'],
     letterSpacing: -1,
   },
   over: { fontSize: 14, fontWeight: '700' },
   label: {
     fontSize: 9,
-    fontWeight: '800',
+    fontWeight: '700',
     letterSpacing: 1,
     marginTop: 2,
   },
@@ -190,7 +198,11 @@ const Sparkline: FC<{
 
   const points = values
     .map((v, i) => {
-      const x = padding + (values.length === 1 ? usableW / 2 : (i / (values.length - 1)) * usableW);
+      const x =
+        padding +
+        (values.length === 1
+          ? usableW / 2
+          : (i / (values.length - 1)) * usableW);
       const y = padding + usableH - ((v - min) / range) * usableH;
       return `${x},${y}`;
     })
@@ -251,7 +263,11 @@ const WeekChart: FC<{
   const targetMins = 5 * cycleMins;
 
   return (
-    <View style={chartStyles.barsRow}>
+    <View
+      accessibilityLabel="Resumen de sueño de los últimos siete días"
+      accessibilityRole="summary"
+      style={chartStyles.barsRow}
+    >
       {days.map((day, index) => {
         const heightPct = day.mins / maxMins;
         const isGood = day.mins >= targetMins;
@@ -262,10 +278,19 @@ const WeekChart: FC<{
               ? theme.colors.accent[500]
               : theme.colors.danger;
         return (
-          <View key={day.dateStr} style={chartStyles.barCol}>
+          <View
+            key={day.dateStr}
+            accessible
+            accessibilityLabel={
+              day.entry
+                ? `${day.dayLabel}: ${formatDuration(day.mins)}, ${day.cycles} ciclos${isGood ? ', objetivo alcanzado' : ', debajo del objetivo'}`
+                : `${day.dayLabel}: sin registro`
+            }
+            style={chartStyles.barCol}
+          >
             <View style={chartStyles.barWrapper}>
               <Animated.View
-                entering={FadeInUp.delay(300 + index * 60)
+                entering={FadeInUp.delay(Math.min(80 + index * 24, 120))
                   .springify()
                   .damping(15)}
                 style={[
@@ -308,7 +333,12 @@ const chartStyles = StyleSheet.create({
     gap: 8,
   },
   barCol: { flex: 1, alignItems: 'center' },
-  barWrapper: { flex: 1, width: '100%', justifyContent: 'flex-end', marginBottom: 4 },
+  barWrapper: {
+    flex: 1,
+    width: '100%',
+    justifyContent: 'flex-end',
+    marginBottom: 4,
+  },
   bar: { width: '100%', borderRadius: 6, minHeight: 0 },
   cycleLabel: {
     fontSize: 10,
@@ -338,9 +368,11 @@ const CompactStat: FC<{
     style={[
       compactStyles.card,
       {
-        backgroundColor: theme.colors.surface,
-        borderColor: highlight ? theme.colors.accent[500] : theme.colors.border,
-        borderWidth: highlight ? 1.5 : 1,
+        backgroundColor: highlight
+          ? `${theme.colors.accent[500]}0D`
+          : theme.colors.surface,
+        borderColor: theme.colors.border,
+        borderWidth: 1,
         borderRadius: theme.radius.lg,
       },
     ]}
@@ -378,7 +410,7 @@ const compactStyles = StyleSheet.create({
     gap: 4,
   },
   value: {
-    fontWeight: '900',
+    fontWeight: '700',
     fontVariant: ['tabular-nums'],
     marginTop: 4,
   },
@@ -447,11 +479,7 @@ const EntryRow: FC<{
                 },
               ]}
             >
-              <Ionicons
-                name="heart"
-                size={8}
-                color={theme.colors.success}
-              />
+              <Ionicons name="heart" size={8} color={theme.colors.success} />
               <Text
                 style={[
                   entryStyles.sourceBadgeText,
@@ -515,7 +543,12 @@ const entryStyles = StyleSheet.create({
   },
   dot: { width: 10, height: 10, borderRadius: 5 },
   content: { flex: 1 },
-  dateRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 },
+  dateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 2,
+  },
   date: { fontWeight: '700', letterSpacing: 0.3 },
   sourceBadge: {
     flexDirection: 'row',
@@ -528,13 +561,13 @@ const entryStyles = StyleSheet.create({
   },
   sourceBadgeText: {
     fontSize: 9,
-    fontWeight: '800',
+    fontWeight: '700',
     letterSpacing: 0.4,
     textTransform: 'uppercase',
   },
   times: { fontWeight: '700', fontVariant: ['tabular-nums'] },
   right: { alignItems: 'flex-end' },
-  duration: { fontWeight: '800', fontVariant: ['tabular-nums'] },
+  duration: { fontWeight: '700', fontVariant: ['tabular-nums'] },
   cycles: { marginTop: 2 },
   feelingPill: {
     width: 28,
@@ -624,7 +657,7 @@ export const StatsScreen: FC = () => {
       <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
         <GradientBackground />
         <FloatingDrawerButton insideSafeArea />
-        <FloatingHomeButton insideSafeArea />
+        <FloatingHomeButton insideSafeArea fallbackRoute="ProgresoHome" />
 
         <ScrollView
           style={styles.scroll}
@@ -638,7 +671,10 @@ export const StatsScreen: FC = () => {
             />
           }
         >
-          <Animated.View entering={FadeInDown.duration(500)} style={styles.hero}>
+          <Animated.View
+            entering={FadeInDown.duration(260)}
+            style={styles.hero}
+          >
             <Text style={styles.heroEyebrow}>ESTADÍSTICAS</Text>
             <Text style={styles.heroTitle}>Sin datos aún</Text>
             <Text style={styles.heroSubtitle}>
@@ -653,7 +689,7 @@ export const StatsScreen: FC = () => {
             />
           )}
 
-          <Animated.View entering={FadeInUp.delay(80).duration(500)}>
+          <Animated.View entering={FadeInUp.delay(80).duration(260)}>
             {profile &&
               computeInsights([], profile)
                 .slice(0, 1)
@@ -664,28 +700,24 @@ export const StatsScreen: FC = () => {
                   >
                     <InsightCard
                       insight={insight}
-                      onCtaPress={(screen) => navigateToScreen(navigation, screen)}
+                      onCtaPress={(screen) =>
+                        navigateToScreen(navigation, screen)
+                      }
                     />
                   </View>
                 ))}
-            <View style={styles.emptyBox}>
-              <Ionicons
-                name="stats-chart-outline"
-                size={36}
-                color={theme.colors.textMuted}
-              />
-              <Text style={styles.emptyText}>
-                Tus gráficos aparecerán aquí cuando tengas al menos una noche
-                registrada.
-              </Text>
-            </View>
-            <View style={styles.emptyCta}>
-              <PrimaryCTA
-                label="Ir al registro"
-                icon="journal-outline"
-                onPress={() => navigateToScreen(navigation, 'SleepLog')}
-              />
-            </View>
+            <EmptyState
+              icon="stats-chart-outline"
+              title="Tus tendencias empiezan esta noche"
+              description="Los gráficos aparecerán cuando tengas al menos una noche registrada."
+              action={
+                <PrimaryCTA
+                  label="Ir al registro"
+                  icon="journal-outline"
+                  onPress={() => navigateToScreen(navigation, 'SleepLog')}
+                />
+              }
+            />
           </Animated.View>
         </ScrollView>
       </SafeAreaView>
@@ -696,7 +728,7 @@ export const StatsScreen: FC = () => {
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <GradientBackground />
       <FloatingDrawerButton insideSafeArea />
-      <FloatingHomeButton insideSafeArea />
+      <FloatingHomeButton insideSafeArea fallbackRoute="ProgresoHome" />
 
       <ScrollView
         style={styles.scroll}
@@ -732,10 +764,7 @@ export const StatsScreen: FC = () => {
           >
             <ActivityIndicator size="small" color={theme.colors.accent[400]} />
             <Text
-              style={[
-                styles.syncText,
-                { color: theme.colors.accent[300] },
-              ]}
+              style={[styles.syncText, { color: theme.colors.accent[300] }]}
             >
               Importando datos de Salud…
             </Text>
@@ -743,7 +772,7 @@ export const StatsScreen: FC = () => {
         )}
 
         {/* Hero KPI */}
-        <Animated.View entering={FadeInDown.duration(500)} style={styles.hero}>
+        <Animated.View entering={FadeInDown.duration(260)} style={styles.hero}>
           <View style={styles.heroTopRow}>
             <View style={{ flex: 1 }}>
               <Text style={styles.heroEyebrow}>PROMEDIO POR NOCHE</Text>
@@ -753,7 +782,9 @@ export const StatsScreen: FC = () => {
               </Text>
               <Text style={styles.heroSubtitle}>
                 {stats.avgCycles} ciclos típicos · {stats.totalDays}{' '}
-                {stats.totalDays === 1 ? 'noche registrada' : 'noches registradas'}
+                {stats.totalDays === 1
+                  ? 'noche registrada'
+                  : 'noches registradas'}
               </Text>
             </View>
             <Pressable
@@ -781,12 +812,12 @@ export const StatsScreen: FC = () => {
         </Animated.View>
 
         {/* Resumen semanal */}
-        <Animated.View entering={FadeInUp.delay(60).duration(500)}>
+        <Animated.View entering={FadeInUp.delay(60).duration(260)}>
           <WeeklyRecapCard recap={recap} />
         </Animated.View>
 
         {/* Ring + Sparkline */}
-        <Animated.View entering={FadeInUp.delay(80).duration(500)}>
+        <Animated.View entering={FadeInUp.delay(80).duration(260)}>
           <View style={styles.dashboardRow}>
             <View
               style={[
@@ -842,7 +873,7 @@ export const StatsScreen: FC = () => {
         </Animated.View>
 
         {/* Compact stats row */}
-        <Animated.View entering={FadeInUp.delay(140).duration(500)}>
+        <Animated.View entering={FadeInUp.delay(120).duration(260)}>
           <View style={styles.compactRow}>
             <CompactStat
               icon="flame-outline"
@@ -867,14 +898,14 @@ export const StatsScreen: FC = () => {
         </Animated.View>
 
         {/* Logros */}
-        <Animated.View entering={FadeInUp.delay(180).duration(500)}>
+        <Animated.View entering={FadeInUp.delay(120).duration(260)}>
           <Text style={styles.sectionEyebrow}>LOGROS</Text>
           <AchievementStrip achievements={achievements} />
         </Animated.View>
 
         {/* Deuda */}
         {stats.debtMinutes > 0 && (
-          <Animated.View entering={FadeInUp.delay(200).duration(500)}>
+          <Animated.View entering={FadeInUp.delay(120).duration(260)}>
             <View
               style={[
                 styles.debtCard,
@@ -891,11 +922,10 @@ export const StatsScreen: FC = () => {
                 color={theme.colors.danger}
               />
               <View style={{ flex: 1 }}>
-                <Text style={styles.debtTitle}>
-                  Deuda de sueño esta semana
-                </Text>
+                <Text style={styles.debtTitle}>Deuda de sueño esta semana</Text>
                 <Text style={styles.debtText}>
-                  Dormiste {formatDuration(stats.debtMinutes)} ({debtHours.toFixed(1)}
+                  Dormiste {formatDuration(stats.debtMinutes)} (
+                  {debtHours.toFixed(1)}
                   h) menos del objetivo (5 ciclos/noche). Considera una siesta o
                   acostarte más temprano.
                 </Text>
@@ -905,7 +935,7 @@ export const StatsScreen: FC = () => {
         )}
 
         {/* Week chart */}
-        <Animated.View entering={FadeInUp.delay(260).duration(500)}>
+        <Animated.View entering={FadeInUp.delay(120).duration(260)}>
           <Text style={styles.sectionEyebrow}>ÚLTIMOS 7 DÍAS</Text>
           <View
             style={[
@@ -946,13 +976,15 @@ export const StatsScreen: FC = () => {
         </Animated.View>
 
         {/* Recent entries */}
-        <Animated.View entering={FadeInUp.delay(320).duration(500)}>
+        <Animated.View entering={FadeInUp.delay(120).duration(260)}>
           <Text style={styles.sectionEyebrow}>ENTRADAS RECIENTES</Text>
           <View style={styles.entriesList}>
             {entries.slice(0, 10).map((entry, index) => (
               <Animated.View
                 key={entry.id}
-                entering={FadeInUp.delay(320 + index * 40).duration(300)}
+                entering={FadeInUp.delay(
+                  Math.min(80 + index * 24, 120),
+                ).duration(240)}
               >
                 <EntryRow
                   entry={entry}
@@ -992,7 +1024,7 @@ const createStyles = (theme: AppTheme) =>
     heroClock: {
       color: theme.colors.heroText,
       fontSize: theme.type.display,
-      fontWeight: '800',
+      fontWeight: '700',
       letterSpacing: -2,
       marginTop: 4,
       fontVariant: ['tabular-nums'],
@@ -1000,7 +1032,7 @@ const createStyles = (theme: AppTheme) =>
     heroTitle: {
       color: theme.colors.textPrimary,
       fontSize: theme.type.title2,
-      fontWeight: '900',
+      fontWeight: '700',
       letterSpacing: -0.5,
       marginTop: 4,
     },
@@ -1094,7 +1126,7 @@ const createStyles = (theme: AppTheme) =>
     debtTitle: {
       color: theme.colors.danger,
       fontSize: theme.type.body,
-      fontWeight: '800',
+      fontWeight: '700',
       marginBottom: 4,
     },
     debtText: {

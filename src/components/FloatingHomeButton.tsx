@@ -1,75 +1,97 @@
 import React from 'react';
-import { TouchableOpacity, StyleSheet, Platform } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import { Ionicons } from '@expo/vector-icons';
+import { Text, View } from 'react-native';
+import { StackActions, useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+import { CircularIconButton } from './ui';
 import { useAppTheme } from '../theme/ThemeProvider';
 
 interface Props {
   insideSafeArea?: boolean;
+  fallbackRoute?: string;
 }
 
-/**
- * Botón flotante de "atrás" (esquina superior izquierda).
- *
- * Solo se muestra cuando la pantalla fue EMPUJADA sobre su stack (index > 0);
- * en las raíces de tab devuelve null. Antes navegaba a 'Home' y eso fallaba al
- * presionarlo desde ciertos lugares tras la migración a tabs. Ahora usa
- * `goBack()`, que siempre es válido cuando el botón es visible.
- *
- * Conserva el nombre por compatibilidad con las pantallas que ya lo renderizan.
- */
+const ROUTE_TITLES: Record<string, string> = {
+  DeleteAccount: 'Eliminar cuenta',
+  DreamJournal: 'Bitácora de sueños',
+  Nap: 'Siesta',
+  Notifications: 'Notificaciones',
+  Settings: 'Configuración',
+  SleepNow: 'Dormir ahora',
+  SleepProfile: 'Perfil de sueño',
+  SleepRoutine: 'Rutina',
+  SmartWake: 'Despertar inteligente',
+  Stats: 'Estadísticas',
+  WakeAt: 'Hora de despertar',
+};
+
+/** Cabecera flotante contextual, visible únicamente en rutas apiladas. */
 export const FloatingHomeButton: React.FC<Props> = ({
   insideSafeArea = false,
+  fallbackRoute,
 }) => {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const { theme } = useAppTheme();
-  const topOffset = insets.top + (insideSafeArea ? 8 : 12);
-
   const state = navigation.getState();
   const canPop = state?.type === 'stack' && state.index > 0;
-  if (!canPop) return null;
+  if (!canPop && !fallbackRoute) return null;
+
+  const routeName = state ? state.routes[state.index]?.name : undefined;
+  const title = routeName ? ROUTE_TITLES[routeName] : undefined;
 
   return (
-    <TouchableOpacity
-      onPress={() => navigation.goBack()}
-      activeOpacity={0.85}
-      accessibilityRole="button"
-      accessibilityLabel="Volver"
-      style={[
-        styles.button,
-        {
-          top: topOffset,
-          backgroundColor: `${theme.colors.surface}EB`,
-          borderColor: theme.colors.border,
-          shadowColor: theme.colors.black,
-        },
-      ]}
+    <View
+      pointerEvents="box-none"
+      style={{
+        alignItems: 'center',
+        flexDirection: 'row',
+        gap: theme.spacing.sm,
+        left: theme.spacing.lg,
+        position: 'absolute',
+        right: theme.spacing.lg,
+        top: insets.top + (insideSafeArea ? 8 : 12),
+        zIndex: 100,
+      }}
     >
-      <Ionicons name="chevron-back" size={22} color={theme.colors.textPrimary} />
-    </TouchableOpacity>
+      <CircularIconButton
+        icon="chevron-back"
+        label="Volver"
+        onPress={() => {
+          if (canPop) {
+            navigation.goBack();
+            return;
+          }
+          if (fallbackRoute) {
+            navigation.dispatch(StackActions.replace(fallbackRoute));
+          }
+        }}
+      />
+      {title ? (
+        <View
+          style={{
+            backgroundColor: `${theme.colors.surfaceElevated}F2`,
+            borderColor: theme.colors.border,
+            borderRadius: theme.radius.full,
+            borderWidth: 1,
+            boxShadow: theme.shadows.soft,
+            justifyContent: 'center',
+            minHeight: 44,
+            paddingHorizontal: theme.spacing.lg,
+          }}
+        >
+          <Text
+            numberOfLines={1}
+            style={{
+              color: theme.colors.textPrimary,
+              fontSize: theme.type.small,
+              fontWeight: '600',
+            }}
+          >
+            {title}
+          </Text>
+        </View>
+      ) : null}
+    </View>
   );
 };
-
-const styles = StyleSheet.create({
-  button: {
-    position: 'absolute',
-    left: 16,
-    zIndex: 100,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    ...Platform.select({
-      ios: {
-        shadowOffset: { width: 0, height: 3 },
-        shadowOpacity: 0.3,
-        shadowRadius: 6,
-      },
-      android: { elevation: 6 },
-    }),
-  },
-});

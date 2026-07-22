@@ -1,4 +1,11 @@
-import React, { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  FC,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -12,25 +19,19 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import Animated, { FadeInUp } from 'react-native-reanimated';
-import {
-  BottomSheetBackdrop,
-  BottomSheetModal,
-  BottomSheetView,
-  type BottomSheetBackdropProps,
-} from '@gorhom/bottom-sheet';
+import { BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import type { RootStackParamList } from '../../App';
 import { GradientBackground } from '../components/GradientBackground';
 import { FloatingDrawerButton } from '../components/FloatingDrawerButton';
 import { FloatingHomeButton } from '../components/FloatingHomeButton';
+import { AppBottomSheetModal, LoadingState, useToast } from '../components/ui';
 import { PrimaryCTA } from '../components/PrimaryCTA';
 import { WheelTimePicker } from '../components/WheelTimePicker';
 import { usePressScale } from '../hooks/usePressScale';
 import { useSleepProfileContext } from '../context/SleepProfileContext';
-import {
-  scheduleUniqueNotificationAtDate,
-} from '../notifications/scheduler';
+import { scheduleUniqueNotificationAtDate } from '../notifications/scheduler';
 import { isTimeOptimalForChronotype } from '../domain/sleepProfile';
 import { useAppTheme } from '../theme/ThemeProvider';
 import type { AppTheme } from '../theme/theme';
@@ -85,7 +86,11 @@ function getCycleEducation(cycles: number): string {
  * la coloca en el día siguiente — lo natural para "a qué hora quiero
  * despertar mañana".
  */
-function buildWakeDate(hour: number, minute: number, now: Date = new Date()): Date {
+function buildWakeDate(
+  hour: number,
+  minute: number,
+  now: Date = new Date(),
+): Date {
   const next = new Date(now);
   next.setHours(hour, minute, 0, 0);
   if (next.getTime() <= now.getTime()) {
@@ -97,7 +102,10 @@ function buildWakeDate(hour: number, minute: number, now: Date = new Date()): Da
 // ─────────────────────────────────────────────
 // ScoreStars
 // ─────────────────────────────────────────────
-const ScoreStars: FC<{ stars: number; theme: AppTheme }> = ({ stars, theme }) => (
+const ScoreStars: FC<{ stars: number; theme: AppTheme }> = ({
+  stars,
+  theme,
+}) => (
   <View style={starStyles.row} accessibilityLabel={`${stars} de 5 estrellas`}>
     {[1, 2, 3, 4, 5].map((i) => (
       <Ionicons
@@ -245,7 +253,11 @@ const optionStyles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   left: { flex: 1, gap: 4 },
-  time: { fontWeight: '900', letterSpacing: -0.5, fontVariant: ['tabular-nums'] },
+  time: {
+    fontWeight: '700',
+    letterSpacing: -0.5,
+    fontVariant: ['tabular-nums'],
+  },
   cycles: { fontWeight: '700', letterSpacing: 0.5 },
   until: { fontWeight: '600', marginTop: 2 },
   right: { flexDirection: 'row', alignItems: 'center', gap: 10 },
@@ -255,7 +267,7 @@ const optionStyles = StyleSheet.create({
     borderRadius: 999,
     borderWidth: 1,
   },
-  badgeMutedText: { fontSize: 10, fontWeight: '800', letterSpacing: 0.5 },
+  badgeMutedText: { fontSize: 10, fontWeight: '700', letterSpacing: 0.5 },
 });
 
 // ─────────────────────────────────────────────
@@ -306,6 +318,7 @@ export const WakeAtScreen: FC = () => {
   const { profile, loading } = useSleepProfileContext();
   const { theme } = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const { showToast } = useToast();
 
   const [now, setNow] = useState<Date>(() => new Date());
   useEffect(() => {
@@ -351,7 +364,9 @@ export const WakeAtScreen: FC = () => {
   }, [profile, wakeDate]);
 
   // Bottom sheet
-  const [selectedOption, setSelectedOption] = useState<SleepTimeOption | null>(null);
+  const [selectedOption, setSelectedOption] = useState<SleepTimeOption | null>(
+    null,
+  );
   const sheetRef = useRef<BottomSheetModal>(null);
   const snapPoints = useMemo(() => ['78%'], []);
 
@@ -369,25 +384,16 @@ export const WakeAtScreen: FC = () => {
     sheetRef.current?.dismiss();
   }, []);
 
-  const renderBackdrop = useCallback(
-    (props: BottomSheetBackdropProps) => (
-      <BottomSheetBackdrop
-        {...props}
-        appearsOnIndex={0}
-        disappearsOnIndex={-1}
-        opacity={0.6}
-        pressBehavior="close"
-      />
-    ),
-    [],
-  );
-
   const handleSchedule = useCallback(async () => {
     if (!selectedOption) return;
     const centerTime = new Date(
-      (selectedOption.windowStart.getTime() + selectedOption.windowEnd.getTime()) / 2,
+      (selectedOption.windowStart.getTime() +
+        selectedOption.windowEnd.getTime()) /
+        2,
     );
-    const preSleepTime = new Date(selectedOption.windowStart.getTime() - 30 * 60_000);
+    const preSleepTime = new Date(
+      selectedOption.windowStart.getTime() - 30 * 60_000,
+    );
 
     if (preSleepTime.getTime() > Date.now()) {
       await scheduleUniqueNotificationAtDate({
@@ -419,32 +425,23 @@ export const WakeAtScreen: FC = () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(
       () => {},
     );
-    Alert.alert(
-      'Recordatorios programados',
-      `• Preparación: ${preSleepTime > new Date(0)
-        ? formatTimeRange(preSleepTime, selectedOption.windowStart)
-        : 'omitida (hora pasada)'
-      }\n• Dormir: ${formatTimeRange(selectedOption.windowStart, selectedOption.windowEnd)}`,
-    );
+    showToast({
+      title: 'Recordatorios programados',
+      message: `Preparación: ${
+        preSleepTime > new Date(0)
+          ? formatTimeRange(preSleepTime, selectedOption.windowStart)
+          : 'omitida (hora pasada)'
+      } · Dormir: ${formatTimeRange(selectedOption.windowStart, selectedOption.windowEnd)}`,
+      duration: 3800,
+    });
     closeSheet();
-  }, [selectedOption, closeSheet]);
+  }, [selectedOption, closeSheet, showToast]);
 
   if (loading || !profile) {
     return (
       <View style={styles.container}>
         <GradientBackground />
-        <View style={styles.loadingCenter}>
-          <ActivityIndicator color={theme.colors.accent[500]} size="large" />
-          <Text
-            style={{
-              color: theme.colors.textPrimary,
-              marginTop: 16,
-              fontSize: theme.type.body,
-            }}
-          >
-            Cargando perfil de sueño…
-          </Text>
-        </View>
+        <LoadingState label="Preparando tus horarios…" />
       </View>
     );
   }
@@ -453,10 +450,10 @@ export const WakeAtScreen: FC = () => {
   const sheetUntilSleep = selectedOption
     ? minutesUntil(selectedOption.sleepDate, now)
     : 0;
-  const sheetUntilWake = selectedOption
-    ? minutesUntil(wakeDate, now)
-    : 0;
-  const sheetEducation = selectedOption ? getCycleEducation(selectedOption.cycles) : '';
+  const sheetUntilWake = selectedOption ? minutesUntil(wakeDate, now) : 0;
+  const sheetEducation = selectedOption
+    ? getCycleEducation(selectedOption.cycles)
+    : '';
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
@@ -470,7 +467,7 @@ export const WakeAtScreen: FC = () => {
         showsVerticalScrollIndicator={false}
       >
         {/* Hero + picker */}
-        <Animated.View entering={FadeInUp.duration(500)} style={styles.hero}>
+        <Animated.View entering={FadeInUp.duration(260)} style={styles.hero}>
           <Text style={styles.heroEyebrow}>DESPIERTA A LAS</Text>
 
           <WheelTimePicker value={wakeDate} onChange={handleWakeTimeChange} />
@@ -486,7 +483,7 @@ export const WakeAtScreen: FC = () => {
           {options.map((opt, index) => (
             <Animated.View
               key={opt.cycles}
-              entering={FadeInUp.delay(index * 70).duration(400)}
+              entering={FadeInUp.delay(Math.min(index * 36, 120)).duration(240)}
             >
               <SleepOptionCard
                 option={opt}
@@ -507,13 +504,10 @@ export const WakeAtScreen: FC = () => {
       </ScrollView>
 
       {/* Bottom sheet detalle */}
-      <BottomSheetModal
+      <AppBottomSheetModal
         ref={sheetRef}
         snapPoints={snapPoints}
         enableDynamicSizing={false}
-        backgroundStyle={{ backgroundColor: theme.colors.surface }}
-        handleIndicatorStyle={{ backgroundColor: theme.colors.textMuted }}
-        backdropComponent={renderBackdrop}
         onDismiss={() => setSelectedOption(null)}
       >
         <BottomSheetView style={styles.sheetContent}>
@@ -521,7 +515,9 @@ export const WakeAtScreen: FC = () => {
             <>
               <View style={styles.sheetHeader}>
                 <Text style={styles.sheetEyebrow}>DUÉRMETE A LAS</Text>
-                <Text style={styles.sheetClock}>{formatTime(selectedOption.sleepDate)}</Text>
+                <Text style={styles.sheetClock}>
+                  {formatTime(selectedOption.sleepDate)}
+                </Text>
                 <Text style={styles.sheetCycles}>
                   {selectedOption.cycles}{' '}
                   {selectedOption.cycles === 1 ? 'CICLO' : 'CICLOS'} ·{' '}
@@ -638,7 +634,7 @@ export const WakeAtScreen: FC = () => {
             </>
           )}
         </BottomSheetView>
-      </BottomSheetModal>
+      </AppBottomSheetModal>
     </SafeAreaView>
   );
 };
@@ -689,7 +685,7 @@ const createStyles = (theme: AppTheme) =>
     sheetClock: {
       color: theme.colors.heroText,
       fontSize: theme.type.title1,
-      fontWeight: '900',
+      fontWeight: '700',
       letterSpacing: -1,
       fontVariant: ['tabular-nums'],
     },
@@ -723,7 +719,7 @@ const createStyles = (theme: AppTheme) =>
     contextValue: {
       color: theme.colors.textPrimary,
       fontSize: theme.type.subhead,
-      fontWeight: '800',
+      fontWeight: '700',
       fontVariant: ['tabular-nums'],
     },
     sheetDetails: {

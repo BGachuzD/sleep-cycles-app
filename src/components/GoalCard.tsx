@@ -35,7 +35,9 @@ const PresetChip: FC<{
             backgroundColor: active
               ? `${theme.colors.accent[500]}1F`
               : theme.colors.surfaceElevated,
-            borderColor: active ? theme.colors.accent[500] : theme.colors.border,
+            borderColor: active
+              ? theme.colors.accent[500]
+              : theme.colors.border,
             borderWidth: active ? 1.5 : 1,
             borderRadius: theme.radius.md,
           },
@@ -168,7 +170,9 @@ export const GoalCard: FC = () => {
                   ]}
                 />
               </View>
-              <Text style={[styles.progressPct, { color: theme.colors.heroText }]}>
+              <Text
+                style={[styles.progressPct, { color: theme.colors.heroText }]}
+              >
                 {progress.adherencePct}%
               </Text>
             </View>
@@ -196,7 +200,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   eyebrow: { fontSize: 12, fontWeight: '700', letterSpacing: 1.2 },
-  title: { fontSize: 15, fontWeight: '800', letterSpacing: -0.2, marginTop: 2 },
+  title: { fontSize: 15, fontWeight: '700', letterSpacing: -0.2, marginTop: 2 },
   hint: { fontSize: 13, lineHeight: 18, fontWeight: '600' },
   presetRow: { flexDirection: 'row', gap: 8 },
   presetChip: {
@@ -204,13 +208,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 10,
   },
-  presetText: { fontSize: 14, fontWeight: '800', fontVariant: ['tabular-nums'] },
+  presetText: {
+    fontSize: 14,
+    fontWeight: '700',
+    fontVariant: ['tabular-nums'],
+  },
   progressRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   progressTrack: { flex: 1, height: 8, borderRadius: 4, overflow: 'hidden' },
   progressFill: { height: '100%', borderRadius: 4 },
   progressPct: {
     fontSize: 15,
-    fontWeight: '900',
+    fontWeight: '700',
     fontVariant: ['tabular-nums'],
   },
 });

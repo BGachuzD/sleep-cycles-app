@@ -27,11 +27,7 @@ import { FieldInput } from '../components/FieldInput';
 import { usePressScale } from '../hooks/usePressScale';
 import { useAuth } from '../context/AuthContext';
 import { useSleepProfileContext } from '../context/SleepProfileContext';
-import type {
-  Chronotype,
-  Gender,
-  SleepProfile,
-} from '../domain/sleepProfile';
+import type { Chronotype, Gender, SleepProfile } from '../domain/sleepProfile';
 import {
   buildDerivedProfile,
   calculateBMI,
@@ -82,7 +78,11 @@ function SegmentedChips<T extends string>({
   onChange,
   theme,
 }: {
-  options: Array<{ value: T; label: string; icon: keyof typeof Ionicons.glyphMap }>;
+  options: Array<{
+    value: T;
+    label: string;
+    icon: keyof typeof Ionicons.glyphMap;
+  }>;
   value: T;
   onChange: (v: T) => void;
   theme: AppTheme;
@@ -226,7 +226,7 @@ const dataRowStyles = StyleSheet.create({
   },
   left: { flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 },
   label: { fontWeight: '500' },
-  value: { fontWeight: '800', fontVariant: ['tabular-nums'] },
+  value: { fontWeight: '700', fontVariant: ['tabular-nums'] },
 });
 
 // ─────────────────────────────────────────────
@@ -249,7 +249,9 @@ export const SleepProfileScreen: FC<Props> = ({ navigation, route }) => {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    const metaChronotype = user?.user_metadata?.chronotype as Chronotype | undefined;
+    const metaChronotype = user?.user_metadata?.chronotype as
+      | Chronotype
+      | undefined;
     if (profile) {
       setAge(String(profile.age));
       setWeight(String(profile.weightKg));
@@ -266,10 +268,14 @@ export const SleepProfileScreen: FC<Props> = ({ navigation, route }) => {
     const weightNum = Number(weight);
     const heightNum = Number(heightStr);
 
-    if (!age || !weight || !heightStr) return 'Por favor, completa todos los campos.';
-    if (isNaN(ageNum) || ageNum < 1 || ageNum > 120) return 'La edad debe ser un número válido (1-120).';
-    if (isNaN(weightNum) || weightNum <= 0) return 'El peso debe ser mayor a 0.';
-    if (isNaN(heightNum) || heightNum <= 0) return 'La altura debe ser mayor a 0.';
+    if (!age || !weight || !heightStr)
+      return 'Por favor, completa todos los campos.';
+    if (isNaN(ageNum) || ageNum < 1 || ageNum > 120)
+      return 'La edad debe ser un número válido (1-120).';
+    if (isNaN(weightNum) || weightNum <= 0)
+      return 'El peso debe ser mayor a 0.';
+    if (isNaN(heightNum) || heightNum <= 0)
+      return 'La altura debe ser mayor a 0.';
     return null;
   }, [age, weight, heightStr]);
 
@@ -284,7 +290,16 @@ export const SleepProfileScreen: FC<Props> = ({ navigation, route }) => {
       wakeHour: profile?.wakeHour,
       wakeMinute: profile?.wakeMinute,
     };
-  }, [age, weight, heightStr, gender, chronotype, validationError, profile?.wakeHour, profile?.wakeMinute]);
+  }, [
+    age,
+    weight,
+    heightStr,
+    gender,
+    chronotype,
+    validationError,
+    profile?.wakeHour,
+    profile?.wakeMinute,
+  ]);
 
   const derived = useMemo(() => {
     if (!parsedProfile) return null;
@@ -349,7 +364,10 @@ export const SleepProfileScreen: FC<Props> = ({ navigation, route }) => {
           keyboardShouldPersistTaps="handled"
         >
           {/* Hero */}
-          <Animated.View entering={FadeInDown.duration(500)} style={styles.hero}>
+          <Animated.View
+            entering={FadeInDown.duration(260)}
+            style={styles.hero}
+          >
             <Text style={styles.heroEyebrow}>TU PERFIL</Text>
             <Text style={styles.heroTitle}>
               {displayName ? `Hola, ${displayName}` : 'Datos personales'}
@@ -362,7 +380,7 @@ export const SleepProfileScreen: FC<Props> = ({ navigation, route }) => {
 
           {/* Info banner (force setup) */}
           {isForceSetup && (
-            <Animated.View entering={FadeInUp.delay(60).duration(400)}>
+            <Animated.View entering={FadeInUp.delay(60).duration(240)}>
               <View
                 style={[
                   styles.infoBanner,
@@ -380,15 +398,15 @@ export const SleepProfileScreen: FC<Props> = ({ navigation, route }) => {
                   style={{ marginTop: 1 }}
                 />
                 <Text style={styles.infoBannerText}>
-                  Completa tu perfil para obtener recomendaciones
-                  personalizadas antes de continuar.
+                  Completa tu perfil para obtener recomendaciones personalizadas
+                  antes de continuar.
                 </Text>
               </View>
             </Animated.View>
           )}
 
           {/* Section: datos personales */}
-          <Animated.View entering={FadeInUp.delay(80).duration(500)}>
+          <Animated.View entering={FadeInUp.delay(80).duration(260)}>
             <Text style={styles.sectionEyebrow}>DATOS PERSONALES</Text>
             <View style={styles.fieldsRow}>
               <View style={{ flex: 1 }}>
@@ -425,7 +443,10 @@ export const SleepProfileScreen: FC<Props> = ({ navigation, route }) => {
           </Animated.View>
 
           {/* Section: género */}
-          <Animated.View entering={FadeInUp.delay(140).duration(500)} style={styles.section}>
+          <Animated.View
+            entering={FadeInUp.delay(120).duration(260)}
+            style={styles.section}
+          >
             <Text style={styles.sectionEyebrow}>GÉNERO BIOLÓGICO</Text>
             <SegmentedChips
               options={GENDER_OPTIONS}
@@ -436,7 +457,10 @@ export const SleepProfileScreen: FC<Props> = ({ navigation, route }) => {
           </Animated.View>
 
           {/* Section: cronotipo */}
-          <Animated.View entering={FadeInUp.delay(200).duration(500)} style={styles.section}>
+          <Animated.View
+            entering={FadeInUp.delay(120).duration(260)}
+            style={styles.section}
+          >
             <Text style={styles.sectionEyebrow}>CRONOTIPO</Text>
             <SegmentedChips
               options={CHRONO_OPTIONS}
@@ -456,7 +480,7 @@ export const SleepProfileScreen: FC<Props> = ({ navigation, route }) => {
 
           {/* Validation error */}
           {validationError && (
-            <Animated.View entering={FadeInUp.duration(300)}>
+            <Animated.View entering={FadeInUp.duration(240)}>
               <View
                 style={[
                   styles.errorBox,
@@ -479,7 +503,7 @@ export const SleepProfileScreen: FC<Props> = ({ navigation, route }) => {
 
           {/* BMI card */}
           {bmiInfo && (
-            <Animated.View entering={FadeInUp.delay(260).duration(500)}>
+            <Animated.View entering={FadeInUp.delay(120).duration(260)}>
               <Text style={styles.sectionEyebrow}>ÍNDICE DE MASA CORPORAL</Text>
               <View
                 style={[
@@ -514,7 +538,7 @@ export const SleepProfileScreen: FC<Props> = ({ navigation, route }) => {
 
           {/* Derived params */}
           {derived && (
-            <Animated.View entering={FadeInUp.delay(320).duration(500)}>
+            <Animated.View entering={FadeInUp.delay(120).duration(260)}>
               <Text style={styles.sectionEyebrow}>PARÁMETROS DERIVADOS</Text>
               <View
                 style={[
@@ -554,7 +578,7 @@ export const SleepProfileScreen: FC<Props> = ({ navigation, route }) => {
           {/* Acciones secundarias (solo si no force setup) */}
           {!isForceSetup && (
             <Animated.View
-              entering={FadeInUp.delay(380).duration(500)}
+              entering={FadeInUp.delay(120).duration(260)}
               style={styles.secondaryActions}
             >
               <SecondaryLink
@@ -603,7 +627,9 @@ export const SleepProfileScreen: FC<Props> = ({ navigation, route }) => {
               label={isForceSetup ? 'Comenzar' : 'Guardar perfil'}
               icon="cloud-upload-outline"
               onPress={handleSave}
-              trailingIcon={isForceSetup ? 'arrow-forward' : 'checkmark-outline'}
+              trailingIcon={
+                isForceSetup ? 'arrow-forward' : 'checkmark-outline'
+              }
             />
           )}
         </View>
@@ -643,12 +669,7 @@ const SecondaryLink: FC<{
         ]}
       >
         <Ionicons name={icon} size={18} color={color} />
-        <Text
-          style={[
-            linkStyles.label,
-            { color, fontSize: theme.type.body },
-          ]}
-        >
+        <Text style={[linkStyles.label, { color, fontSize: theme.type.body }]}>
           {label}
         </Text>
         <Ionicons name="chevron-forward" size={16} color={color} />
@@ -698,7 +719,7 @@ const createStyles = (theme: AppTheme) =>
     heroTitle: {
       color: theme.colors.textPrimary,
       fontSize: theme.type.title2,
-      fontWeight: '900',
+      fontWeight: '700',
       letterSpacing: -0.5,
       marginTop: 4,
     },
@@ -741,7 +762,7 @@ const createStyles = (theme: AppTheme) =>
     },
     chronoHintStrong: {
       color: theme.colors.accent[300],
-      fontWeight: '800',
+      fontWeight: '700',
       fontVariant: ['tabular-nums'],
     },
     errorBox: {
@@ -764,7 +785,7 @@ const createStyles = (theme: AppTheme) =>
     bmiValue: {
       color: theme.colors.heroText,
       fontSize: theme.type.display,
-      fontWeight: '900',
+      fontWeight: '700',
       letterSpacing: -2,
       fontVariant: ['tabular-nums'],
       textAlign: 'center',
@@ -778,7 +799,7 @@ const createStyles = (theme: AppTheme) =>
     bmiBadgeText: {
       color: theme.colors.accent[300],
       fontSize: theme.type.caption,
-      fontWeight: '800',
+      fontWeight: '700',
       letterSpacing: 0.5,
       textTransform: 'uppercase',
     },
@@ -790,7 +811,8 @@ const createStyles = (theme: AppTheme) =>
       right: 0,
       paddingHorizontal: theme.spacing.xl,
       paddingTop: theme.spacing.md,
-      paddingBottom: Platform.OS === 'ios' ? theme.spacing.lg : theme.spacing.lg,
+      paddingBottom:
+        Platform.OS === 'ios' ? theme.spacing.lg : theme.spacing.lg,
       borderTopWidth: 1,
     },
     savingWrapper: {
