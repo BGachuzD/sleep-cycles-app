@@ -8,10 +8,7 @@
 // y `cta.screen` es el nombre de la pantalla como string. Eso mantiene el
 // dominio libre de dependencias y testeable en Node. La UI castea esos strings.
 
-import {
-  computeStats,
-  type SleepLogEntry,
-} from './sleepLog';
+import { computeStats, type SleepLogEntry } from './sleepLog';
 import {
   getAdjustedCycleLengthMinutes,
   type SleepProfile,
@@ -51,7 +48,7 @@ export interface Insight {
 export const MIN_NIGHTS_FOR_ANALYSIS = 5;
 
 /** Biblioteca de consejos rotativos (contenido curado, no personalizado). */
-export const SLEEP_TIPS: ReadonlyArray<{ title: string; body: string }> = [
+export const SLEEP_TIPS: readonly { title: string; body: string }[] = [
   {
     title: 'Cuida la cafeína',
     body: 'Evita el café después de las 3 p.m. La cafeína puede tardar 6 horas en reducirse a la mitad en tu cuerpo.',
@@ -163,9 +160,7 @@ function bedtimeFeelingCorrelation(entries: SleepLogEntry[]): Insight | null {
 
 /** Correlación con la bitácora de sueños (Premium). */
 function dreamMoodCorrelation(entries: SleepLogEntry[]): Insight | null {
-  const withDreams = entries.filter(
-    (e) => e.dreamed && e.dreamMood != null,
-  );
+  const withDreams = entries.filter((e) => e.dreamed && e.dreamMood != null);
   const bad = withDreams.filter((e) => e.dreamMood === 1);
   const good = withDreams.filter((e) => e.dreamMood === 2);
   if (bad.length < 2 || good.length < 2) return null;

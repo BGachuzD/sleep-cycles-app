@@ -1,14 +1,17 @@
 // src/hooks/useSleepGoals.ts
-import { useEffect, useState, useCallback } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import 'react-native-get-random-values';
+
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useCallback, useEffect, useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
+
+import { logger } from '@/lib/logger';
 
 import type { SleepGoal, SleepGoalType } from '../domain/sleepGoal';
 import {
+  deleteGoal,
   loadGoals,
   upsertGoal,
-  deleteGoal,
 } from '../services/sleepGoalService';
 
 const KEY_PREFIX = 'sleepGoals/v1';
@@ -36,7 +39,7 @@ export function useSleepGoals(userId: string | null) {
           if (Array.isArray(parsed)) setGoals(parsed);
         }
       } catch (err) {
-        console.warn('Error loading sleep goals from cache', err);
+        logger.warn('Error loading sleep goals from cache', err);
       }
 
       // 2. Sincronizar desde Supabase
@@ -48,7 +51,7 @@ export function useSleepGoals(userId: string | null) {
             await AsyncStorage.setItem(key, JSON.stringify(remote));
           }
         } catch (err) {
-          console.warn('Error syncing sleep goals from Supabase', err);
+          logger.warn('Error syncing sleep goals from Supabase', err);
         }
       }
 
@@ -65,7 +68,7 @@ export function useSleepGoals(userId: string | null) {
       try {
         await AsyncStorage.setItem(makeKey(userId), JSON.stringify(updated));
       } catch (err) {
-        console.warn('Error persisting sleep goals to cache', err);
+        logger.warn('Error persisting sleep goals to cache', err);
       }
     },
     [userId],
@@ -112,7 +115,7 @@ export function useSleepGoals(userId: string | null) {
         await AsyncStorage.setItem(makeKey(userId), JSON.stringify(remote));
       }
     } catch (err) {
-      console.warn('Error refreshing sleep goals', err);
+      logger.warn('Error refreshing sleep goals', err);
     } finally {
       setLoading(false);
     }

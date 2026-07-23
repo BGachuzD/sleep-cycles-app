@@ -12,31 +12,34 @@
 // su propia copia del state y un `resetConnection()` desde Settings no
 // actualizaría el banner en las otras pantallas.
 
+import 'react-native-get-random-values';
+
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Haptics from 'expo-haptics';
 import React, {
   createContext,
+  type ReactNode,
   useCallback,
   useContext,
   useEffect,
   useMemo,
   useRef,
   useState,
-  type ReactNode,
 } from 'react';
 import { Alert } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as Haptics from 'expo-haptics';
-import 'react-native-get-random-values';
 import { v4 as uuidv4 } from 'uuid';
 
+import { logger } from '@/lib/logger';
+
+import { useSleepLogContext } from '../context/SleepLogContext';
 import {
   fetchSleepDataForDate,
   fetchSleepDataForRange,
   hasHealthKitPermissions,
+  type HealthKitSleepEntry,
   isHealthKitAvailable,
   requestHealthKitPermissions,
-  type HealthKitSleepEntry,
 } from '../services/healthKitService';
-import { useSleepLogContext } from '../context/SleepLogContext';
 
 const AUTHORIZED_KEY = 'healthkit:authorized';
 const IMPORTED_IDS_KEY = 'healthkit:imported_ids';
@@ -130,7 +133,7 @@ export const HealthKitProvider = ({ children }: { children: ReactNode }) => {
           setIsBannerDismissed(true);
         }
       } catch (err) {
-        console.warn('[HealthKit] could not read banner dismiss flag', err);
+        logger.warn('[HealthKit] could not read banner dismiss flag', err);
       }
 
       // 3. Cargar set de ids importadas (para badges)
@@ -143,7 +146,7 @@ export const HealthKitProvider = ({ children }: { children: ReactNode }) => {
           }
         }
       } catch (err) {
-        console.warn('[HealthKit] could not read imported ids', err);
+        logger.warn('[HealthKit] could not read imported ids', err);
       }
 
       if (!available) {
@@ -159,7 +162,7 @@ export const HealthKitProvider = ({ children }: { children: ReactNode }) => {
           setIsAuthorized(true);
         }
       } catch (err) {
-        console.warn('[HealthKit] could not read cache', err);
+        logger.warn('[HealthKit] could not read cache', err);
       }
 
       // 5. Verificación contra el sistema (puede revocarse desde Settings → Salud)
@@ -184,7 +187,7 @@ export const HealthKitProvider = ({ children }: { children: ReactNode }) => {
     try {
       await AsyncStorage.setItem(AUTHORIZED_KEY, granted ? 'true' : 'false');
     } catch (err) {
-      console.warn('[HealthKit] could not persist auth state', err);
+      logger.warn('[HealthKit] could not persist auth state', err);
     }
     return granted;
   }, []);
@@ -209,7 +212,7 @@ export const HealthKitProvider = ({ children }: { children: ReactNode }) => {
     try {
       await AsyncStorage.setItem(IMPORTED_IDS_KEY, JSON.stringify([...next]));
     } catch (err) {
-      console.warn('[HealthKit] could not persist imported ids', err);
+      logger.warn('[HealthKit] could not persist imported ids', err);
     }
   }, []);
 
@@ -327,7 +330,7 @@ export const HealthKitProvider = ({ children }: { children: ReactNode }) => {
           );
         }
       } catch (err) {
-        console.error('[HealthKit] historical import failed', err);
+        logger.error('[HealthKit] historical import failed', err);
         // Liberar el candado persistente para que un retry sea posible.
         AsyncStorage.removeItem(HISTORICAL_SYNCED_KEY).catch(() => {});
       } finally {
@@ -352,7 +355,7 @@ export const HealthKitProvider = ({ children }: { children: ReactNode }) => {
     try {
       await AsyncStorage.setItem(BANNER_DISMISSED_KEY, 'true');
     } catch (err) {
-      console.warn('[HealthKit] could not persist banner dismiss', err);
+      logger.warn('[HealthKit] could not persist banner dismiss', err);
     }
   }, []);
 
@@ -360,7 +363,7 @@ export const HealthKitProvider = ({ children }: { children: ReactNode }) => {
     try {
       await AsyncStorage.multiRemove(ALL_HK_KEYS);
     } catch (err) {
-      console.warn('[HealthKit] could not clear keys', err);
+      logger.warn('[HealthKit] could not clear keys', err);
     }
     setIsAuthorized(false);
     setImportedIds(new Set());
@@ -371,7 +374,7 @@ export const HealthKitProvider = ({ children }: { children: ReactNode }) => {
     try {
       await AsyncStorage.removeItem(HISTORICAL_SYNCED_KEY);
     } catch (err) {
-      console.warn('[HealthKit] could not clear historical sync flag', err);
+      logger.warn('[HealthKit] could not clear historical sync flag', err);
     }
   }, []);
 

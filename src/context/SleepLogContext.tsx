@@ -1,8 +1,9 @@
 // src/context/SleepLogContext.tsx
-import React, { createContext, useContext, type ReactNode } from 'react';
+import React, { createContext, type ReactNode, useContext } from 'react';
+
+import type { SleepLogEntry } from '../domain/sleepLog';
 import { useSleepLog } from '../hooks/useSleepLog';
 import { useAuth } from './AuthContext';
-import type { SleepLogEntry } from '../domain/sleepLog';
 
 type SleepLogContextValue = {
   entries: SleepLogEntry[];
@@ -13,16 +14,19 @@ type SleepLogContextValue = {
   refresh: () => Promise<void>;
 };
 
-const SleepLogContext = createContext<SleepLogContextValue | undefined>(undefined);
+const SleepLogContext = createContext<SleepLogContextValue | undefined>(
+  undefined,
+);
 
 export const SleepLogProvider = ({ children }: { children: ReactNode }) => {
   const { user } = useAuth();
-  const { entries, loading, addEntry, updateEntry, deleteEntry, refresh } = useSleepLog(
-    user?.id ?? null,
-  );
+  const { entries, loading, addEntry, updateEntry, deleteEntry, refresh } =
+    useSleepLog(user?.id ?? null);
 
   return (
-    <SleepLogContext.Provider value={{ entries, loading, addEntry, updateEntry, deleteEntry, refresh }}>
+    <SleepLogContext.Provider
+      value={{ entries, loading, addEntry, updateEntry, deleteEntry, refresh }}
+    >
       {children}
     </SleepLogContext.Provider>
   );

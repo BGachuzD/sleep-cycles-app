@@ -1,4 +1,4 @@
-import { SleepProfile, buildDerivedProfile } from './sleepProfile';
+import { buildDerivedProfile, SleepProfile } from './sleepProfile';
 
 export type RecommendationMode = 'sleepNow' | 'wakeAt';
 

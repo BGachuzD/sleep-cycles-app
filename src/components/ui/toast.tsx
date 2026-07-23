@@ -1,15 +1,15 @@
+import { Ionicons } from '@expo/vector-icons';
 import React, {
   createContext,
+  type ReactNode,
   use,
   useCallback,
   useEffect,
   useMemo,
   useRef,
   useState,
-  type ReactNode,
 } from 'react';
 import { Text, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeInDown, FadeOutUp } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 

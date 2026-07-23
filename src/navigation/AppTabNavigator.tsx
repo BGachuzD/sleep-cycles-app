@@ -1,22 +1,22 @@
-import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import React from 'react';
 
+import { DeleteAccountScreen } from '../screens/DeleteAccountScreen';
+import { DreamJournalScreen } from '../screens/DreamJournalScreen';
 import { HomeScreen } from '../screens/HomeScreen';
-import { SleepNowScreen } from '../screens/SleepNowScreen';
-import { WakeAtScreen } from '../screens/WakeAtScreen';
+import { MoreScreen } from '../screens/MoreScreen';
 import { NapScreen } from '../screens/NapScreen';
+import { NotificationsManagerScreen } from '../screens/NotificationsManagerScreen';
+import { ProgresoScreen } from '../screens/ProgresoScreen';
+import { SettingsScreen } from '../screens/SettingsScreen';
+import { SleepLogScreen } from '../screens/SleepLogScreen';
+import { SleepNowScreen } from '../screens/SleepNowScreen';
+import { SleepProfileScreen } from '../screens/SleepProfileScreen';
 import { SleepRoutineScreen } from '../screens/SleepRoutineScreen';
 import { SmartWakeScreen } from '../screens/SmartWakeScreen';
-import { SleepLogScreen } from '../screens/SleepLogScreen';
-import { DreamJournalScreen } from '../screens/DreamJournalScreen';
-import { ProgresoScreen } from '../screens/ProgresoScreen';
 import { StatsScreen } from '../screens/StatsScreen';
-import { MoreScreen } from '../screens/MoreScreen';
-import { SleepProfileScreen } from '../screens/SleepProfileScreen';
-import { NotificationsManagerScreen } from '../screens/NotificationsManagerScreen';
-import { SettingsScreen } from '../screens/SettingsScreen';
-import { DeleteAccountScreen } from '../screens/DeleteAccountScreen';
+import { WakeAtScreen } from '../screens/WakeAtScreen';
 import { CustomTabBar } from './CustomTabBar';
 
 // Un único factory de native-stack reutilizado por cada tab. Cada tab es un

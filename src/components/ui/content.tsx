@@ -1,16 +1,15 @@
+import { Ionicons } from '@expo/vector-icons';
 import React, { type ReactNode } from 'react';
 import {
   Pressable,
   ScrollView,
+  type StyleProp,
   Text,
   View,
-  type StyleProp,
   type ViewStyle,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 
 import { useAppTheme } from '@/theme/ThemeProvider';
-import { CircularIconButton } from './buttons';
 
 type IconName = keyof typeof Ionicons.glyphMap;
 

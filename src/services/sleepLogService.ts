@@ -1,5 +1,6 @@
 import type { DreamMood, SleepLogEntry } from '../domain/sleepLog';
 import { supabase } from '../lib/supabaseClient';
+import { logWriteError, mapRowsOrNull } from './supabaseHelpers';
 
 const SLEEP_LOG_COLUMNS =
   'id,user_id,date,bed_time_iso,wake_time_iso,feeling,dreamed,dream_mood,dream_tags,dream_note';
@@ -25,7 +26,9 @@ function rowToEntry(row: SleepLogRow): SleepLogEntry {
     wakeTimeISO: row.wake_time_iso,
     feeling: row.feeling as 1 | 2 | 3,
     ...(row.dreamed != null ? { dreamed: row.dreamed } : {}),
-    ...(row.dream_mood != null ? { dreamMood: row.dream_mood as DreamMood } : {}),
+    ...(row.dream_mood != null
+      ? { dreamMood: row.dream_mood as DreamMood }
+      : {}),
     ...(row.dream_tags != null ? { dreamTags: row.dream_tags } : {}),
     ...(row.dream_note != null ? { dreamNote: row.dream_note } : {}),
   };
@@ -46,18 +49,16 @@ function entryToRow(userId: string, entry: SleepLogEntry): SleepLogRow {
   };
 }
 
-export async function loadSleepLog(userId: string): Promise<SleepLogEntry[] | null> {
-  const { data, error } = await supabase
+export async function loadSleepLog(
+  userId: string,
+): Promise<SleepLogEntry[] | null> {
+  const result = await supabase
     .from('sleep_log')
     .select(SLEEP_LOG_COLUMNS)
     .eq('user_id', userId)
     .order('date', { ascending: false });
 
-  if (error) {
-    console.warn('Error loading sleep log from Supabase', error);
-    return null;
-  }
-  return (data as SleepLogRow[]).map(rowToEntry);
+  return mapRowsOrNull('load sleep log', result, rowToEntry);
 }
 
 export async function upsertSleepLogEntry(
@@ -72,17 +73,20 @@ export async function upsertSleepLogEntry(
     .eq('date', entry.date)
     .neq('id', entry.id);
 
-  const { error } = await supabase
+  const result = await supabase
     .from('sleep_log')
     .upsert(entryToRow(userId, entry), { onConflict: 'id' });
-  if (error) console.warn('Error saving sleep log entry to Supabase', error);
+  logWriteError('save sleep log entry', result);
 }
 
-export async function deleteSleepLogEntry(userId: string, id: string): Promise<void> {
-  const { error } = await supabase
+export async function deleteSleepLogEntry(
+  userId: string,
+  id: string,
+): Promise<void> {
+  const result = await supabase
     .from('sleep_log')
     .delete()
     .eq('id', id)
     .eq('user_id', userId);
-  if (error) console.warn('Error deleting sleep log entry from Supabase', error);
+  logWriteError('delete sleep log entry', result);
 }

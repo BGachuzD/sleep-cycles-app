@@ -1,8 +1,9 @@
 // src/context/DreamEntriesContext.tsx
-import React, { createContext, useContext, type ReactNode } from 'react';
+import React, { createContext, type ReactNode, useContext } from 'react';
+
+import type { DreamEntry } from '../domain/dreamEntry';
 import { useDreamEntries } from '../hooks/useDreamEntries';
 import { useAuth } from './AuthContext';
-import type { DreamEntry } from '../domain/dreamEntry';
 
 type DreamEntriesContextValue = {
   dreams: DreamEntry[];

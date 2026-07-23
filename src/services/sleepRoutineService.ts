@@ -1,5 +1,6 @@
 import type { RoutineStep } from '../domain/sleepRoutine';
 import { supabase } from '../lib/supabaseClient';
+import { logSupabaseError, logWriteError } from './supabaseHelpers';
 
 type RoutineRow = {
   user_id: string;
@@ -40,40 +41,51 @@ function stepToRow(userId: string, step: RoutineStep): RoutineRow {
   };
 }
 
-export async function loadRoutine(userId: string): Promise<RoutineStep[] | null> {
+export async function loadRoutine(
+  userId: string,
+): Promise<RoutineStep[] | null> {
   const { data, error } = await supabase
     .from('sleep_routine_steps')
-    .select('user_id,id,minutes_before,icon,title,description,color,enabled,is_default')
+    .select(
+      'user_id,id,minutes_before,icon,title,description,color,enabled,is_default',
+    )
     .eq('user_id', userId);
 
   if (error) {
-    console.warn('Error loading routine from Supabase', error);
+    logSupabaseError('load routine', error);
     return null;
   }
+  // Sin filas devuelve null (no []) para que la capa superior siembre los pasos por defecto.
   if (!data || data.length === 0) return null;
   return (data as RoutineRow[]).map(rowToStep);
 }
 
-export async function upsertRoutineStep(userId: string, step: RoutineStep): Promise<void> {
-  const { error } = await supabase
+export async function upsertRoutineStep(
+  userId: string,
+  step: RoutineStep,
+): Promise<void> {
+  const result = await supabase
     .from('sleep_routine_steps')
     .upsert(stepToRow(userId, step), { onConflict: 'user_id,id' });
-  if (error) console.warn('Error saving routine step to Supabase', error);
+  logWriteError('save routine step', result);
 }
 
-export async function deleteRoutineStep(userId: string, stepId: string): Promise<void> {
-  const { error } = await supabase
+export async function deleteRoutineStep(
+  userId: string,
+  stepId: string,
+): Promise<void> {
+  const result = await supabase
     .from('sleep_routine_steps')
     .delete()
     .eq('user_id', userId)
     .eq('id', stepId);
-  if (error) console.warn('Error deleting routine step from Supabase', error);
+  logWriteError('delete routine step', result);
 }
 
 export async function deleteAllRoutineSteps(userId: string): Promise<void> {
-  const { error } = await supabase
+  const result = await supabase
     .from('sleep_routine_steps')
     .delete()
     .eq('user_id', userId);
-  if (error) console.warn('Error resetting routine in Supabase', error);
+  logWriteError('reset routine', result);
 }

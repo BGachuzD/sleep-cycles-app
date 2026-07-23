@@ -1,6 +1,7 @@
-import React, { createContext, useContext, type ReactNode } from 'react';
-import { useSleepProfile } from '../hooks/useSleepProfile';
+import React, { createContext, type ReactNode, useContext } from 'react';
+
 import type { SleepProfile } from '../domain/sleepProfile';
+import { useSleepProfile } from '../hooks/useSleepProfile';
 import { useAuth } from './AuthContext';
 
 type SleepProfileContextValue = {

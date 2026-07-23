@@ -1,17 +1,17 @@
-import React, { FC } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import { navigateToScreen } from '../navigation/navigateTo';
-import { useTabBarContentPadding } from '../navigation/tabBarLayout';
+import React, { FC } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { GradientBackground } from '../components/GradientBackground';
 import { ListItem } from '../components/ui';
 import { useAuth } from '../context/AuthContext';
-import { useAppTheme } from '../theme/ThemeProvider';
+import { navigateToScreen } from '../navigation/navigateTo';
+import { useTabBarContentPadding } from '../navigation/tabBarLayout';
 import type { AppTheme } from '../theme/theme';
+import { useAppTheme } from '../theme/ThemeProvider';
 
 type RowDef = {
   icon: keyof typeof Ionicons.glyphMap;

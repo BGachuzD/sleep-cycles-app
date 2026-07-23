@@ -1,4 +1,6 @@
 // src/screens/ProfileSetupScreen.tsx
+import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import React, { FC, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -10,16 +12,13 @@ import {
   Text,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { FieldInput } from '../components/FieldInput';
 import { GradientBackground } from '../components/GradientBackground';
 import { PrimaryCTA } from '../components/PrimaryCTA';
-import { FieldInput } from '../components/FieldInput';
 import { WheelTimePicker } from '../components/WheelTimePicker';
-import { usePressScale } from '../hooks/usePressScale';
 import { useAuth } from '../context/AuthContext';
 import { useSleepProfileContext } from '../context/SleepProfileContext';
 import type { Chronotype, Gender, SleepProfile } from '../domain/sleepProfile';
@@ -27,30 +26,32 @@ import {
   getAdjustedCycleLengthMinutes,
   getOptimalSleepWindow,
 } from '../domain/sleepProfile';
-import { useAppTheme } from '../theme/ThemeProvider';
 import type { AppTheme } from '../theme/theme';
+import { useAppTheme } from '../theme/ThemeProvider';
+import { OptionCard } from './profileSetup/OptionCard';
+import { SegmentedChip } from './profileSetup/SegmentedChip';
 
 const TOTAL_STEPS = 4;
 
 // ─────────────────────────────────────────────
 // Opciones
 // ─────────────────────────────────────────────
-const GENDER_OPTIONS: Array<{
+const GENDER_OPTIONS: {
   value: Gender;
   label: string;
   icon: keyof typeof Ionicons.glyphMap;
-}> = [
+}[] = [
   { value: 'male', label: 'Masculino', icon: 'man-outline' },
   { value: 'female', label: 'Femenino', icon: 'woman-outline' },
   { value: 'other', label: 'Otro', icon: 'person-outline' },
 ];
 
-const CHRONO_OPTIONS: Array<{
+const CHRONO_OPTIONS: {
   value: Chronotype;
   label: string;
   desc: string;
   icon: keyof typeof Ionicons.glyphMap;
-}> = [
+}[] = [
   {
     value: 'morning',
     label: 'Matutino',
@@ -70,159 +71,6 @@ const CHRONO_OPTIONS: Array<{
     icon: 'moon-outline',
   },
 ];
-
-// ─────────────────────────────────────────────
-// Chips segmentados (género)
-// ─────────────────────────────────────────────
-const SegmentedChip: FC<{
-  label: string;
-  icon: keyof typeof Ionicons.glyphMap;
-  active: boolean;
-  onPress: () => void;
-  theme: AppTheme;
-}> = ({ label, icon, active, onPress, theme }) => {
-  const { animatedStyle, onPressIn, onPressOut } = usePressScale(0.96);
-  return (
-    <Animated.View style={[{ flex: 1 }, animatedStyle]}>
-      <Pressable
-        onPress={onPress}
-        onPressIn={onPressIn}
-        onPressOut={onPressOut}
-        accessibilityRole="button"
-        accessibilityLabel={label}
-        style={[
-          chipStyles.chip,
-          active && { backgroundColor: theme.colors.accent[500] },
-        ]}
-      >
-        <Ionicons
-          name={icon}
-          size={15}
-          color={active ? theme.colors.white : theme.colors.textSecondary}
-        />
-        <Text
-          style={[
-            chipStyles.label,
-            {
-              color: active ? theme.colors.white : theme.colors.textSecondary,
-              fontSize: theme.type.small,
-            },
-          ]}
-        >
-          {label}
-        </Text>
-      </Pressable>
-    </Animated.View>
-  );
-};
-
-const chipStyles = StyleSheet.create({
-  chip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 12,
-    borderRadius: 999,
-  },
-  label: { fontWeight: '700' },
-});
-
-// ─────────────────────────────────────────────
-// Tarjeta de opción (cronotipo)
-// ─────────────────────────────────────────────
-const OptionCard: FC<{
-  label: string;
-  desc: string;
-  icon: keyof typeof Ionicons.glyphMap;
-  active: boolean;
-  onPress: () => void;
-  theme: AppTheme;
-}> = ({ label, desc, icon, active, onPress, theme }) => {
-  const { animatedStyle, onPressIn, onPressOut } = usePressScale(0.97);
-  return (
-    <Animated.View style={animatedStyle}>
-      <Pressable
-        onPress={onPress}
-        onPressIn={onPressIn}
-        onPressOut={onPressOut}
-        accessibilityRole="button"
-        accessibilityLabel={label}
-        style={[
-          optionStyles.card,
-          {
-            backgroundColor: active
-              ? `${theme.colors.accent[500]}14`
-              : theme.colors.surface,
-            borderColor: active
-              ? theme.colors.accent[500]
-              : theme.colors.border,
-            borderWidth: active ? 1.5 : 1,
-            borderRadius: theme.radius.lg,
-          },
-        ]}
-      >
-        <View
-          style={[
-            optionStyles.iconCircle,
-            { backgroundColor: `${theme.colors.accent[500]}1F` },
-          ]}
-        >
-          <Ionicons name={icon} size={20} color={theme.colors.accent[400]} />
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text
-            style={[
-              optionStyles.label,
-              {
-                color: active
-                  ? theme.colors.textPrimary
-                  : theme.colors.textSecondary,
-                fontSize: theme.type.bodyLarge,
-              },
-            ]}
-          >
-            {label}
-          </Text>
-          <Text
-            style={[
-              optionStyles.desc,
-              { color: theme.colors.textMuted, fontSize: theme.type.small },
-            ]}
-          >
-            {desc}
-          </Text>
-        </View>
-        {active && (
-          <Ionicons
-            name="checkmark-circle"
-            size={22}
-            color={theme.colors.accent[400]}
-          />
-        )}
-      </Pressable>
-    </Animated.View>
-  );
-};
-
-const optionStyles = StyleSheet.create({
-  card: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 14,
-    gap: 12,
-  },
-  iconCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  label: { fontWeight: '700' },
-  desc: { lineHeight: 16, marginTop: 2 },
-});
-
 // ─────────────────────────────────────────────
 // ProfileSetupScreen: stepper de primer uso.
 // El navigator lo muestra mientras profile === null; al guardar,
@@ -316,7 +164,7 @@ export const ProfileSetupScreen: FC = () => {
   const cycleMins = age ? getAdjustedCycleLengthMinutes(Number(age)) : null;
   const optimalWindow = getOptimalSleepWindow(chronotype);
 
-  const stepTitles: Array<{ title: string; subtitle: string }> = [
+  const stepTitles: { title: string; subtitle: string }[] = [
     {
       title: firstName ? `Hola, ${firstName} 👋` : 'Cuéntanos de ti',
       subtitle:

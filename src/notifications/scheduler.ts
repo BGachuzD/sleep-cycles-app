@@ -1,7 +1,9 @@
 // src/notifications/scheduler.ts
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+
+import { logger } from '@/lib/logger';
 
 const NOTIFICATION_KEYS_STORAGE = 'scheduledNotifications/v1';
 
@@ -15,7 +17,7 @@ async function getScheduledMap(): Promise<ScheduledMap> {
     if (!parsed || typeof parsed !== 'object') return {};
     return parsed as ScheduledMap;
   } catch (error) {
-    console.warn('Error loading notification map', error);
+    logger.warn('Error loading notification map', error);
     return {};
   }
 }
@@ -24,7 +26,7 @@ async function setScheduledMap(map: ScheduledMap): Promise<void> {
   try {
     await AsyncStorage.setItem(NOTIFICATION_KEYS_STORAGE, JSON.stringify(map));
   } catch (error) {
-    console.warn('Error saving notification map', error);
+    logger.warn('Error saving notification map', error);
   }
 }
 
@@ -74,7 +76,7 @@ export async function scheduleLocalNotificationAtDate(params: {
 
     return id;
   } catch (err) {
-    console.warn('Error scheduling notification', err);
+    logger.warn('Error scheduling notification', err);
     return null;
   }
 }
@@ -119,7 +121,11 @@ export async function scheduleSmartWakeAlarm(params: {
   keyBase: string;
   windowStart: Date;
   windowEnd: Date;
-}): Promise<{ startId: string | null; centerId: string | null; endId: string | null }> {
+}): Promise<{
+  startId: string | null;
+  centerId: string | null;
+  endId: string | null;
+}> {
   const { keyBase, windowStart, windowEnd } = params;
   const centerMs = (windowStart.getTime() + windowEnd.getTime()) / 2;
   const center = new Date(centerMs);
@@ -165,7 +171,7 @@ export async function cancelNotification(id: string) {
     );
     await setScheduledMap(Object.fromEntries(updatedEntries));
   } catch (err) {
-    console.warn('Error cancelling notification', err);
+    logger.warn('Error cancelling notification', err);
   }
 }
 
@@ -177,7 +183,7 @@ export async function cancelAllNotifications() {
     await Notifications.cancelAllScheduledNotificationsAsync();
     await AsyncStorage.removeItem(NOTIFICATION_KEYS_STORAGE);
   } catch (err) {
-    console.warn('Error cancelling all notifications', err);
+    logger.warn('Error cancelling all notifications', err);
   }
 }
 
@@ -221,7 +227,7 @@ export async function scheduleDailyLogReminder(params: {
     await setScheduledMap(map);
     return id;
   } catch (err) {
-    console.warn('Error scheduling daily log reminder', err);
+    logger.warn('Error scheduling daily log reminder', err);
     return null;
   }
 }
@@ -271,7 +277,7 @@ export async function scheduleWeeklyRecapReminder(params: {
     await setScheduledMap(map);
     return id;
   } catch (err) {
-    console.warn('Error scheduling weekly recap reminder', err);
+    logger.warn('Error scheduling weekly recap reminder', err);
     return null;
   }
 }
@@ -285,7 +291,7 @@ export async function listScheduledNotifications(): Promise<
   try {
     return await Notifications.getAllScheduledNotificationsAsync();
   } catch (err) {
-    console.warn('Error listing notifications', err);
+    logger.warn('Error listing notifications', err);
     return [];
   }
 }

@@ -1,6 +1,6 @@
-import React, { type ReactNode } from 'react';
-import { TextInput, View, type TextInputProps } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import React, { type ReactNode } from 'react';
+import { TextInput, type TextInputProps, View } from 'react-native';
 
 import { useAppTheme } from '@/theme/ThemeProvider';
 

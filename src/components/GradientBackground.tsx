@@ -1,5 +1,5 @@
 import React, { type FC } from 'react';
-import { StyleSheet, View, useWindowDimensions } from 'react-native';
+import { StyleSheet, useWindowDimensions, View } from 'react-native';
 
 import { useAppTheme } from '../theme/ThemeProvider';
 

@@ -22,7 +22,9 @@ export interface OptimalSleepWindow {
   label: string;
 }
 
-export function getOptimalSleepWindow(chronotype?: Chronotype): OptimalSleepWindow {
+export function getOptimalSleepWindow(
+  chronotype?: Chronotype,
+): OptimalSleepWindow {
   switch (chronotype) {
     case 'morning':
       return {
@@ -174,7 +176,11 @@ export function buildDerivedProfile(
 
   const baseEff = getBaseSleepEfficiency(profile.age);
   const sleepEfficiency = adjustEfficiencyForBMI(baseEff, bmi);
-  const latencyMinutes = getLatencyMinutes(profile.age, profile.gender, profile.chronotype);
+  const latencyMinutes = getLatencyMinutes(
+    profile.age,
+    profile.gender,
+    profile.chronotype,
+  );
 
   return {
     bmi,

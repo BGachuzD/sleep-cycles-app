@@ -1,13 +1,13 @@
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import React, { type ReactNode } from 'react';
 import {
   ActivityIndicator,
   Pressable,
-  Text,
   type StyleProp,
+  Text,
   type ViewStyle,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import Animated from 'react-native-reanimated';
 
 import { usePressScale } from '@/hooks/usePressScale';

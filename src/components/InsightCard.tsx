@@ -1,13 +1,13 @@
+import { Ionicons } from '@expo/vector-icons';
 import React, { FC } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import Animated from 'react-native-reanimated';
 
-import { usePressScale } from '../hooks/usePressScale';
 import { usePremium } from '../context/EntitlementsContext';
-import { useAppTheme } from '../theme/ThemeProvider';
-import type { AppTheme } from '../theme/theme';
 import type { Insight, InsightSeverity } from '../domain/sleepInsights';
+import { usePressScale } from '../hooks/usePressScale';
+import type { AppTheme } from '../theme/theme';
+import { useAppTheme } from '../theme/ThemeProvider';
 
 function severityColor(severity: InsightSeverity, theme: AppTheme): string {
   switch (severity) {

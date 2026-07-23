@@ -5,10 +5,8 @@
 // Diseño defensivo:
 // - Todos los métodos se comportan como "no-op" fuera de iOS o si HealthKit
 //   no está disponible. Devuelven null/false/[] en lugar de lanzar.
-// - Los errores se loguean con console.error pero nunca se propagan hacia
+// - Los errores se loguean con logger.error pero nunca se propagan hacia
 //   los hooks/UI. La app debe poder funcionar sin HealthKit.
-
-import { Platform } from 'react-native';
 
 import HealthKit, {
   AuthorizationStatus,
@@ -17,6 +15,9 @@ import HealthKit, {
   queryCategorySamples,
   requestAuthorization,
 } from '@kingstinct/react-native-healthkit';
+import { Platform } from 'react-native';
+
+import { logger } from '@/lib/logger';
 
 const SLEEP_ANALYSIS = 'HKCategoryTypeIdentifierSleepAnalysis' as const;
 
@@ -62,7 +63,7 @@ export async function isHealthKitAvailable(): Promise<boolean> {
   try {
     return isHealthDataAvailable();
   } catch (err) {
-    console.error('[HealthKit] availability check failed', err);
+    logger.error('[HealthKit] availability check failed', err);
     return false;
   }
 }
@@ -92,7 +93,7 @@ export async function requestHealthKitPermissions(): Promise<boolean> {
     // La forma confiable de validar es intentar una query pequeña.
     return await hasHealthKitPermissions();
   } catch (err) {
-    console.error('[HealthKit] requestAuthorization failed', err);
+    logger.error('[HealthKit] requestAuthorization failed', err);
     return false;
   }
 }
@@ -129,7 +130,7 @@ export async function hasHealthKitPermissions(): Promise<boolean> {
     });
     return true;
   } catch (err) {
-    console.error('[HealthKit] hasHealthKitPermissions check failed', err);
+    logger.error('[HealthKit] hasHealthKitPermissions check failed', err);
     return false;
   }
 }
@@ -157,7 +158,7 @@ async function querySleepSamples(
     });
     return samples as unknown as CategorySample[];
   } catch (err) {
-    console.error('[HealthKit] querySleepSamples failed', err);
+    logger.error('[HealthKit] querySleepSamples failed', err);
     return [];
   }
 }
@@ -234,7 +235,7 @@ export async function fetchSleepDataForDate(
     const samples = await querySleepSamples(from, to);
     return consolidateSamples(samples, date);
   } catch (err) {
-    console.error('[HealthKit] fetchSleepDataForDate failed', err);
+    logger.error('[HealthKit] fetchSleepDataForDate failed', err);
     return null;
   }
 }
@@ -269,7 +270,7 @@ export async function fetchSleepDataForRange(
     }
     return result;
   } catch (err) {
-    console.error('[HealthKit] fetchSleepDataForRange failed', err);
+    logger.error('[HealthKit] fetchSleepDataForRange failed', err);
     return [];
   }
 }

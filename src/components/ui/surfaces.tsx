@@ -1,7 +1,7 @@
 import React, { type ReactNode } from 'react';
 import {
-  View,
   type StyleProp,
+  View,
   type ViewProps,
   type ViewStyle,
 } from 'react-native';

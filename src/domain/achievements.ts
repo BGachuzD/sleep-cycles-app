@@ -53,12 +53,54 @@ export function computeAchievements(
   const dreamNights = entries.filter((e) => e.dreamed).length + dreamCount;
 
   const list: Achievement[] = [
-    milestone('first-night', 'Primera noche', 'Registra tu primera noche', 'moon', total, 1),
-    milestone('week-logged', 'Una semana', 'Registra 7 noches', 'calendar', total, 7),
-    milestone('streak-7', 'Racha de 7', '7 noches seguidas en tu objetivo', 'flame', stats.longestStreak, 7),
-    milestone('nights-30', 'Constante', 'Registra 30 noches', 'ribbon', total, 30),
-    milestone('first-dream', 'Primer sueño', 'Anota tu primer sueño', 'cloudy-night', dreamNights, 1),
-    milestone('dream-week', 'Soñador', 'Anota 7 sueños en tu bitácora', 'sparkles', dreamNights, 7),
+    milestone(
+      'first-night',
+      'Primera noche',
+      'Registra tu primera noche',
+      'moon',
+      total,
+      1,
+    ),
+    milestone(
+      'week-logged',
+      'Una semana',
+      'Registra 7 noches',
+      'calendar',
+      total,
+      7,
+    ),
+    milestone(
+      'streak-7',
+      'Racha de 7',
+      '7 noches seguidas en tu objetivo',
+      'flame',
+      stats.longestStreak,
+      7,
+    ),
+    milestone(
+      'nights-30',
+      'Constante',
+      'Registra 30 noches',
+      'ribbon',
+      total,
+      30,
+    ),
+    milestone(
+      'first-dream',
+      'Primer sueño',
+      'Anota tu primer sueño',
+      'cloudy-night',
+      dreamNights,
+      1,
+    ),
+    milestone(
+      'dream-week',
+      'Soñador',
+      'Anota 7 sueños en tu bitácora',
+      'sparkles',
+      dreamNights,
+      7,
+    ),
   ];
 
   // Desbloqueados primero, preservando el orden de definición dentro de cada grupo.

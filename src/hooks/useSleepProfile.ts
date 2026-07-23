@@ -1,5 +1,8 @@
-import { useEffect, useState, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useCallback, useEffect, useState } from 'react';
+
+import { logger } from '@/lib/logger';
+
 import type { SleepProfile } from '../domain/sleepProfile';
 import {
   loadProfile,
@@ -56,7 +59,7 @@ export function useSleepProfile(userId: string | null) {
           setProfile(null);
         }
       } catch (err) {
-        console.warn('Error loading sleep profile from storage', err);
+        logger.warn('Error loading sleep profile from storage', err);
         if (!cancelled) setProfile(null);
       }
 
@@ -79,7 +82,7 @@ export function useSleepProfile(userId: string | null) {
           await AsyncStorage.setItem(storageKey, JSON.stringify(remote));
         }
       } catch (err) {
-        console.warn('Error syncing sleep profile from Supabase', err);
+        logger.warn('Error syncing sleep profile from Supabase', err);
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -89,24 +92,27 @@ export function useSleepProfile(userId: string | null) {
     };
   }, [userId]);
 
-  const saveProfile = useCallback(async (p: SleepProfile) => {
-    const storageKey = makeStorageKey(userId);
-    setProfile(p);
-    try {
-      await AsyncStorage.setItem(storageKey, JSON.stringify(p));
-    } catch (err) {
-      console.warn('Error saving sleep profile in storage', err);
-    }
+  const saveProfile = useCallback(
+    async (p: SleepProfile) => {
+      const storageKey = makeStorageKey(userId);
+      setProfile(p);
+      try {
+        await AsyncStorage.setItem(storageKey, JSON.stringify(p));
+      } catch (err) {
+        logger.warn('Error saving sleep profile in storage', err);
+      }
 
-    if (!userId) return;
+      if (!userId) return;
 
-    try {
-      await saveProfileToTable(userId, p);
-      await saveProfileToAuthMetadata(p);
-    } catch (err) {
-      console.warn('Error syncing sleep profile to Supabase', err);
-    }
-  }, [userId]);
+      try {
+        await saveProfileToTable(userId, p);
+        await saveProfileToAuthMetadata(p);
+      } catch (err) {
+        logger.warn('Error syncing sleep profile to Supabase', err);
+      }
+    },
+    [userId],
+  );
 
   return {
     profile,

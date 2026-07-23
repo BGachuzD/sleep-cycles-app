@@ -1,8 +1,9 @@
 // src/context/SleepRoutineContext.tsx
-import React, { createContext, useContext, type ReactNode } from 'react';
+import React, { createContext, type ReactNode, useContext } from 'react';
+
+import type { RoutineStep } from '../domain/sleepRoutine';
 import { useSleepRoutine } from '../hooks/useSleepRoutine';
 import { useAuth } from './AuthContext';
-import type { RoutineStep } from '../domain/sleepRoutine';
 
 type SleepRoutineContextValue = {
   steps: RoutineStep[];
@@ -15,7 +16,9 @@ type SleepRoutineContextValue = {
   refresh: () => Promise<void>;
 };
 
-const SleepRoutineContext = createContext<SleepRoutineContextValue | undefined>(undefined);
+const SleepRoutineContext = createContext<SleepRoutineContextValue | undefined>(
+  undefined,
+);
 
 export const SleepRoutineProvider = ({ children }: { children: ReactNode }) => {
   const { user } = useAuth();
@@ -30,6 +33,9 @@ export const SleepRoutineProvider = ({ children }: { children: ReactNode }) => {
 
 export function useSleepRoutineContext(): SleepRoutineContextValue {
   const ctx = useContext(SleepRoutineContext);
-  if (!ctx) throw new Error('useSleepRoutineContext must be used within SleepRoutineProvider');
+  if (!ctx)
+    throw new Error(
+      'useSleepRoutineContext must be used within SleepRoutineProvider',
+    );
   return ctx;
 }

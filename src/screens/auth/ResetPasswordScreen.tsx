@@ -6,6 +6,7 @@
 // `enterPasswordRecovery()` en el AuthContext, por lo que el RootNavigator
 // muestra esta pantalla en lugar del flujo normal.
 
+import { Ionicons } from '@expo/vector-icons';
 import React, { FC, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -19,17 +20,16 @@ import {
   Text,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { useAuth } from '../../context/AuthContext';
 import { AuthHero } from '../../components/AuthHero';
 import { FieldInput } from '../../components/FieldInput';
 import { PrimaryCTA } from '../../components/PrimaryCTA';
+import { useAuth } from '../../context/AuthContext';
 import { usePressScale } from '../../hooks/usePressScale';
-import { useAppTheme } from '../../theme/ThemeProvider';
 import type { AppTheme } from '../../theme/theme';
+import { useAppTheme } from '../../theme/ThemeProvider';
 
 const { width, height } = Dimensions.get('window');
 const AMBIENT_DIAMETER = Math.max(width, height);

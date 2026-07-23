@@ -1,3 +1,6 @@
+import { Ionicons } from '@expo/vector-icons';
+import { BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
+import * as Haptics from 'expo-haptics';
 import React, {
   FC,
   useCallback,
@@ -6,36 +9,22 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
+import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInUp } from 'react-native-reanimated';
-import { BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
-import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-import type { RootStackParamList } from '../../App';
-import { GradientBackground } from '../components/GradientBackground';
 import { FloatingDrawerButton } from '../components/FloatingDrawerButton';
 import { FloatingHomeButton } from '../components/FloatingHomeButton';
-import { AppBottomSheetModal, LoadingState, useToast } from '../components/ui';
+import { GradientBackground } from '../components/GradientBackground';
 import { PrimaryCTA } from '../components/PrimaryCTA';
+import { AppBottomSheetModal, LoadingState, useToast } from '../components/ui';
 import { WheelTimePicker } from '../components/WheelTimePicker';
-import { usePressScale } from '../hooks/usePressScale';
 import { useSleepProfileContext } from '../context/SleepProfileContext';
-import { scheduleUniqueNotificationAtDate } from '../notifications/scheduler';
 import { isTimeOptimalForChronotype } from '../domain/sleepProfile';
-import { useAppTheme } from '../theme/ThemeProvider';
 import { useTabBarContentPadding } from '../navigation/tabBarLayout';
+import { scheduleUniqueNotificationAtDate } from '../notifications/scheduler';
 import type { AppTheme } from '../theme/theme';
+import { useAppTheme } from '../theme/ThemeProvider';
 import {
   formatDuration,
   formatTime,
@@ -43,24 +32,14 @@ import {
   getSleepTimesForWakeDateForProfile,
   type SleepTimeOption,
 } from '../utils/sleep';
-
-type Props = NativeStackScreenProps<RootStackParamList, 'WakeAt'>;
+import { DetailRow } from './wakeAt/DetailRow';
+import { minutesUntil, scoreToStars } from './wakeAt/helpers';
+import { ScoreStars } from './wakeAt/ScoreStars';
+import { SleepOptionCard } from './wakeAt/SleepOptionCard';
 
 // ─────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────
-function minutesUntil(target: Date, now: Date): number {
-  return Math.max(0, Math.round((target.getTime() - now.getTime()) / 60_000));
-}
-
-function scoreToStars(score: number): number {
-  if (score >= 20) return 5;
-  if (score >= 12) return 4;
-  if (score >= 5) return 3;
-  if (score >= 0) return 2;
-  return 1;
-}
-
 function getCycleEducation(cycles: number): string {
   switch (cycles) {
     case 1:
@@ -99,218 +78,6 @@ function buildWakeDate(
   }
   return next;
 }
-
-// ─────────────────────────────────────────────
-// ScoreStars
-// ─────────────────────────────────────────────
-const ScoreStars: FC<{ stars: number; theme: AppTheme }> = ({
-  stars,
-  theme,
-}) => (
-  <View style={starStyles.row} accessibilityLabel={`${stars} de 5 estrellas`}>
-    {[1, 2, 3, 4, 5].map((i) => (
-      <Ionicons
-        key={i}
-        name={i <= stars ? 'star' : 'star-outline'}
-        size={12}
-        color={i <= stars ? theme.colors.accent[400] : theme.colors.textMuted}
-      />
-    ))}
-  </View>
-);
-
-const starStyles = StyleSheet.create({
-  row: { flexDirection: 'row', gap: 2 },
-});
-
-// ─────────────────────────────────────────────
-// SleepOptionCard: fila de "duérmete a las HH:MM"
-// ─────────────────────────────────────────────
-const SleepOptionCard: FC<{
-  option: SleepTimeOption;
-  now: Date;
-  isOptimalChronotype: boolean;
-  onPress: () => void;
-  theme: AppTheme;
-}> = ({ option, now, isOptimalChronotype, onPress, theme }) => {
-  const { animatedStyle, onPressIn, onPressOut } = usePressScale();
-  const isRecommended = option.isRecommended;
-  const stars = scoreToStars(option.score);
-  const untilSleep = minutesUntil(option.sleepDate, now);
-  const inPast = option.sleepDate.getTime() < now.getTime();
-
-  return (
-    <Animated.View style={animatedStyle}>
-      <Pressable
-        onPress={onPress}
-        onPressIn={onPressIn}
-        onPressOut={onPressOut}
-        accessibilityRole="button"
-        accessibilityLabel={`Dormir a las ${formatTime(option.sleepDate)}, ${option.cycles} ciclos`}
-        style={[
-          optionStyles.card,
-          {
-            backgroundColor: theme.colors.surface,
-            borderColor: isRecommended
-              ? theme.colors.accent[500]
-              : theme.colors.border,
-            borderWidth: isRecommended ? 1.5 : 1,
-            borderRadius: theme.radius.xl,
-            padding: theme.spacing.xl,
-            opacity: inPast ? 0.55 : 1,
-          },
-        ]}
-      >
-        <View style={optionStyles.left}>
-          <Text
-            style={[
-              optionStyles.time,
-              {
-                color: theme.colors.textPrimary,
-                fontSize: theme.type.title2,
-              },
-            ]}
-          >
-            {formatTime(option.sleepDate)}
-          </Text>
-          <Text
-            style={[
-              optionStyles.cycles,
-              { color: theme.colors.textMuted, fontSize: theme.type.caption },
-            ]}
-          >
-            {option.cycles} {option.cycles === 1 ? 'CICLO' : 'CICLOS'} ·{' '}
-            {formatDuration(option.totalMinutes)}
-          </Text>
-          <Text
-            style={[
-              optionStyles.until,
-              { color: theme.colors.textSecondary, fontSize: theme.type.small },
-            ]}
-          >
-            {inPast
-              ? 'Esta hora ya pasó'
-              : `Acuéstate en ${formatDuration(untilSleep)}`}
-          </Text>
-        </View>
-
-        <View style={optionStyles.right}>
-          <ScoreStars stars={stars} theme={theme} />
-          {option.cycles <= 2 && (
-            <View
-              style={[
-                optionStyles.badgeMuted,
-                {
-                  backgroundColor: `${theme.colors.warning}1F`,
-                  borderColor: `${theme.colors.warning}55`,
-                },
-              ]}
-            >
-              <Text
-                style={[
-                  optionStyles.badgeMutedText,
-                  { color: theme.colors.warning },
-                ]}
-              >
-                CORTO
-              </Text>
-            </View>
-          )}
-          {isOptimalChronotype && (
-            <View
-              style={[
-                optionStyles.badgeMuted,
-                {
-                  backgroundColor: `${theme.colors.accent[500]}1F`,
-                  borderColor: `${theme.colors.accent[500]}55`,
-                },
-              ]}
-            >
-              <Text
-                style={[
-                  optionStyles.badgeMutedText,
-                  { color: theme.colors.accent[300] },
-                ]}
-              >
-                ÓPTIMO
-              </Text>
-            </View>
-          )}
-          <Ionicons
-            name="chevron-forward"
-            size={18}
-            color={theme.colors.textMuted}
-          />
-        </View>
-      </Pressable>
-    </Animated.View>
-  );
-};
-
-const optionStyles = StyleSheet.create({
-  card: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  left: { flex: 1, gap: 4 },
-  time: {
-    fontWeight: '700',
-    letterSpacing: -0.5,
-    fontVariant: ['tabular-nums'],
-  },
-  cycles: { fontWeight: '700', letterSpacing: 0.5 },
-  until: { fontWeight: '600', marginTop: 2 },
-  right: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  badgeMuted: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 999,
-    borderWidth: 1,
-  },
-  badgeMutedText: { fontSize: 10, fontWeight: '700', letterSpacing: 0.5 },
-});
-
-// ─────────────────────────────────────────────
-// DetailRow del sheet
-// ─────────────────────────────────────────────
-const DetailRow: FC<{
-  icon: keyof typeof Ionicons.glyphMap;
-  label: string;
-  value: string;
-  theme: AppTheme;
-}> = ({ icon, label, value, theme }) => (
-  <View style={detailStyles.row}>
-    <Ionicons name={icon} size={16} color={theme.colors.textMuted} />
-    <Text
-      style={[
-        detailStyles.label,
-        { color: theme.colors.textSecondary, fontSize: theme.type.body },
-      ]}
-    >
-      {label}
-    </Text>
-    <Text
-      style={[
-        detailStyles.value,
-        { color: theme.colors.textPrimary, fontSize: theme.type.body },
-      ]}
-    >
-      {value}
-    </Text>
-  </View>
-);
-
-const detailStyles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    paddingVertical: 8,
-  },
-  label: { flex: 1, fontWeight: '500' },
-  value: { fontWeight: '700', fontVariant: ['tabular-nums'] },
-});
 
 // ─────────────────────────────────────────────
 // WakeAtScreen

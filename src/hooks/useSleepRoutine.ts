@@ -1,17 +1,20 @@
 // src/hooks/useSleepRoutine.ts
-import { useEffect, useState, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useCallback, useEffect, useState } from 'react';
+
+import { logger } from '@/lib/logger';
+
 import {
   DEFAULT_ROUTINE_STEPS,
   mergeWithDefaults,
-  sortSteps,
   type RoutineStep,
+  sortSteps,
 } from '../domain/sleepRoutine';
 import {
+  deleteAllRoutineSteps,
+  deleteRoutineStep,
   loadRoutine,
   upsertRoutineStep,
-  deleteRoutineStep,
-  deleteAllRoutineSteps,
 } from '../services/sleepRoutineService';
 
 const KEY_PREFIX = 'sleepRoutine/v1';
@@ -39,7 +42,7 @@ export function useSleepRoutine(userId: string | null) {
           if (Array.isArray(parsed)) setSteps(parsed);
         }
       } catch (err) {
-        console.warn('Error loading routine from cache', err);
+        logger.warn('Error loading routine from cache', err);
       }
 
       // 2. Sincronizar desde Supabase si hay sesión
@@ -52,62 +55,81 @@ export function useSleepRoutine(userId: string | null) {
             await AsyncStorage.setItem(key, JSON.stringify(merged));
           }
         } catch (err) {
-          console.warn('Error syncing routine from Supabase', err);
+          logger.warn('Error syncing routine from Supabase', err);
         }
       }
 
       if (!cancelled) setLoading(false);
     })();
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [userId]);
 
-  const persist = useCallback(async (updated: RoutineStep[]) => {
-    try {
-      await AsyncStorage.setItem(makeKey(userId), JSON.stringify(updated));
-    } catch (err) {
-      console.warn('Error persisting routine to cache', err);
-    }
-  }, [userId]);
+  const persist = useCallback(
+    async (updated: RoutineStep[]) => {
+      try {
+        await AsyncStorage.setItem(makeKey(userId), JSON.stringify(updated));
+      } catch (err) {
+        logger.warn('Error persisting routine to cache', err);
+      }
+    },
+    [userId],
+  );
 
-  const toggleStep = useCallback(async (id: string) => {
-    let changed: RoutineStep | undefined;
-    setSteps((prev) => {
-      const updated = prev.map((s) =>
-        s.id === id ? (changed = { ...s, enabled: !s.enabled }) : s,
-      );
-      persist(updated);
-      return updated;
-    });
-    if (userId && changed) await upsertRoutineStep(userId, changed);
-  }, [persist, userId]);
+  const toggleStep = useCallback(
+    async (id: string) => {
+      let changed: RoutineStep | undefined;
+      setSteps((prev) => {
+        const updated = prev.map((s) =>
+          s.id === id ? (changed = { ...s, enabled: !s.enabled }) : s,
+        );
+        persist(updated);
+        return updated;
+      });
+      if (userId && changed) await upsertRoutineStep(userId, changed);
+    },
+    [persist, userId],
+  );
 
-  const updateStep = useCallback(async (step: RoutineStep) => {
-    setSteps((prev) => {
-      const updated = sortSteps(prev.map((s) => s.id === step.id ? step : s));
-      persist(updated);
-      return updated;
-    });
-    if (userId) await upsertRoutineStep(userId, step);
-  }, [persist, userId]);
+  const updateStep = useCallback(
+    async (step: RoutineStep) => {
+      setSteps((prev) => {
+        const updated = sortSteps(
+          prev.map((s) => (s.id === step.id ? step : s)),
+        );
+        persist(updated);
+        return updated;
+      });
+      if (userId) await upsertRoutineStep(userId, step);
+    },
+    [persist, userId],
+  );
 
-  const addStep = useCallback(async (step: RoutineStep) => {
-    setSteps((prev) => {
-      const updated = sortSteps([...prev, step]);
-      persist(updated);
-      return updated;
-    });
-    if (userId) await upsertRoutineStep(userId, step);
-  }, [persist, userId]);
+  const addStep = useCallback(
+    async (step: RoutineStep) => {
+      setSteps((prev) => {
+        const updated = sortSteps([...prev, step]);
+        persist(updated);
+        return updated;
+      });
+      if (userId) await upsertRoutineStep(userId, step);
+    },
+    [persist, userId],
+  );
 
-  const deleteStep = useCallback(async (id: string) => {
-    setSteps((prev) => {
-      const updated = prev.filter((s) => s.id !== id);
-      persist(updated);
-      return updated;
-    });
-    if (userId) await deleteRoutineStep(userId, id);
-  }, [persist, userId]);
+  const deleteStep = useCallback(
+    async (id: string) => {
+      setSteps((prev) => {
+        const updated = prev.filter((s) => s.id !== id);
+        persist(updated);
+        return updated;
+      });
+      if (userId) await deleteRoutineStep(userId, id);
+    },
+    [persist, userId],
+  );
 
   const resetToDefaults = useCallback(async () => {
     setSteps(DEFAULT_ROUTINE_STEPS);
@@ -126,11 +148,20 @@ export function useSleepRoutine(userId: string | null) {
         await AsyncStorage.setItem(makeKey(userId), JSON.stringify(merged));
       }
     } catch (err) {
-      console.warn('Error refreshing routine', err);
+      logger.warn('Error refreshing routine', err);
     } finally {
       setLoading(false);
     }
   }, [userId]);
 
-  return { steps, loading, toggleStep, updateStep, addStep, deleteStep, resetToDefaults, refresh };
+  return {
+    steps,
+    loading,
+    toggleStep,
+    updateStep,
+    addStep,
+    deleteStep,
+    resetToDefaults,
+    refresh,
+  };
 }

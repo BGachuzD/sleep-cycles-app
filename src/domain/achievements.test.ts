@@ -1,6 +1,6 @@
 import { describe, expect, it } from '@jest/globals';
 
-import { computeAchievements, type Achievement } from './achievements';
+import { type Achievement, computeAchievements } from './achievements';
 import type { SleepLogEntry, SleepLogStats } from './sleepLog';
 
 const emptyStats: SleepLogStats = {
@@ -47,18 +47,26 @@ describe('computeAchievements', () => {
 
   it('con 7 noches, "una semana" se desbloquea', () => {
     const entries = Array.from({ length: 7 }, () => makeEntry());
-    expect(byId(computeAchievements(entries, emptyStats), 'week-logged').unlocked).toBe(true);
+    expect(
+      byId(computeAchievements(entries, emptyStats), 'week-logged').unlocked,
+    ).toBe(true);
   });
 
   it('la racha usa longestStreak de stats', () => {
     const stats: SleepLogStats = { ...emptyStats, longestStreak: 7 };
-    expect(byId(computeAchievements([makeEntry()], stats), 'streak-7').unlocked).toBe(true);
+    expect(
+      byId(computeAchievements([makeEntry()], stats), 'streak-7').unlocked,
+    ).toBe(true);
   });
 
   it('cuenta las noches con bitácora para los logros de sueño', () => {
     const entries = [makeEntry(true), makeEntry(false)];
-    expect(byId(computeAchievements(entries, emptyStats), 'first-dream').unlocked).toBe(true);
-    expect(byId(computeAchievements(entries, emptyStats), 'dream-week').progress).toEqual({
+    expect(
+      byId(computeAchievements(entries, emptyStats), 'first-dream').unlocked,
+    ).toBe(true);
+    expect(
+      byId(computeAchievements(entries, emptyStats), 'dream-week').progress,
+    ).toEqual({
       current: 1,
       total: 7,
     });

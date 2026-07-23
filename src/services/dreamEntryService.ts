@@ -1,6 +1,7 @@
 import type { DreamEntry } from '../domain/dreamEntry';
 import type { DreamMood } from '../domain/sleepLog';
 import { supabase } from '../lib/supabaseClient';
+import { logWriteError, mapRowsOrNull } from './supabaseHelpers';
 
 const DREAM_COLUMNS = 'id,user_id,logged_at,date,mood,tags,note';
 
@@ -28,24 +29,20 @@ function rowToEntry(row: DreamRow): DreamEntry {
 export async function loadDreamEntries(
   userId: string,
 ): Promise<DreamEntry[] | null> {
-  const { data, error } = await supabase
+  const result = await supabase
     .from('dream_entries')
     .select(DREAM_COLUMNS)
     .eq('user_id', userId)
     .order('logged_at', { ascending: false });
 
-  if (error) {
-    console.warn('Error loading dream entries from Supabase', error);
-    return null;
-  }
-  return (data as DreamRow[]).map(rowToEntry);
+  return mapRowsOrNull('load dream entries', result, rowToEntry);
 }
 
 export async function upsertDreamEntry(
   userId: string,
   entry: DreamEntry,
 ): Promise<void> {
-  const { error } = await supabase.from('dream_entries').upsert(
+  const result = await supabase.from('dream_entries').upsert(
     {
       id: entry.id,
       user_id: userId,
@@ -57,17 +54,17 @@ export async function upsertDreamEntry(
     },
     { onConflict: 'id' },
   );
-  if (error) console.warn('Error saving dream entry to Supabase', error);
+  logWriteError('save dream entry', result);
 }
 
 export async function deleteDreamEntry(
   userId: string,
   id: string,
 ): Promise<void> {
-  const { error } = await supabase
+  const result = await supabase
     .from('dream_entries')
     .delete()
     .eq('id', id)
     .eq('user_id', userId);
-  if (error) console.warn('Error deleting dream entry from Supabase', error);
+  logWriteError('delete dream entry', result);
 }

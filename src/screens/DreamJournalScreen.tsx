@@ -1,198 +1,44 @@
+import 'react-native-get-random-values';
+
+import * as Haptics from 'expo-haptics';
 import React, { FC, useCallback, useMemo, useState } from 'react';
 import {
   Alert,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
 import Animated, {
   FadeInDown,
   FadeInUp,
   LinearTransition,
 } from 'react-native-reanimated';
-import 'react-native-get-random-values';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { v4 as uuidv4 } from 'uuid';
 
-import { GradientBackground } from '../components/GradientBackground';
 import { FloatingHomeButton } from '../components/FloatingHomeButton';
-import { PrimaryCTA } from '../components/PrimaryCTA';
+import { GradientBackground } from '../components/GradientBackground';
 import { PremiumHint } from '../components/PremiumHint';
+import { PrimaryCTA } from '../components/PrimaryCTA';
 import { EmptyState, useToast } from '../components/ui';
-import { usePressScale } from '../hooks/usePressScale';
-import { usePremium } from '../context/EntitlementsContext';
 import { useDreamEntriesContext } from '../context/DreamEntriesContext';
+import { usePremium } from '../context/EntitlementsContext';
+import type { DreamEntry } from '../domain/dreamEntry';
 import {
   DREAM_TAGS,
-  FREE_DREAM_TAG_LIMIT,
+  type DreamMood,
   FREE_DREAM_NOTE_MAXLEN,
+  FREE_DREAM_TAG_LIMIT,
   PREMIUM_DREAM_NOTE_MAXLEN,
   todayDateString,
-  type DreamMood,
 } from '../domain/sleepLog';
-import type { DreamEntry } from '../domain/dreamEntry';
-import { formatTime } from '../utils/sleep';
-import { useAppTheme } from '../theme/ThemeProvider';
-import type { AppTheme } from '../theme/theme';
 import { useTabBarContentPadding } from '../navigation/tabBarLayout';
-
-const Chip: FC<{
-  label: string;
-  icon?: keyof typeof Ionicons.glyphMap;
-  active: boolean;
-  color?: string;
-  grow?: boolean;
-  onPress: () => void;
-  theme: AppTheme;
-}> = ({ label, icon, active, color, grow, onPress, theme }) => {
-  const { animatedStyle, onPressIn, onPressOut } = usePressScale(0.95);
-  const c = color ?? theme.colors.accent[500];
-  return (
-    <Animated.View style={[grow ? { flex: 1 } : null, animatedStyle]}>
-      <Pressable
-        onPress={onPress}
-        onPressIn={onPressIn}
-        onPressOut={onPressOut}
-        accessibilityRole="button"
-        accessibilityLabel={label}
-        style={[
-          styles.chip,
-          {
-            backgroundColor: active ? `${c}1F` : theme.colors.surfaceElevated,
-            borderColor: active ? c : theme.colors.border,
-            borderWidth: active ? 1.5 : 1,
-            borderRadius: theme.radius.md,
-          },
-        ]}
-      >
-        {icon && (
-          <Ionicons
-            name={icon}
-            size={16}
-            color={active ? c : theme.colors.textMuted}
-          />
-        )}
-        <Text
-          style={[
-            styles.chipLabel,
-            { color: active ? c : theme.colors.textSecondary },
-          ]}
-        >
-          {label}
-        </Text>
-      </Pressable>
-    </Animated.View>
-  );
-};
-
-function formatDreamWhen(dream: DreamEntry): string {
-  const dreamDate = new Date(`${dream.date}T12:00:00`);
-  const loggedAt = new Date(dream.loggedAt);
-  const date = dreamDate.toLocaleDateString('es-MX', {
-    day: 'numeric',
-    month: 'short',
-  });
-  return `Sueño del ${date} · anotado ${formatTime(loggedAt)}`;
-}
-
-const DreamCard: FC<{
-  dream: DreamEntry;
-  onDelete: () => void;
-  theme: AppTheme;
-}> = ({ dream, onDelete, theme }) => {
-  const moodColor =
-    dream.mood === 1
-      ? theme.colors.danger
-      : dream.mood === 2
-        ? theme.colors.success
-        : theme.colors.textMuted;
-  const moodIcon =
-    dream.mood === 1
-      ? 'thunderstorm-outline'
-      : dream.mood === 2
-        ? 'sparkles-outline'
-        : 'cloudy-night-outline';
-
-  return (
-    <View
-      style={[
-        styles.dreamCard,
-        {
-          backgroundColor: theme.colors.surface,
-          borderColor: theme.colors.border,
-          borderRadius: theme.radius.lg,
-        },
-      ]}
-    >
-      <View style={styles.dreamCardHeader}>
-        <View
-          style={[
-            styles.moodPill,
-            {
-              backgroundColor: `${moodColor}1F`,
-              borderColor: `${moodColor}55`,
-            },
-          ]}
-        >
-          <Ionicons name={moodIcon} size={14} color={moodColor} />
-        </View>
-        <Text style={[styles.dreamWhen, { color: theme.colors.textMuted }]}>
-          {formatDreamWhen(dream)}
-        </Text>
-        <Pressable
-          hitSlop={8}
-          onPress={onDelete}
-          accessibilityRole="button"
-          accessibilityLabel="Eliminar sueño"
-        >
-          <Ionicons
-            name="trash-outline"
-            size={16}
-            color={theme.colors.textMuted}
-          />
-        </Pressable>
-      </View>
-
-      {!!dream.tags?.length && (
-        <View style={styles.tagRow}>
-          {dream.tags.map((t) => (
-            <View
-              key={t}
-              style={[
-                styles.tagPill,
-                {
-                  backgroundColor: `${theme.colors.accent[500]}14`,
-                  borderColor: `${theme.colors.accent[500]}33`,
-                },
-              ]}
-            >
-              <Text
-                style={[
-                  styles.tagPillText,
-                  { color: theme.colors.accent[300] },
-                ]}
-              >
-                {t}
-              </Text>
-            </View>
-          ))}
-        </View>
-      )}
-
-      {!!dream.note && (
-        <Text style={[styles.dreamNote, { color: theme.colors.textSecondary }]}>
-          {dream.note}
-        </Text>
-      )}
-    </View>
-  );
-};
-
+import type { AppTheme } from '../theme/theme';
+import { useAppTheme } from '../theme/ThemeProvider';
+import { Chip } from './dreamJournal/Chip';
+import { DreamCard } from './dreamJournal/DreamCard';
 export const DreamJournalScreen: FC = () => {
   const { theme } = useAppTheme();
   const styles2 = useMemo(() => createStyles(theme), [theme]);
@@ -403,38 +249,6 @@ export const DreamJournalScreen: FC = () => {
     </SafeAreaView>
   );
 };
-
-const styles = StyleSheet.create({
-  chip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-  },
-  chipLabel: { fontWeight: '700', fontSize: 13 },
-  dreamCard: { borderWidth: 1, padding: 14, gap: 10 },
-  dreamCardHeader: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  moodPill: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-  },
-  dreamWhen: { flex: 1, fontSize: 12, fontWeight: '700' },
-  tagRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  tagPill: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 999,
-    borderWidth: 1,
-  },
-  tagPillText: { fontSize: 11, fontWeight: '700' },
-  dreamNote: { fontSize: 13, lineHeight: 18 },
-});
 
 const createStyles = (theme: AppTheme) =>
   StyleSheet.create({

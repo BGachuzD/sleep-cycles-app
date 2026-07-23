@@ -1,3 +1,5 @@
+import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import React, { FC, useCallback, useMemo, useState } from 'react';
 import {
   Pressable,
@@ -7,29 +9,27 @@ import {
   Text,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
-import { navigateToScreen } from '../navigation/navigateTo';
-import { useTabBarContentPadding } from '../navigation/tabBarLayout';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { GradientBackground } from '../components/GradientBackground';
-import { WeeklyRecapCard } from '../components/WeeklyRecapCard';
-import { InsightCard } from '../components/InsightCard';
-import { GoalCard } from '../components/GoalCard';
-import { StreakCalendar } from '../components/StreakCalendar';
 import { AchievementStrip } from '../components/AchievementStrip';
-import { useSleepLogContext } from '../context/SleepLogContext';
+import { GoalCard } from '../components/GoalCard';
+import { GradientBackground } from '../components/GradientBackground';
+import { InsightCard } from '../components/InsightCard';
+import { StreakCalendar } from '../components/StreakCalendar';
+import { WeeklyRecapCard } from '../components/WeeklyRecapCard';
 import { useDreamEntriesContext } from '../context/DreamEntriesContext';
+import { useSleepLogContext } from '../context/SleepLogContext';
 import { useSleepProfileContext } from '../context/SleepProfileContext';
+import { computeAchievements } from '../domain/achievements';
+import { computeInsights, SLEEP_TIPS } from '../domain/sleepInsights';
 import { computeStats } from '../domain/sleepLog';
 import { getAdjustedCycleLengthMinutes } from '../domain/sleepProfile';
-import { computeInsights, SLEEP_TIPS } from '../domain/sleepInsights';
-import { computeAchievements } from '../domain/achievements';
 import { computeWeeklyRecap } from '../domain/weeklyRecap';
-import { useAppTheme } from '../theme/ThemeProvider';
+import { navigateToScreen } from '../navigation/navigateTo';
+import { useTabBarContentPadding } from '../navigation/tabBarLayout';
 import type { AppTheme } from '../theme/theme';
+import { useAppTheme } from '../theme/ThemeProvider';
 
 const TipCard: FC<{ title: string; body: string; theme: AppTheme }> = ({
   title,

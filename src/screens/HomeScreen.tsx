@@ -1,42 +1,43 @@
 // src/screens/HomeScreen.tsx
-import React, { FC, useEffect, useMemo, useState } from 'react';
-import { View, Text, StyleSheet, Pressable, ScrollView } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import Animated, { FadeInDown } from 'react-native-reanimated';
-import { useNavigation } from '@react-navigation/native';
 import type { DrawerNavigationProp } from '@react-navigation/drawer';
+import { useNavigation } from '@react-navigation/native';
+import React, { FC, useEffect, useMemo, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { GradientBackground } from '../components/GradientBackground';
 import { FloatingDrawerButton } from '../components/FloatingDrawerButton';
-import { PrimaryCTA } from '../components/PrimaryCTA';
-import { InsightCard } from '../components/InsightCard';
 import { GoalCard } from '../components/GoalCard';
-import { usePressScale } from '../hooks/usePressScale';
-import { useSleepProfileContext } from '../context/SleepProfileContext';
-import { useSleepLogContext } from '../context/SleepLogContext';
+import { GradientBackground } from '../components/GradientBackground';
+import { InsightCard } from '../components/InsightCard';
+import { PrimaryCTA } from '../components/PrimaryCTA';
 import { useAuth } from '../context/AuthContext';
-import { useAppTheme } from '../theme/ThemeProvider';
-import type { AppTheme } from '../theme/theme';
+import { useSleepLogContext } from '../context/SleepLogContext';
+import { useSleepProfileContext } from '../context/SleepProfileContext';
+import { computeInsights } from '../domain/sleepInsights';
 import {
-  getWakeTimesFromNowForProfile,
-  formatTime,
-  formatDuration,
-} from '../utils/sleep';
-import {
-  computeStats,
-  computeSleepMinutes,
   computeCompleteCycles,
+  computeSleepMinutes,
+  computeStats,
   todayDateString,
 } from '../domain/sleepLog';
 import {
   getAdjustedCycleLengthMinutes,
   getOptimalSleepWindow,
 } from '../domain/sleepProfile';
-import { computeInsights } from '../domain/sleepInsights';
 import type { AppDrawerParamList } from '../navigation/AppDrawerNavigator';
 import { navigateToScreen } from '../navigation/navigateTo';
 import { useTabBarContentPadding } from '../navigation/tabBarLayout';
+import type { AppTheme } from '../theme/theme';
+import { useAppTheme } from '../theme/ThemeProvider';
+import {
+  formatDuration,
+  formatTime,
+  getWakeTimesFromNowForProfile,
+} from '../utils/sleep';
+import { AnchorCard } from './home/AnchorCard';
+import { QuickNavItem } from './home/QuickNavItem';
 
 type TimeContext = 'evening' | 'night' | 'morning' | 'afternoon';
 
@@ -86,62 +87,16 @@ const TIME_CONFIG: Record<TimeContext, ContextConfig> = {
   },
 };
 
-const QUICK_NAV: Array<{
+const QUICK_NAV: {
   label: string;
   icon: keyof typeof Ionicons.glyphMap;
   screen: keyof AppDrawerParamList;
-}> = [
+}[] = [
   { label: 'Dormir', icon: 'moon-outline', screen: 'SleepNow' },
   { label: 'Despertar', icon: 'alarm-outline', screen: 'WakeAt' },
   { label: 'Siesta', icon: 'bed-outline', screen: 'Nap' },
   { label: 'Rutina', icon: 'list-outline', screen: 'SleepRoutine' },
 ];
-
-// ─────────────────────────────────────────────
-// QuickNavItem: card pequeño tap-able con spring
-// ─────────────────────────────────────────────
-const QuickNavItem: FC<{
-  label: string;
-  icon: keyof typeof Ionicons.glyphMap;
-  onPress: () => void;
-  theme: AppTheme;
-}> = ({ label, icon, onPress, theme }) => {
-  const { animatedStyle, onPressIn, onPressOut } = usePressScale(0.93);
-  return (
-    <Animated.View style={[{ width: '47%' }, animatedStyle]}>
-      <Pressable
-        onPress={onPress}
-        onPressIn={onPressIn}
-        onPressOut={onPressOut}
-        style={[
-          quickStyles.item,
-          {
-            backgroundColor: theme.colors.surface,
-            borderRadius: theme.radius.lg,
-            padding: theme.spacing.lg,
-            borderColor: theme.colors.border,
-          },
-        ]}
-      >
-        <Ionicons name={icon} size={24} color={theme.colors.accent[400]} />
-        <Text
-          style={[
-            quickStyles.label,
-            { color: theme.colors.textPrimary, fontSize: theme.type.small },
-          ]}
-        >
-          {label}
-        </Text>
-      </Pressable>
-    </Animated.View>
-  );
-};
-
-const quickStyles = StyleSheet.create({
-  item: { alignItems: 'flex-start', gap: 10, borderWidth: 1 },
-  label: { fontWeight: '700' },
-});
-
 // ─────────────────────────────────────────────
 // HomeScreen
 // ─────────────────────────────────────────────
@@ -359,92 +314,6 @@ export const HomeScreen: FC = () => {
     </SafeAreaView>
   );
 };
-
-// ─────────────────────────────────────────────
-// AnchorCard reutilizable
-// ─────────────────────────────────────────────
-const AnchorCard: FC<{
-  theme: AppTheme;
-  eyebrow: string;
-  headline: string;
-  subline: string;
-  cta: string;
-  onPress: () => void;
-}> = ({ theme, eyebrow, headline, subline, cta, onPress }) => {
-  const { animatedStyle, onPressIn, onPressOut } = usePressScale(0.97);
-  return (
-    <Animated.View style={animatedStyle}>
-      <Pressable
-        onPress={onPress}
-        onPressIn={onPressIn}
-        onPressOut={onPressOut}
-        style={[
-          anchorStyles.card,
-          {
-            backgroundColor: theme.colors.surface,
-            borderColor: theme.colors.border,
-            borderRadius: theme.radius.xl,
-            padding: theme.spacing.xl,
-          },
-        ]}
-      >
-        <Text
-          style={[
-            anchorStyles.eyebrow,
-            { color: theme.colors.textMuted, fontSize: theme.type.micro },
-          ]}
-        >
-          {eyebrow.toUpperCase()}
-        </Text>
-        <Text
-          style={[
-            anchorStyles.headline,
-            { color: theme.colors.textPrimary, fontSize: theme.type.title1 },
-          ]}
-        >
-          {headline}
-        </Text>
-        <Text
-          style={[
-            anchorStyles.subline,
-            { color: theme.colors.textSecondary, fontSize: theme.type.body },
-          ]}
-        >
-          {subline}
-        </Text>
-        <View style={anchorStyles.ctaRow}>
-          <Text
-            style={[
-              anchorStyles.ctaText,
-              { color: theme.colors.accent[400], fontSize: theme.type.small },
-            ]}
-          >
-            {cta}
-          </Text>
-          <Ionicons
-            name="chevron-forward"
-            size={16}
-            color={theme.colors.accent[400]}
-          />
-        </View>
-      </Pressable>
-    </Animated.View>
-  );
-};
-
-const anchorStyles = StyleSheet.create({
-  card: { borderWidth: 1, gap: 6 },
-  eyebrow: { fontWeight: '700', letterSpacing: 1 },
-  headline: { fontWeight: '700', marginTop: 4 },
-  subline: { marginTop: 2 },
-  ctaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginTop: 10,
-  },
-  ctaText: { fontWeight: '700' },
-});
 
 // ─────────────────────────────────────────────
 // Styles principales

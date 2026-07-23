@@ -1,8 +1,8 @@
+import type { SleepRecommendation } from '../domain/sleepEngine';
 import {
   computeSleepNowRecommendations,
   computeWakeAtRecommendations,
 } from '../domain/sleepEngine';
-import type { SleepRecommendation } from '../domain/sleepEngine';
 import type { SleepProfile } from '../domain/sleepProfile';
 
 export type WakeTimeOption = {

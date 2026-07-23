@@ -1,5 +1,6 @@
 import type { SleepProfile } from '../domain/sleepProfile';
 import { supabase } from '../lib/supabaseClient';
+import { logSupabaseError, logWriteError } from './supabaseHelpers';
 
 type SleepProfileRow = {
   user_id: string;
@@ -38,40 +39,49 @@ function profileToRow(userId: string, profile: SleepProfile): SleepProfileRow {
   };
 }
 
-export async function loadProfile(userId: string): Promise<SleepProfile | null> {
+export async function loadProfile(
+  userId: string,
+): Promise<SleepProfile | null> {
   const { data, error } = await supabase
     .from('sleep_profiles')
-    .select('user_id,age,weight_kg,height_cm,gender,chronotype,wake_hour,wake_minute,updated_at')
+    .select(
+      'user_id,age,weight_kg,height_cm,gender,chronotype,wake_hour,wake_minute,updated_at',
+    )
     .eq('user_id', userId)
     .maybeSingle();
 
   if (error) {
-    console.warn('Error loading sleep profile from sleep_profiles', error);
+    logSupabaseError('load sleep profile', error);
     return null;
   }
   if (!data) return null;
   return rowToProfile(data as SleepProfileRow);
 }
 
-export async function saveProfile(userId: string, profile: SleepProfile): Promise<void> {
-  const { error } = await supabase
+export async function saveProfile(
+  userId: string,
+  profile: SleepProfile,
+): Promise<void> {
+  const result = await supabase
     .from('sleep_profiles')
     .upsert(profileToRow(userId, profile), { onConflict: 'user_id' });
-  if (error) console.warn('Error saving sleep profile in sleep_profiles', error);
+  logWriteError('save sleep profile', result);
 }
 
 export async function loadProfileFromAuthMetadata(): Promise<unknown> {
   const { data, error } = await supabase.auth.getUser();
   if (error) {
-    console.warn('Error loading sleep profile from Supabase auth', error);
+    logSupabaseError('load sleep profile from auth metadata', error);
     return null;
   }
   return data.user?.user_metadata?.sleep_profile ?? null;
 }
 
-export async function saveProfileToAuthMetadata(profile: SleepProfile): Promise<void> {
-  const { error } = await supabase.auth.updateUser({
+export async function saveProfileToAuthMetadata(
+  profile: SleepProfile,
+): Promise<void> {
+  const result = await supabase.auth.updateUser({
     data: { sleep_profile: profile },
   });
-  if (error) console.warn('Error saving sleep profile to Supabase auth metadata', error);
+  logWriteError('save sleep profile to auth metadata', result);
 }

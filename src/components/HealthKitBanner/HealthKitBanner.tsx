@@ -4,15 +4,15 @@
 // SleepLogScreen y StatsScreen cuando la integración está disponible
 // pero no autorizada.
 
+import { LinearGradient } from 'expo-linear-gradient';
 import React, { FC, useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import Svg, { Path, Rect } from 'react-native-svg';
 
 import { usePressScale } from '../../hooks/usePressScale';
-import { useAppTheme } from '../../theme/ThemeProvider';
 import type { AppTheme } from '../../theme/theme';
+import { useAppTheme } from '../../theme/ThemeProvider';
 
 interface HealthKitBannerProps {
   onConnect: () => void;

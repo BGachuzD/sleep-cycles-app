@@ -1,53 +1,62 @@
 // App.tsx
+// react-native-gesture-handler debe cargarse como efecto secundario lo antes
+// posible; se conserva aparte del named import de GestureHandlerRootView (abajo).
+// eslint-disable-next-line import/no-duplicates
 import 'react-native-gesture-handler';
 import 'react-native-reanimated';
 import 'react-native-url-polyfill/auto';
 import 'react-native-get-random-values';
 
-import { useEffect } from 'react';
-import { Linking, Platform, View } from 'react-native';
-import { StatusBar } from 'expo-status-bar';
+import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import {
-  NavigationContainer,
-  DefaultTheme as NavigationDefaultTheme,
   DarkTheme as NavigationDarkTheme,
+  DefaultTheme as NavigationDefaultTheme,
+  NavigationContainer,
 } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import * as Notifications from 'expo-notifications';
+import { StatusBar } from 'expo-status-bar';
+import { useEffect } from 'react';
+import { Linking, Platform, View } from 'react-native';
+// eslint-disable-next-line import/no-duplicates
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 
-import { AppTabNavigator } from './src/navigation/AppTabNavigator';
-import { SleepNowScreen } from './src/screens/SleepNowScreen';
-import { WakeAtScreen } from './src/screens/WakeAtScreen';
-import { OnboardingScreen } from './src/screens/OnboardingScreen';
-import { ProfileSetupScreen } from './src/screens/ProfileSetupScreen';
-import { SleepProfileScreen } from './src/screens/SleepProfileScreen';
-import { SleepProfileProvider } from './src/context/SleepProfileContext';
+import { logger } from '@/lib/logger';
+
+import { AppErrorBoundary } from './src/components/ErrorBoundary';
+import { PaywallHost } from './src/components/Paywall';
+import { LoadingState, ToastProvider } from './src/components/ui';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
-import { EntitlementsProvider } from './src/context/EntitlementsContext';
-import { useOnboardingFlag } from './src/hooks/useOnboardingFlag';
-import { SignInScreen } from './src/screens/auth/SignInScreen';
-import { SignUpScreen } from './src/screens/auth/SignUpScreen';
-import { ForgotPasswordScreen } from './src/screens/auth/ForgotPasswordScreen';
-import { ResetPasswordScreen } from './src/screens/auth/ResetPasswordScreen';
-import { NotificationsManagerScreen } from './src/screens/NotificationsManagerScreen';
-import { supabase } from './src/lib/supabaseClient';
-import { OnboardingProvider } from './src/context/OnboardingContext';
-import { useSleepProfileContext } from './src/context/SleepProfileContext';
-import { SleepLogProvider } from './src/context/SleepLogContext';
-import { SleepGoalsProvider } from './src/context/SleepGoalsContext';
 import { DreamEntriesProvider } from './src/context/DreamEntriesContext';
+import { EntitlementsProvider } from './src/context/EntitlementsContext';
+import { OnboardingProvider } from './src/context/OnboardingContext';
+import { SleepGoalsProvider } from './src/context/SleepGoalsContext';
+import { SleepLogProvider } from './src/context/SleepLogContext';
+import {
+  SleepProfileProvider,
+  useSleepProfileContext,
+} from './src/context/SleepProfileContext';
 import { SleepRoutineProvider } from './src/context/SleepRoutineContext';
 import { HealthKitProvider } from './src/hooks/useHealthKit';
-import { PaywallHost } from './src/components/Paywall';
+import { useOnboardingFlag } from './src/hooks/useOnboardingFlag';
+import { supabase } from './src/lib/supabaseClient';
+import { AppTabNavigator } from './src/navigation/AppTabNavigator';
 import {
   scheduleDailyLogReminder,
   scheduleWeeklyRecapReminder,
 } from './src/notifications/scheduler';
+import { ForgotPasswordScreen } from './src/screens/auth/ForgotPasswordScreen';
+import { ResetPasswordScreen } from './src/screens/auth/ResetPasswordScreen';
+import { SignInScreen } from './src/screens/auth/SignInScreen';
+import { SignUpScreen } from './src/screens/auth/SignUpScreen';
+import { NotificationsManagerScreen } from './src/screens/NotificationsManagerScreen';
+import { OnboardingScreen } from './src/screens/OnboardingScreen';
+import { ProfileSetupScreen } from './src/screens/ProfileSetupScreen';
+import { SleepNowScreen } from './src/screens/SleepNowScreen';
+import { SleepProfileScreen } from './src/screens/SleepProfileScreen';
+import { WakeAtScreen } from './src/screens/WakeAtScreen';
 import { ThemeProvider, useAppTheme } from './src/theme/ThemeProvider';
-import { LoadingState, ToastProvider } from './src/components/ui';
 
 export type RootStackParamList = {
   Onboarding: undefined;
@@ -126,7 +135,7 @@ function RootNavigator() {
       }
 
       if (finalStatus !== 'granted') {
-        console.log('Permisos de notificación no concedidos');
+        logger.info('Permisos de notificación no concedidos');
       }
     })();
   }, []);
@@ -164,7 +173,7 @@ function RootNavigator() {
           refresh_token: refreshToken,
         });
         if (error) {
-          console.warn('setSession from deep link failed', error);
+          logger.warn('setSession from deep link failed', error);
           return;
         }
         enterPasswordRecovery();
@@ -286,31 +295,33 @@ export default function App() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <ThemeProvider>
-          <AuthProvider>
-            <EntitlementsProvider>
-              <OnboardingProvider>
-                <SleepProfileProvider>
-                  <SleepLogProvider>
-                    <SleepGoalsProvider>
-                      <DreamEntriesProvider>
-                        <SleepRoutineProvider>
-                          <HealthKitProvider>
-                            <BottomSheetModalProvider>
-                              <ToastProvider>
-                                <AppNavigation />
-                              </ToastProvider>
-                            </BottomSheetModalProvider>
-                          </HealthKitProvider>
-                        </SleepRoutineProvider>
-                      </DreamEntriesProvider>
-                    </SleepGoalsProvider>
-                  </SleepLogProvider>
-                </SleepProfileProvider>
-              </OnboardingProvider>
-            </EntitlementsProvider>
-          </AuthProvider>
-        </ThemeProvider>
+        <AppErrorBoundary>
+          <ThemeProvider>
+            <AuthProvider>
+              <EntitlementsProvider>
+                <OnboardingProvider>
+                  <SleepProfileProvider>
+                    <SleepLogProvider>
+                      <SleepGoalsProvider>
+                        <DreamEntriesProvider>
+                          <SleepRoutineProvider>
+                            <HealthKitProvider>
+                              <BottomSheetModalProvider>
+                                <ToastProvider>
+                                  <AppNavigation />
+                                </ToastProvider>
+                              </BottomSheetModalProvider>
+                            </HealthKitProvider>
+                          </SleepRoutineProvider>
+                        </DreamEntriesProvider>
+                      </SleepGoalsProvider>
+                    </SleepLogProvider>
+                  </SleepProfileProvider>
+                </OnboardingProvider>
+              </EntitlementsProvider>
+            </AuthProvider>
+          </ThemeProvider>
+        </AppErrorBoundary>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

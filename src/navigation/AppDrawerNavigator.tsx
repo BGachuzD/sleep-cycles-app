@@ -1,27 +1,26 @@
-import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import {
   createDrawerNavigator,
-  DrawerContentScrollView,
-  DrawerItemList,
-  DrawerItem,
   type DrawerContentComponentProps,
+  DrawerContentScrollView,
+  DrawerItem,
+  DrawerItemList,
 } from '@react-navigation/drawer';
-import { Ionicons } from '@expo/vector-icons';
-
-import { HomeScreen } from '../screens/HomeScreen';
-import { SleepNowScreen } from '../screens/SleepNowScreen';
-import { WakeAtScreen } from '../screens/WakeAtScreen';
-import { SleepProfileScreen } from '../screens/SleepProfileScreen';
-import { NotificationsManagerScreen } from '../screens/NotificationsManagerScreen';
-import { SleepLogScreen } from '../screens/SleepLogScreen';
-import { StatsScreen } from '../screens/StatsScreen';
-import { NapScreen } from '../screens/NapScreen';
-import { SleepRoutineScreen } from '../screens/SleepRoutineScreen';
-import { DeleteAccountScreen } from '../screens/DeleteAccountScreen';
-import { SettingsScreen } from '../screens/SettingsScreen';
+import React from 'react';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { useAuth } from '../context/AuthContext';
+import { DeleteAccountScreen } from '../screens/DeleteAccountScreen';
+import { HomeScreen } from '../screens/HomeScreen';
+import { NapScreen } from '../screens/NapScreen';
+import { NotificationsManagerScreen } from '../screens/NotificationsManagerScreen';
+import { SettingsScreen } from '../screens/SettingsScreen';
+import { SleepLogScreen } from '../screens/SleepLogScreen';
+import { SleepNowScreen } from '../screens/SleepNowScreen';
+import { SleepProfileScreen } from '../screens/SleepProfileScreen';
+import { SleepRoutineScreen } from '../screens/SleepRoutineScreen';
+import { StatsScreen } from '../screens/StatsScreen';
+import { WakeAtScreen } from '../screens/WakeAtScreen';
 import { useAppTheme } from '../theme/ThemeProvider';
 
 export type AppDrawerParamList = {
@@ -63,8 +62,15 @@ function CustomDrawerContent(props: DrawerContentComponentProps) {
       }}
     >
       {/* Header del usuario */}
-      <View style={[styles.header, { borderBottomColor: `${theme.colors.border}80` }]}>
-        <View style={[styles.avatar, { backgroundColor: theme.colors.primary }]}>
+      <View
+        style={[
+          styles.header,
+          { borderBottomColor: `${theme.colors.border}80` },
+        ]}
+      >
+        <View
+          style={[styles.avatar, { backgroundColor: theme.colors.primary }]}
+        >
           <Text style={[styles.avatarText, { color: theme.colors.white }]}>
             {initials}
           </Text>
@@ -83,7 +89,9 @@ function CustomDrawerContent(props: DrawerContentComponentProps) {
               {user.email}
             </Text>
           )}
-          <Text style={[styles.userSubtitle, { color: theme.colors.textMuted }]}>
+          <Text
+            style={[styles.userSubtitle, { color: theme.colors.textMuted }]}
+          >
             Ciclos de sueño
           </Text>
         </View>
@@ -95,7 +103,9 @@ function CustomDrawerContent(props: DrawerContentComponentProps) {
       </View>
 
       {/* Botón de cerrar sesión */}
-      <View style={[styles.footer, { borderTopColor: `${theme.colors.border}80` }]}>
+      <View
+        style={[styles.footer, { borderTopColor: `${theme.colors.border}80` }]}
+      >
         <DrawerItem
           label="Cerrar sesión"
           labelStyle={{ color: theme.colors.danger, fontSize: 14 }}

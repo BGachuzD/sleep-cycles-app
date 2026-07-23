@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import React, { type FC } from 'react';
 import {
   ScrollView,
@@ -6,11 +7,10 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 
-import { useAppTheme } from '../theme/ThemeProvider';
-import type { AppTheme } from '../theme/theme';
 import type { Achievement } from '../domain/achievements';
+import type { AppTheme } from '../theme/theme';
+import { useAppTheme } from '../theme/ThemeProvider';
 
 const AchievementCard: FC<{
   achievement: Achievement;

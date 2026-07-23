@@ -1,10 +1,11 @@
+import * as Haptics from 'expo-haptics';
 import React, {
   FC,
   forwardRef,
   useCallback,
   useEffect,
-  useMemo,
   useImperativeHandle,
+  useMemo,
   useRef,
   useState,
 } from 'react';
@@ -19,14 +20,13 @@ import Animated, {
   Extrapolation,
   interpolate,
   runOnJS,
+  type SharedValue,
   useAnimatedReaction,
   useAnimatedRef,
   useAnimatedScrollHandler,
   useAnimatedStyle,
   useSharedValue,
-  type SharedValue,
 } from 'react-native-reanimated';
-import * as Haptics from 'expo-haptics';
 
 import { useAppTheme } from '../theme/ThemeProvider';
 

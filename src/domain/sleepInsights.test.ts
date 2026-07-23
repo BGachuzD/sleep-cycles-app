@@ -2,8 +2,8 @@ import { describe, expect, it } from '@jest/globals';
 
 import {
   computeInsights,
-  MIN_NIGHTS_FOR_ANALYSIS,
   type Insight,
+  MIN_NIGHTS_FOR_ANALYSIS,
 } from './sleepInsights';
 import type { DreamMood, SleepLogEntry } from './sleepLog';
 import type { SleepProfile } from './sleepProfile';
@@ -115,11 +115,45 @@ describe('computeInsights — correlaciones', () => {
 
   it('marca la correlación de sueños como premium', () => {
     const entries = [
-      makeEntry({ day: 10, bedHour: 23, wakeHour: 7, feeling: 3, dreamed: true, dreamMood: 2 }),
-      makeEntry({ day: 9, bedHour: 23, wakeHour: 7, feeling: 3, dreamed: true, dreamMood: 2 }),
-      makeEntry({ day: 8, bedHour: 23, wakeHour: 7, feeling: 1, dreamed: true, dreamMood: 1 }),
-      makeEntry({ day: 7, bedHour: 23, wakeHour: 7, feeling: 1, dreamed: true, dreamMood: 1 }),
-      makeEntry({ day: 6, bedHour: 23, wakeHour: 7, feeling: 2, dreamed: false }),
+      makeEntry({
+        day: 10,
+        bedHour: 23,
+        wakeHour: 7,
+        feeling: 3,
+        dreamed: true,
+        dreamMood: 2,
+      }),
+      makeEntry({
+        day: 9,
+        bedHour: 23,
+        wakeHour: 7,
+        feeling: 3,
+        dreamed: true,
+        dreamMood: 2,
+      }),
+      makeEntry({
+        day: 8,
+        bedHour: 23,
+        wakeHour: 7,
+        feeling: 1,
+        dreamed: true,
+        dreamMood: 1,
+      }),
+      makeEntry({
+        day: 7,
+        bedHour: 23,
+        wakeHour: 7,
+        feeling: 1,
+        dreamed: true,
+        dreamMood: 1,
+      }),
+      makeEntry({
+        day: 6,
+        bedHour: 23,
+        wakeHour: 7,
+        feeling: 2,
+        dreamed: false,
+      }),
     ];
     const dream = computeInsights(entries, profile).find(
       (i) => i.id === 'dream-mood-correlation',

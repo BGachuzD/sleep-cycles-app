@@ -1,9 +1,9 @@
-import React, { FC, useCallback } from 'react';
-import { StyleSheet, View } from 'react-native';
 import DateTimePicker, {
   type DateTimePickerEvent,
 } from '@react-native-community/datetimepicker';
 import * as Haptics from 'expo-haptics';
+import React, { FC, useCallback } from 'react';
+import { StyleSheet, View } from 'react-native';
 
 import { useAppTheme } from '../theme/ThemeProvider';
 

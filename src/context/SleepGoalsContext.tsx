@@ -1,8 +1,9 @@
 // src/context/SleepGoalsContext.tsx
-import React, { createContext, useContext, type ReactNode } from 'react';
+import React, { createContext, type ReactNode, useContext } from 'react';
+
+import type { SleepGoal, SleepGoalType } from '../domain/sleepGoal';
 import { useSleepGoals } from '../hooks/useSleepGoals';
 import { useAuth } from './AuthContext';
-import type { SleepGoal, SleepGoalType } from '../domain/sleepGoal';
 
 type SleepGoalsContextValue = {
   goals: SleepGoal[];

@@ -1,18 +1,18 @@
+import { Ionicons } from '@expo/vector-icons';
 import React, { FC, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import Animated from 'react-native-reanimated';
 
-import { usePressScale } from '../hooks/usePressScale';
-import { useAppTheme } from '../theme/ThemeProvider';
-import type { AppTheme } from '../theme/theme';
 import { useSleepGoalsContext } from '../context/SleepGoalsContext';
 import { useSleepLogContext } from '../context/SleepLogContext';
 import {
-  GOAL_DURATION_PRESETS,
   computeGoalProgress,
   formatGoalTarget,
+  GOAL_DURATION_PRESETS,
 } from '../domain/sleepGoal';
+import { usePressScale } from '../hooks/usePressScale';
+import type { AppTheme } from '../theme/theme';
+import { useAppTheme } from '../theme/ThemeProvider';
 
 const PresetChip: FC<{
   label: string;

@@ -1,13 +1,16 @@
 // src/context/OnboardingContext.tsx
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, {
   createContext,
+  type ReactNode,
+  useCallback,
   useContext,
   useEffect,
   useState,
-  useCallback,
-  type ReactNode,
 } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+
+import { logger } from '@/lib/logger';
+
 import { useAuth } from './AuthContext';
 
 type OnboardingContextValue = {
@@ -44,7 +47,7 @@ export const OnboardingProvider = ({ children }: { children: ReactNode }) => {
           setHasSeen(stored === '1');
         }
       } catch (error) {
-        console.warn('Error loading onboarding flag', error);
+        logger.warn('Error loading onboarding flag', error);
         if (!cancelled) {
           setHasSeen(false);
         }
@@ -56,6 +59,9 @@ export const OnboardingProvider = ({ children }: { children: ReactNode }) => {
     return () => {
       cancelled = true;
     };
+    // Debe re-ejecutarse solo al cambiar el id del usuario, no cada vez que el
+    // objeto `user` se recrea (p. ej. al refrescar el token de sesión).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 
   const markAsSeen = useCallback(async () => {
@@ -65,7 +71,7 @@ export const OnboardingProvider = ({ children }: { children: ReactNode }) => {
     try {
       await AsyncStorage.setItem(key, '1');
     } catch (error) {
-      console.warn('Error saving onboarding flag', error);
+      logger.warn('Error saving onboarding flag', error);
     }
   }, [user]);
 
@@ -79,7 +85,7 @@ export const OnboardingProvider = ({ children }: { children: ReactNode }) => {
     try {
       await AsyncStorage.removeItem(key);
     } catch (error) {
-      console.warn('Error resetting onboarding flag', error);
+      logger.warn('Error resetting onboarding flag', error);
     }
   }, [user]);
 

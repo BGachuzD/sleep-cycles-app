@@ -1,3 +1,5 @@
+import { Ionicons } from '@expo/vector-icons';
+import { BottomSheetModal, BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import React, {
   type FC,
   useCallback,
@@ -7,20 +9,18 @@ import React, {
   useState,
 } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { BottomSheetModal, BottomSheetScrollView } from '@gorhom/bottom-sheet';
 
 import { useSleepGoalsContext } from '../context/SleepGoalsContext';
-import { useAppTheme } from '../theme/ThemeProvider';
-import type { AppTheme } from '../theme/theme';
+import type { DreamEntry } from '../domain/dreamEntry';
 import {
   computeCompleteCycles,
   computeSleepMinutes,
   localDateString,
   type SleepLogEntry,
 } from '../domain/sleepLog';
+import type { AppTheme } from '../theme/theme';
+import { useAppTheme } from '../theme/ThemeProvider';
 import { formatDuration, formatTime } from '../utils/sleep';
-import type { DreamEntry } from '../domain/dreamEntry';
 import {
   AppBottomSheetModal,
   Badge,

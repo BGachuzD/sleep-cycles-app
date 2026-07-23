@@ -1,4 +1,9 @@
 // src/screens/SleepLogScreen.tsx
+import 'react-native-get-random-values';
+
+import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
+import * as Haptics from 'expo-haptics';
 import React, {
   FC,
   useCallback,
@@ -17,529 +22,47 @@ import {
   Text,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
-import { navigateToScreen } from '../navigation/navigateTo';
-import { useTabBarContentPadding } from '../navigation/tabBarLayout';
-import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
 import Animated, {
   FadeIn,
   FadeInDown,
   FadeOut,
   LinearTransition,
-  useAnimatedStyle,
-  useSharedValue,
-  withSequence,
-  withSpring,
 } from 'react-native-reanimated';
-import 'react-native-get-random-values';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { v4 as uuidv4 } from 'uuid';
 
-import { GradientBackground } from '../components/GradientBackground';
 import { FloatingDrawerButton } from '../components/FloatingDrawerButton';
-import { TimeWheel } from '../components/TimeWheel';
-import { PrimaryCTA } from '../components/PrimaryCTA';
+import { FloatingHomeButton } from '../components/FloatingHomeButton';
+import { GradientBackground } from '../components/GradientBackground';
 import { HealthKitBanner } from '../components/HealthKitBanner';
+import { PrimaryCTA } from '../components/PrimaryCTA';
+import { TimeWheel } from '../components/TimeWheel';
 import { EmptyState, useToast } from '../components/ui';
-import { usePressScale } from '../hooks/usePressScale';
-import { useHealthKit } from '../hooks/useHealthKit';
 import { useSleepLogContext } from '../context/SleepLogContext';
+import { useSleepProfileContext } from '../context/SleepProfileContext';
 import {
-  computeSleepMinutes,
   computeCompleteCycles,
   dateStringDaysAgo,
   type SleepLogEntry,
 } from '../domain/sleepLog';
-import { formatDuration, formatTime } from '../utils/sleep';
-import { useSleepProfileContext } from '../context/SleepProfileContext';
 import { getAdjustedCycleLengthMinutes } from '../domain/sleepProfile';
-import { useAppTheme } from '../theme/ThemeProvider';
+import { useHealthKit } from '../hooks/useHealthKit';
+import { navigateToScreen } from '../navigation/navigateTo';
+import { useTabBarContentPadding } from '../navigation/tabBarLayout';
 import type { AppTheme } from '../theme/theme';
-import { FloatingHomeButton } from '../components/FloatingHomeButton';
-
-// ─────────────────────────────────────────────
-// Feelings: 1 Mal · 2 Regular · 3 Excelente
-// Iconos meteorológicos + colores semánticos del theme.
-// ─────────────────────────────────────────────
-type FeelingLevel = 1 | 2 | 3;
-
-const FEELINGS: Record<
-  FeelingLevel,
-  {
-    icon: keyof typeof Ionicons.glyphMap;
-    label: string;
-    colorKey: 'danger' | 'warning' | 'success';
-  }
-> = {
-  1: { icon: 'cloud-outline', label: 'Mal', colorKey: 'danger' },
-  2: { icon: 'partly-sunny-outline', label: 'Regular', colorKey: 'warning' },
-  3: { icon: 'sunny-outline', label: 'Excelente', colorKey: 'success' },
-};
-
-// ─────────────────────────────────────────────
-// Defaults inteligentes según la hora del día
-// ─────────────────────────────────────────────
-function getSmartDefaults(): { bed: Date; wake: Date } {
-  const now = new Date();
-  const hour = now.getHours();
-
-  const wake = new Date();
-  const bed = new Date();
-
-  if (hour < 14) {
-    const mins = Math.round(now.getMinutes() / 15) * 15;
-    wake.setMinutes(mins, 0, 0);
-    bed.setTime(wake.getTime() - 8 * 60 * 60 * 1000);
-  } else {
-    wake.setDate(wake.getDate() + 1);
-    wake.setHours(7, 0, 0, 0);
-    bed.setHours(23, 0, 0, 0);
-  }
-
-  return { bed, wake };
-}
-
-// ─────────────────────────────────────────────
-// TimeField: tarjeta tocable que muestra la hora;
-// al tocarla se abre la rueda nativa debajo.
-// ─────────────────────────────────────────────
-const TimeField: FC<{
-  label: string;
-  date: Date;
-  active: boolean;
-  onPress: () => void;
-  theme: AppTheme;
-}> = ({ label, date, active, onPress, theme }) => {
-  const { animatedStyle, onPressIn, onPressOut } = usePressScale(0.97);
-  return (
-    <Animated.View style={[{ flex: 1 }, animatedStyle]}>
-      <Pressable
-        onPress={onPress}
-        onPressIn={onPressIn}
-        onPressOut={onPressOut}
-        accessibilityRole="button"
-        accessibilityLabel={`${label}: ${formatTime(date)}. Toca para cambiar la hora`}
-        style={[
-          timeStyles.column,
-          {
-            backgroundColor: active
-              ? `${theme.colors.accent[500]}14`
-              : theme.colors.surfaceElevated,
-            borderRadius: theme.radius.lg,
-            borderColor: active
-              ? theme.colors.accent[500]
-              : theme.colors.border,
-            borderWidth: active ? 1.5 : 1,
-          },
-        ]}
-      >
-        <Text
-          style={[
-            timeStyles.label,
-            { color: theme.colors.textMuted, fontSize: theme.type.micro },
-          ]}
-        >
-          {label}
-        </Text>
-        <Text
-          style={[
-            timeStyles.value,
-            { color: theme.colors.heroText, fontSize: theme.type.title2 },
-          ]}
-          numberOfLines={1}
-          adjustsFontSizeToFit
-          minimumFontScale={0.65}
-        >
-          {formatTime(date)}
-        </Text>
-        <View style={timeStyles.hintRow}>
-          <Ionicons
-            name={active ? 'chevron-up' : 'create-outline'}
-            size={12}
-            color={active ? theme.colors.accent[400] : theme.colors.textMuted}
-          />
-          <Text
-            style={[
-              timeStyles.hint,
-              {
-                color: active
-                  ? theme.colors.accent[400]
-                  : theme.colors.textMuted,
-                fontSize: theme.type.caption,
-              },
-            ]}
-          >
-            {active ? 'Cerrar' : 'Editar'}
-          </Text>
-        </View>
-      </Pressable>
-    </Animated.View>
-  );
-};
-
-const timeStyles = StyleSheet.create({
-  column: {
-    alignItems: 'center',
-    paddingVertical: 14,
-    gap: 6,
-  },
-  label: { fontWeight: '700', letterSpacing: 0.8, textTransform: 'uppercase' },
-  value: {
-    fontWeight: '700',
-    letterSpacing: -0.5,
-    fontVariant: ['tabular-nums'],
-  },
-  hintRow: { flexDirection: 'row', alignItems: 'center', gap: 3 },
-  hint: { fontWeight: '700', letterSpacing: 0.3 },
-});
-
-/** Copia la hora/minuto de `picked` sobre la fecha de `base`. */
-function withTime(base: Date, picked: Date): Date {
-  const next = new Date(base);
-  next.setHours(picked.getHours(), picked.getMinutes(), 0, 0);
-  return next;
-}
-
-/**
- * Ancla la hora de acostarse relativa al despertar: misma fecha del
- * despertar y, si queda igual o después, la noche anterior. Así el
- * cruce de medianoche se resuelve solo y bed < wake siempre.
- */
-function anchorBedToWake(bedHM: Date, wake: Date): Date {
-  const bed = withTime(wake, bedHM);
-  if (bed.getTime() >= wake.getTime()) {
-    bed.setDate(bed.getDate() - 1);
-  }
-  return bed;
-}
-
-// ─────────────────────────────────────────────
-// FeelingChip
-// ─────────────────────────────────────────────
-const FeelingChip: FC<{
-  feeling: FeelingLevel;
-  active: boolean;
-  onPress: () => void;
-  theme: AppTheme;
-}> = ({ feeling, active, onPress, theme }) => {
-  const { animatedStyle, onPressIn, onPressOut } = usePressScale(0.95);
-  const info = FEELINGS[feeling];
-  const color = theme.colors[info.colorKey];
-
-  // Pop del icono al quedar seleccionado
-  const iconScale = useSharedValue(1);
-  useEffect(() => {
-    if (active) {
-      iconScale.value = withSequence(
-        withSpring(1.3, { mass: 0.3, damping: 10, stiffness: 260 }),
-        withSpring(1, { mass: 0.3, damping: 12, stiffness: 220 }),
-      );
-    }
-  }, [active, iconScale]);
-  const iconAnimatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: iconScale.value }],
-  }));
-
-  return (
-    <Animated.View style={[{ flex: 1 }, animatedStyle]}>
-      <Pressable
-        onPress={onPress}
-        onPressIn={onPressIn}
-        onPressOut={onPressOut}
-        accessibilityRole="button"
-        accessibilityLabel={info.label}
-        style={[
-          feelingStyles.chip,
-          {
-            backgroundColor: active
-              ? `${color}1F`
-              : theme.colors.surfaceElevated,
-            borderColor: active ? color : theme.colors.border,
-            borderWidth: active ? 1.5 : 1,
-            borderRadius: theme.radius.md,
-          },
-        ]}
-      >
-        <Animated.View style={iconAnimatedStyle}>
-          <Ionicons
-            name={info.icon}
-            size={24}
-            color={active ? color : theme.colors.textMuted}
-          />
-        </Animated.View>
-        <Text
-          style={[
-            feelingStyles.label,
-            {
-              color: active ? color : theme.colors.textSecondary,
-              fontSize: theme.type.small,
-            },
-          ]}
-        >
-          {info.label}
-        </Text>
-      </Pressable>
-    </Animated.View>
-  );
-};
-
-const feelingStyles = StyleSheet.create({
-  chip: {
-    alignItems: 'center',
-    gap: 6,
-    paddingVertical: 12,
-    paddingHorizontal: 8,
-  },
-  label: { fontWeight: '700' },
-});
-
-// ─────────────────────────────────────────────
-// DayChip: selector de a qué día pertenece el registro
-// (la fecha es la del DESPERTAR: "Hoy" = desperté esta mañana)
-// ─────────────────────────────────────────────
-const DayChip: FC<{
-  label: string;
-  dateCaption: string;
-  active: boolean;
-  onPress: () => void;
-  theme: AppTheme;
-}> = ({ label, dateCaption, active, onPress, theme }) => {
-  const { animatedStyle, onPressIn, onPressOut } = usePressScale(0.95);
-  return (
-    <Animated.View style={[{ flex: 1 }, animatedStyle]}>
-      <Pressable
-        onPress={onPress}
-        onPressIn={onPressIn}
-        onPressOut={onPressOut}
-        accessibilityRole="button"
-        accessibilityLabel={`Registrar despertar de ${label}`}
-        style={[
-          dayStyles.chip,
-          {
-            backgroundColor: active
-              ? `${theme.colors.accent[500]}1F`
-              : theme.colors.surfaceElevated,
-            borderColor: active
-              ? theme.colors.accent[500]
-              : theme.colors.border,
-            borderWidth: active ? 1.5 : 1,
-            borderRadius: theme.radius.md,
-          },
-        ]}
-      >
-        <Text
-          style={[
-            dayStyles.label,
-            {
-              color: active
-                ? theme.colors.accent[300]
-                : theme.colors.textSecondary,
-              fontSize: theme.type.small,
-            },
-          ]}
-        >
-          {label}
-        </Text>
-        <Text
-          style={[
-            dayStyles.caption,
-            { color: theme.colors.textMuted, fontSize: theme.type.caption },
-          ]}
-        >
-          {dateCaption}
-        </Text>
-      </Pressable>
-    </Animated.View>
-  );
-};
-
-const dayStyles = StyleSheet.create({
-  chip: {
-    alignItems: 'center',
-    gap: 2,
-    paddingVertical: 10,
-    paddingHorizontal: 8,
-  },
-  label: { fontWeight: '700' },
-  caption: { fontWeight: '600' },
-});
-
-function formatDayCaption(dateStr: string): string {
-  const [y, m, d] = dateStr.split('-').map(Number);
-  return new Date(y, m - 1, d).toLocaleDateString('es-MX', {
-    day: 'numeric',
-    month: 'short',
-  });
-}
-
-// ─────────────────────────────────────────────
-// HistoryCard
-// ─────────────────────────────────────────────
-const HistoryCard: FC<{
-  entry: SleepLogEntry;
-  cycleMins: number;
-  isEditing: boolean;
-  isFromHealthKit: boolean;
-  onEdit: () => void;
-  onDelete: () => void;
-  theme: AppTheme;
-}> = ({
-  entry,
-  cycleMins,
-  isEditing,
-  isFromHealthKit,
-  onEdit,
-  onDelete,
-  theme,
-}) => {
-  const mins = computeSleepMinutes(entry);
-  const cycles = computeCompleteCycles(mins, cycleMins);
-  const info = FEELINGS[entry.feeling];
-  const color = theme.colors[info.colorKey];
-  const bedDate = new Date(entry.bedTimeISO);
-  const wakeDate = new Date(entry.wakeTimeISO);
-
-  return (
-    <View
-      style={[
-        historyStyles.card,
-        {
-          backgroundColor: theme.colors.surface,
-          borderRadius: theme.radius.lg,
-          borderColor: isEditing
-            ? theme.colors.accent[500]
-            : theme.colors.border,
-          borderWidth: isEditing ? 1.5 : 1,
-          paddingVertical: theme.spacing.md,
-          paddingHorizontal: theme.spacing.lg,
-        },
-      ]}
-    >
-      <View style={historyStyles.left}>
-        <View style={historyStyles.dateRow}>
-          <Text
-            style={[
-              historyStyles.date,
-              { color: theme.colors.textMuted, fontSize: theme.type.caption },
-            ]}
-          >
-            {entry.date}
-          </Text>
-          {isFromHealthKit && (
-            <View
-              style={[
-                historyStyles.sourceBadge,
-                {
-                  backgroundColor: `${theme.colors.success}1F`,
-                  borderColor: `${theme.colors.success}55`,
-                },
-              ]}
-            >
-              <Ionicons name="heart" size={9} color={theme.colors.success} />
-              <Text
-                style={[
-                  historyStyles.sourceBadgeText,
-                  { color: theme.colors.success },
-                ]}
-              >
-                Salud
-              </Text>
-            </View>
-          )}
-        </View>
-        <Text
-          style={[
-            historyStyles.time,
-            { color: theme.colors.textPrimary, fontSize: theme.type.bodyLarge },
-          ]}
-        >
-          {formatTime(bedDate)} → {formatTime(wakeDate)}
-        </Text>
-        <Text
-          style={[
-            historyStyles.detail,
-            { color: theme.colors.textMuted, fontSize: theme.type.caption },
-          ]}
-        >
-          {formatDuration(mins)} · {cycles} ciclos
-        </Text>
-      </View>
-
-      <View style={historyStyles.right}>
-        <View
-          style={[
-            historyStyles.feelingPill,
-            { backgroundColor: `${color}1F`, borderColor: `${color}55` },
-          ]}
-        >
-          <Ionicons name={info.icon} size={16} color={color} />
-        </View>
-        <View style={historyStyles.actions}>
-          <Pressable hitSlop={8} onPress={onEdit}>
-            <Ionicons
-              name="pencil-outline"
-              size={16}
-              color={
-                isEditing ? theme.colors.accent[400] : theme.colors.textMuted
-              }
-            />
-          </Pressable>
-          <Pressable hitSlop={8} onPress={onDelete}>
-            <Ionicons
-              name="trash-outline"
-              size={16}
-              color={theme.colors.textMuted}
-            />
-          </Pressable>
-        </View>
-      </View>
-    </View>
-  );
-};
-
-const historyStyles = StyleSheet.create({
-  card: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  left: { flex: 1, marginRight: 8 },
-  dateRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 2,
-  },
-  date: { fontWeight: '700', letterSpacing: 0.3 },
-  sourceBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-    paddingHorizontal: 6,
-    paddingVertical: 1,
-    borderRadius: 999,
-    borderWidth: 1,
-  },
-  sourceBadgeText: {
-    fontSize: 9,
-    fontWeight: '700',
-    letterSpacing: 0.4,
-    textTransform: 'uppercase',
-  },
-  time: { fontWeight: '700', fontVariant: ['tabular-nums'] },
-  detail: { marginTop: 2 },
-  right: { alignItems: 'center', gap: 8 },
-  feelingPill: {
-    width: 30,
-    height: 30,
-    borderRadius: 999,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-  },
-  actions: { flexDirection: 'row', gap: 12, alignItems: 'center' },
-});
+import { useAppTheme } from '../theme/ThemeProvider';
+import { formatDuration } from '../utils/sleep';
+import { DayChip } from './sleepLog/DayChip';
+import { FeelingChip } from './sleepLog/FeelingChip';
+import type { FeelingLevel } from './sleepLog/feelings';
+import {
+  anchorBedToWake,
+  formatDayCaption,
+  getSmartDefaults,
+  withTime,
+} from './sleepLog/helpers';
+import { HistoryCard } from './sleepLog/HistoryCard';
+import { TimeField } from './sleepLog/TimeField';
 
 // ─────────────────────────────────────────────
 // SleepLogScreen

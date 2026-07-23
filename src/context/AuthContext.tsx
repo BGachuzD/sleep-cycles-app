@@ -1,12 +1,15 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import type { Session, User } from '@supabase/supabase-js';
 import React, {
   createContext,
+  ReactNode,
   useContext,
   useEffect,
   useState,
-  ReactNode,
 } from 'react';
-import type { Session, User } from '@supabase/supabase-js';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+
+import { logger } from '@/lib/logger';
+
 import { supabase } from '../lib/supabaseClient';
 
 type AuthContextValue = {
@@ -60,7 +63,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (!isMounted) return;
 
       if (error) {
-        console.warn('Error getting session', error);
+        logger.warn('Error getting session', error);
       }
       setSession(data.session ?? null);
       setLoading(false);
@@ -88,7 +91,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     });
 
     if (error) {
-      console.warn('signIn error', error);
+      logger.warn('signIn error', error);
       return { error: error.message };
     }
 
@@ -114,7 +117,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     });
 
     if (error) {
-      console.warn('signUp error', error);
+      logger.warn('signUp error', error);
       return { error: error.message };
     }
 
@@ -129,31 +132,36 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     const { error } = await supabase.auth.signOut();
     if (error) {
-      console.warn('signOut error', error);
+      logger.warn('signOut error', error);
     }
 
     setSession(null);
   };
 
   const deleteAccount: AuthContextValue['deleteAccount'] = async () => {
-    const { data: { session: currentSession } } = await supabase.auth.getSession();
+    const {
+      data: { session: currentSession },
+    } = await supabase.auth.getSession();
     if (!currentSession) return { error: 'No active session' };
 
     const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL!;
     try {
-      const response = await fetch(`${supabaseUrl}/functions/v1/delete-account`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${currentSession.access_token}`,
-          'Content-Type': 'application/json',
+      const response = await fetch(
+        `${supabaseUrl}/functions/v1/delete-account`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${currentSession.access_token}`,
+            'Content-Type': 'application/json',
+          },
         },
-      });
+      );
 
       if (!response.ok) {
         const body = await response.json().catch(() => ({}));
         return { error: body.error ?? 'Error al eliminar la cuenta' };
       }
-    } catch (err) {
+    } catch {
       return { error: 'No se pudo conectar con el servidor' };
     }
 
@@ -170,16 +178,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       redirectTo: PASSWORD_RESET_REDIRECT,
     });
     if (error) {
-      console.warn('resetPassword error', error);
+      logger.warn('resetPassword error', error);
       return { error: error.message };
     }
     return {};
   };
 
-  const updatePassword: AuthContextValue['updatePassword'] = async (newPassword) => {
+  const updatePassword: AuthContextValue['updatePassword'] = async (
+    newPassword,
+  ) => {
     const { error } = await supabase.auth.updateUser({ password: newPassword });
     if (error) {
-      console.warn('updatePassword error', error);
+      logger.warn('updatePassword error', error);
       return { error: error.message };
     }
     return {};

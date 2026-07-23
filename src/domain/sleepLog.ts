@@ -5,8 +5,8 @@ export type DreamMood = 1 | 2;
 
 export interface SleepLogEntry {
   id: string;
-  date: string;        // YYYY-MM-DD (fecha en que DESPERTASTE)
-  bedTimeISO: string;  // ISO string — hora de acostarte
+  date: string; // YYYY-MM-DD (fecha en que DESPERTASTE)
+  bedTimeISO: string; // ISO string — hora de acostarte
   wakeTimeISO: string; // ISO string — hora de despertar
   feeling: 1 | 2 | 3; // 1=mal 2=bien 3=excelente
   // ── Bitácora de sueños (Fase 5) — todos opcionales ──
@@ -104,9 +104,7 @@ export function computeStats(
   // Últimos 7 días
   const now = new Date();
   const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-  const weekEntries = entries.filter(
-    (e) => new Date(e.wakeTimeISO) >= weekAgo,
-  );
+  const weekEntries = entries.filter((e) => new Date(e.wakeTimeISO) >= weekAgo);
 
   const allMinutes = entries.map(computeSleepMinutes);
   const totalMinutes = allMinutes.reduce((a, b) => a + b, 0);
@@ -115,7 +113,9 @@ export function computeStats(
 
   // Deuda de sueño: objetivo 5 ciclos por noche (7.5 h con ciclo de 90 min)
   const targetPerNight = 5 * cycleLengthMinutes;
-  const weekMinutes = weekEntries.map(computeSleepMinutes).reduce((a, b) => a + b, 0);
+  const weekMinutes = weekEntries
+    .map(computeSleepMinutes)
+    .reduce((a, b) => a + b, 0);
   const weekTarget = weekEntries.length * targetPerNight;
   const debtMinutes = Math.max(0, weekTarget - weekMinutes);
 

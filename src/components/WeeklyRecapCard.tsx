@@ -1,11 +1,11 @@
+import { Ionicons } from '@expo/vector-icons';
 import React, { FC } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 
+import { computeDreamWeekSummary, type DreamEntry } from '../domain/dreamEntry';
+import type { WeeklyRecap } from '../domain/weeklyRecap';
 import { useAppTheme } from '../theme/ThemeProvider';
 import { formatDuration } from '../utils/sleep';
-import type { WeeklyRecap } from '../domain/weeklyRecap';
-import { computeDreamWeekSummary, type DreamEntry } from '../domain/dreamEntry';
 
 /**
  * Tarjeta "Tu semana": resumen de los últimos 7 días con comparación contra la

@@ -1,14 +1,14 @@
+import { Ionicons } from '@expo/vector-icons';
+import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import Animated from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { FloatingActionButton } from '../components/ui';
 import { usePressScale } from '../hooks/usePressScale';
-import { useAppTheme } from '../theme/ThemeProvider';
 import type { AppTheme } from '../theme/theme';
+import { useAppTheme } from '../theme/ThemeProvider';
 import {
   TAB_BAR_BOTTOM_OFFSET,
   TAB_BAR_HEIGHT,

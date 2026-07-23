@@ -1,10 +1,17 @@
+import {
+  BottomSheetBackdrop,
+  type BottomSheetBackdropProps,
+  BottomSheetModal,
+  type BottomSheetModalProps,
+  BottomSheetView,
+} from '@gorhom/bottom-sheet';
 import React, {
   forwardRef,
+  type ReactNode,
   useCallback,
   useEffect,
   useMemo,
   useRef,
-  type ReactNode,
 } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, {
@@ -13,15 +20,9 @@ import Animated, {
   FadeOut,
   FadeOutDown,
 } from 'react-native-reanimated';
-import {
-  BottomSheetBackdrop,
-  BottomSheetModal,
-  BottomSheetView,
-  type BottomSheetBackdropProps,
-  type BottomSheetModalProps,
-} from '@gorhom/bottom-sheet';
 
 import { useAppTheme } from '@/theme/ThemeProvider';
+
 import { CircularIconButton } from './buttons';
 
 export function ModalOverlay({
@@ -88,7 +89,7 @@ export function BottomSheet({
   onClose: () => void;
   title?: string;
   children: ReactNode;
-  snapPoints?: Array<string | number>;
+  snapPoints?: (string | number)[];
 }) {
   const { theme } = useAppTheme();
   const ref = useRef<BottomSheetModal>(null);

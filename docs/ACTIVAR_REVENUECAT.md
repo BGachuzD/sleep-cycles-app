@@ -14,7 +14,7 @@ Toda la interacción con el SDK está aislada en un solo archivo:
 ## Paso 0 — Prerrequisitos
 
 - [ ] Apple Developer Program activo y la app creada en App Store Connect (ya hecho para TestFlight).
-- [ ] **Acuerdo de Paid Applications** firmado en App Store Connect → *Agreements, Tax, and Banking* (con datos fiscales y bancarios). Sin esto no se pueden crear productos de pago.
+- [ ] **Acuerdo de Paid Applications** firmado en App Store Connect → _Agreements, Tax, and Banking_ (con datos fiscales y bancarios). Sin esto no se pueden crear productos de pago.
 
 ---
 
@@ -75,7 +75,7 @@ En [app.revenuecat.com](https://app.revenuecat.com):
 
 ## Paso 5 — Probar en Sandbox
 
-- [ ] En App Store Connect → *Users and Access → Sandbox Testers*, crea un tester.
+- [ ] En App Store Connect → _Users and Access → Sandbox Testers_, crea un tester.
 - [ ] En tu iPhone: Ajustes → App Store → inicia sesión con el sandbox tester (o usa el prompt al comprar).
 - [ ] Abre el paywall en la app (Settings → Premium, o al tocar una función premium). Deberías ver los planes reales con precio.
 - [ ] Compra → verifica que las funciones premium se desbloquean (p. ej. tags ilimitados en la bitácora) y que **Restaurar compras** funciona.

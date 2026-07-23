@@ -1,14 +1,14 @@
+import { Ionicons } from '@expo/vector-icons';
 import React, { FC, useState } from 'react';
 import {
+  type KeyboardTypeOptions,
   Pressable,
   StyleSheet,
   Text,
   TextInput,
-  View,
-  type KeyboardTypeOptions,
   type TextInputProps,
+  View,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 
 import { useAppTheme } from '../theme/ThemeProvider';
 

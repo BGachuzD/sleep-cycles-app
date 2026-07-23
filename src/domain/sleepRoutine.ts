@@ -18,7 +18,8 @@ export const DEFAULT_ROUTINE_STEPS: RoutineStep[] = [
     minutesBefore: 120,
     icon: 'tv-outline',
     title: 'Reduce pantallas',
-    description: 'Baja el brillo de tus dispositivos y activa el modo nocturno.',
+    description:
+      'Baja el brillo de tus dispositivos y activa el modo nocturno.',
     color: '#f97316',
     enabled: true,
     isDefault: true,
@@ -68,7 +69,8 @@ export const DEFAULT_ROUTINE_STEPS: RoutineStep[] = [
     minutesBefore: 15,
     icon: 'thermometer-outline',
     title: 'Temperatura ideal',
-    description: 'La habitación a una temperatura de 18 a 20 °C favorece el sueño profundo.',
+    description:
+      'La habitación a una temperatura de 18 a 20 °C favorece el sueño profundo.',
     color: '#818cf8',
     enabled: true,
     isDefault: true,
@@ -93,7 +95,9 @@ const DEFAULT_IDS = new Set(DEFAULT_ROUTINE_STEPS.map((s) => s.id));
 
 export function mergeWithDefaults(remote: RoutineStep[]): RoutineStep[] {
   const remoteById = new Map(remote.map((s) => [s.id, s]));
-  const merged = DEFAULT_ROUTINE_STEPS.map((def) => remoteById.get(def.id) ?? def);
+  const merged = DEFAULT_ROUTINE_STEPS.map(
+    (def) => remoteById.get(def.id) ?? def,
+  );
   const customSteps = remote.filter((s) => !DEFAULT_IDS.has(s.id));
   return sortSteps([...merged, ...customSteps]);
 }

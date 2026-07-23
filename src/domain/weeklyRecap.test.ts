@@ -1,7 +1,7 @@
 import { describe, expect, it } from '@jest/globals';
 
-import { computeWeeklyRecap } from './weeklyRecap';
 import type { SleepLogEntry } from './sleepLog';
+import { computeWeeklyRecap } from './weeklyRecap';
 
 const NOW = new Date(2026, 5, 15, 12, 0); // 15 jun 2026, mediodía
 const CYCLE = 90; // objetivo = 5 ciclos = 450 min

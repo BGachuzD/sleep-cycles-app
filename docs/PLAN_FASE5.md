@@ -37,16 +37,16 @@ En paralelo, un bloque transversal: **arquitectura Premium desde el diseño**.
 
 ## Modelo Free vs Premium
 
-El **loop completo de acompañamiento base es gratis** (es el gancho de retención que alimenta la conversión). Premium es *profundidad* + el *extra* de IA.
+El **loop completo de acompañamiento base es gratis** (es el gancho de retención que alimenta la conversión). Premium es _profundidad_ + el _extra_ de IA.
 
-| Área | Gratis | Premium (Mimebien Premium) |
-|---|---|---|
-| **Bitácora** | Soñé/no soñé, mood (bueno/malo), 1 nota corta, tags de lista curada limitada, 1 sueño por noche | Nota larga, tags ilimitados, **varios sueños por noche**, intensidad emocional, búsqueda en el diario |
-| **Insights** | 3-4 reglas base (deuda, racha, regularidad simple, consejo rotativo), 1 tarjeta en Home | Correlaciones profundas (sueño ↔ hábitos ↔ sueños), regularidad avanzada, insights ilimitados |
-| **Tendencias** | Últimas 14 noches (ya existe) | Vista mensual y anual, comparativas |
-| **Metas** | 1 meta activa | Metas múltiples + coach proactivo (más nudges personalizados) |
-| **Reportes** | — | Exportar/reporte PDF de tu sueño |
-| **IA de sueños** | — | Interpretación del texto del sueño (Fase 6) |
+| Área             | Gratis                                                                                          | Premium (Mimebien Premium)                                                                            |
+| ---------------- | ----------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| **Bitácora**     | Soñé/no soñé, mood (bueno/malo), 1 nota corta, tags de lista curada limitada, 1 sueño por noche | Nota larga, tags ilimitados, **varios sueños por noche**, intensidad emocional, búsqueda en el diario |
+| **Insights**     | 3-4 reglas base (deuda, racha, regularidad simple, consejo rotativo), 1 tarjeta en Home         | Correlaciones profundas (sueño ↔ hábitos ↔ sueños), regularidad avanzada, insights ilimitados         |
+| **Tendencias**   | Últimas 14 noches (ya existe)                                                                   | Vista mensual y anual, comparativas                                                                   |
+| **Metas**        | 1 meta activa                                                                                   | Metas múltiples + coach proactivo (más nudges personalizados)                                         |
+| **Reportes**     | —                                                                                               | Exportar/reporte PDF de tu sueño                                                                      |
+| **IA de sueños** | —                                                                                               | Interpretación del texto del sueño (Fase 6)                                                           |
 
 Regla de diseño: si algo mejora la **retención de todos**, va gratis. Si es **profundidad o análisis avanzado**, va a Premium.
 
@@ -64,15 +64,15 @@ Regla de diseño: si algo mejora la **retención de todos**, va gratis. Si es **
 
 ### Piezas a construir
 
-| Pieza | Qué | Cuándo |
-|---|---|---|
-| `src/context/EntitlementsContext.tsx` | Provider que expone `{ isPremium, isLoading, presentPaywall() }`. Se agrega a la cadena de `App.tsx` **después de `AuthProvider`** | Sprint 0 (esqueleto que devuelve `isPremium=false`) → Sprint 4 (RevenueCat real) |
-| `usePremium()` hook | Azúcar sobre el context | Sprint 0 |
-| `<PremiumGate>` / `requirePremium()` | Componente/patrón para envolver funciones premium (muestra lock + CTA a paywall si no premium) | Sprint 0 |
-| Paywall (sheet o screen) | Presentación de planes + compra + restaurar | Sprint 4 |
-| Cablear Premium card | Reemplazar el `Alert.alert('Próximamente')` de `SettingsScreen.tsx` por `presentPaywall()`; corregir copy "Sleep Cycles Premium" → "Mimebien Premium" | Sprint 4 |
+| Pieza                                 | Qué                                                                                                                                                   | Cuándo                                                                           |
+| ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| `src/context/EntitlementsContext.tsx` | Provider que expone `{ isPremium, isLoading, presentPaywall() }`. Se agrega a la cadena de `App.tsx` **después de `AuthProvider`**                    | Sprint 0 (esqueleto que devuelve `isPremium=false`) → Sprint 4 (RevenueCat real) |
+| `usePremium()` hook                   | Azúcar sobre el context                                                                                                                               | Sprint 0                                                                         |
+| `<PremiumGate>` / `requirePremium()`  | Componente/patrón para envolver funciones premium (muestra lock + CTA a paywall si no premium)                                                        | Sprint 0                                                                         |
+| Paywall (sheet o screen)              | Presentación de planes + compra + restaurar                                                                                                           | Sprint 4                                                                         |
+| Cablear Premium card                  | Reemplazar el `Alert.alert('Próximamente')` de `SettingsScreen.tsx` por `presentPaywall()`; corregir copy "Sleep Cycles Premium" → "Mimebien Premium" | Sprint 4                                                                         |
 
-> **Nota:** "diseñar Premium desde ya" significa construir la *abstracción* (`usePremium` + `PremiumGate`) en el sprint 0 para que todo el código de los sprints 1-3 ya la use. El *cobro* (RevenueCat + paywall + productos en App Store Connect) se cablea en el sprint 4, cuando ya hay contenido premium que vender. Así "diseñado desde el inicio" no significa "esfuerzo de IAP desperdiciado antes de tiempo".
+> **Nota:** "diseñar Premium desde ya" significa construir la _abstracción_ (`usePremium` + `PremiumGate`) en el sprint 0 para que todo el código de los sprints 1-3 ya la use. El _cobro_ (RevenueCat + paywall + productos en App Store Connect) se cablea en el sprint 4, cuando ya hay contenido premium que vender. Así "diseñado desde el inicio" no significa "esfuerzo de IAP desperdiciado antes de tiempo".
 
 ---
 
@@ -132,7 +132,7 @@ export interface Insight {
 export function computeInsights(
   entries: SleepLogEntry[],
   profile: SleepProfile,
-): Insight[]
+): Insight[];
 ```
 
 ### Reglas base (gratis)
@@ -167,20 +167,20 @@ Al ser dominio puro, se cubre con unit tests (Jest) — cierra además el pendie
 "Acompañamiento" no es una feature, es la suma de cuatro mecanismos. Estos son los que hacen que la app se sienta como que camina contigo:
 
 1. **Siempre hay un siguiente paso** — nunca una pantalla vacía muerta. Cada estado vacío se convierte en un objetivo guiado con progreso ("Registra 3 noches para desbloquear tu primer análisis").
-2. **Te refleja de vuelta** — la app te muestra *tu* progreso personalizado: tu semana, tu racha, tu mejor noche, tu tendencia. No datos genéricos.
+2. **Te refleja de vuelta** — la app te muestra _tu_ progreso personalizado: tu semana, tu racha, tu mejor noche, tu tendencia. No datos genéricos.
 3. **Celebra tus hitos** — logros y micro-celebraciones (primera semana, racha de 7, 30 noches) que reconocen el avance.
 4. **Habla con voz de coach** — el microcopy y las notificaciones dejan de sonar a formulario y pasan a un tono cercano y alentador.
 
 Las piezas concretas, ordenadas por relación esfuerzo/impacto:
 
-| Pieza | Qué | Mecanismo | Notas técnicas |
-|---|---|---|---|
-| **Estados vacíos guiados** | Reemplazar "Sin datos aún" (Stats) y "Aún no hay registros" (SleepLog) por un progreso con barra hacia el primer análisis | (1) Siguiente paso | Usa el gating del Bloque 2 |
-| **Tarjetas de coach en Home** | Carrusel/tarjeta rotativa con el output de `computeInsights` | (2) Reflejo | El Home ya tiene el patrón `AnchorCard`; agregar una `InsightCard` |
-| **Resumen semanal** | Tarjeta "Tu semana" + notificación de domingo con recap | (2) Reflejo + (4) Voz | `computeStats` ya da los números. **Cuidar el presupuesto de notificaciones** (ver riesgos) |
-| **Logros / hitos** | Badges por milestones derivados de los datos | (3) Celebración | Derivar on-the-fly de `entries` en MVP (sin migración); persistir solo si se quieren fechas de desbloqueo/notificación |
-| **Metas** | Fijar objetivo (hora de dormir o duración) y trackear adherencia | (1) + (2) | Tabla `sleep_goals` o campo en perfil. 1 meta gratis / múltiples Premium |
-| **Voz de coach en notificaciones** | Más allá del seco "¿Cómo dormiste?": mensajes contextuales ("Vas 4 noches de racha, no la rompas") | (4) Voz | Reescribir bodies en `scheduler.ts` respetando el límite de 64 |
+| Pieza                              | Qué                                                                                                                       | Mecanismo             | Notas técnicas                                                                                                         |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------- | --------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| **Estados vacíos guiados**         | Reemplazar "Sin datos aún" (Stats) y "Aún no hay registros" (SleepLog) por un progreso con barra hacia el primer análisis | (1) Siguiente paso    | Usa el gating del Bloque 2                                                                                             |
+| **Tarjetas de coach en Home**      | Carrusel/tarjeta rotativa con el output de `computeInsights`                                                              | (2) Reflejo           | El Home ya tiene el patrón `AnchorCard`; agregar una `InsightCard`                                                     |
+| **Resumen semanal**                | Tarjeta "Tu semana" + notificación de domingo con recap                                                                   | (2) Reflejo + (4) Voz | `computeStats` ya da los números. **Cuidar el presupuesto de notificaciones** (ver riesgos)                            |
+| **Logros / hitos**                 | Badges por milestones derivados de los datos                                                                              | (3) Celebración       | Derivar on-the-fly de `entries` en MVP (sin migración); persistir solo si se quieren fechas de desbloqueo/notificación |
+| **Metas**                          | Fijar objetivo (hora de dormir o duración) y trackear adherencia                                                          | (1) + (2)             | Tabla `sleep_goals` o campo en perfil. 1 meta gratis / múltiples Premium                                               |
+| **Voz de coach en notificaciones** | Más allá del seco "¿Cómo dormiste?": mensajes contextuales ("Vas 4 noches de racha, no la rompas")                        | (4) Voz               | Reescribir bodies en `scheduler.ts` respetando el límite de 64                                                         |
 
 ### Nuevo estado a introducir
 
@@ -194,21 +194,25 @@ Las piezas concretas, ordenadas por relación esfuerzo/impacto:
 Cada sprint es un incremento entregable y probable en TestFlight.
 
 ### Sprint 0 — Fundaciones Premium (abstracción)
+
 - `EntitlementsContext` (esqueleto, `isPremium=false`), `usePremium`, `<PremiumGate>`.
 - Definir en código el mapa Free/Premium.
 - **Sin RevenueCat todavía.** Entregable: abstracción lista para que la usen los siguientes sprints.
 
 ### Sprint 1 — Bitácora de sueños
+
 - Migración `sleep_log` (columnas de sueño) + `supabase db push`.
 - Dominio + service + UI plegable en `SleepLogScreen`.
 - Nota larga / tags ilimitados tras `<PremiumGate>`.
 
 ### Sprint 2 — Motor de insights
+
 - `src/domain/sleepInsights.ts` con las 4-5 reglas base + `SLEEP_TIPS`.
 - Unit tests del motor (cierra pendiente de tests de dominio).
 - Reglas premium marcadas pero no bloqueantes.
 
 ### Sprint 3 — Acompañamiento
+
 - Estados vacíos guiados (Stats + SleepLog).
 - `InsightCard` en Home.
 - Resumen semanal (tarjeta + notificación dominical).
@@ -217,12 +221,14 @@ Cada sprint es un incremento entregable y probable en TestFlight.
 - Reescritura de voz en notificaciones.
 
 ### Sprint 4 — Monetización real
+
 - Integrar RevenueCat (config plugin + dev build).
 - Productos en App Store Connect (requiere acuerdos de Paid Apps + tax/banking).
 - Paywall + cablear Premium card de `SettingsScreen` + corregir copy a "Mimebien Premium".
 - Activar los `<PremiumGate>` sembrados en sprints 1-3.
 
 ### Fase 6 (posterior) — IA de sueños (extra Premium)
+
 - Edge Function de Supabase (ya hay precedente: `supabase/functions/delete-account`) que llama a la Claude API para interpretar el texto del sueño.
 - Implica: costo por llamada, los sueños son **datos personales sensibles** → actualizar Privacy Nutrition Labels y declarar el envío a un tercero.
 - Solo se ofrece a usuarios Premium.

@@ -1,10 +1,10 @@
+import { StackActions, useNavigation } from '@react-navigation/native';
 import React from 'react';
 import { Text, View } from 'react-native';
-import { StackActions, useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { CircularIconButton } from './ui';
 import { useAppTheme } from '../theme/ThemeProvider';
+import { CircularIconButton } from './ui';
 
 interface Props {
   insideSafeArea?: boolean;

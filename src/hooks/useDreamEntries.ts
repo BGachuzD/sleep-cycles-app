@@ -1,12 +1,14 @@
 // src/hooks/useDreamEntries.ts
-import { useEffect, useState, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useCallback, useEffect, useState } from 'react';
+
+import { logger } from '@/lib/logger';
 
 import type { DreamEntry } from '../domain/dreamEntry';
 import {
+  deleteDreamEntry,
   loadDreamEntries,
   upsertDreamEntry,
-  deleteDreamEntry,
 } from '../services/dreamEntryService';
 
 const KEY_PREFIX = 'dreamEntries/v1';
@@ -37,7 +39,7 @@ export function useDreamEntries(userId: string | null) {
           if (Array.isArray(parsed)) setDreams(parsed);
         }
       } catch (err) {
-        console.warn('Error loading dream entries from cache', err);
+        logger.warn('Error loading dream entries from cache', err);
       }
 
       if (userId) {
@@ -48,7 +50,7 @@ export function useDreamEntries(userId: string | null) {
             await AsyncStorage.setItem(key, JSON.stringify(remote));
           }
         } catch (err) {
-          console.warn('Error syncing dream entries from Supabase', err);
+          logger.warn('Error syncing dream entries from Supabase', err);
         }
       }
 
@@ -65,7 +67,7 @@ export function useDreamEntries(userId: string | null) {
       try {
         await AsyncStorage.setItem(makeKey(userId), JSON.stringify(updated));
       } catch (err) {
-        console.warn('Error persisting dream entries to cache', err);
+        logger.warn('Error persisting dream entries to cache', err);
       }
     },
     [userId],
@@ -101,7 +103,7 @@ export function useDreamEntries(userId: string | null) {
         await AsyncStorage.setItem(makeKey(userId), JSON.stringify(remote));
       }
     } catch (err) {
-      console.warn('Error refreshing dream entries', err);
+      logger.warn('Error refreshing dream entries', err);
     } finally {
       setLoading(false);
     }

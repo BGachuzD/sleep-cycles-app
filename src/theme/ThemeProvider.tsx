@@ -1,18 +1,21 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, {
   createContext,
+  type ReactNode,
   use,
   useCallback,
   useEffect,
   useMemo,
   useState,
-  type ReactNode,
 } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+
+import { logger } from '@/lib/logger';
+
 import {
-  resolveAutoThemeByHour,
-  themes,
   type AppTheme,
+  resolveAutoThemeByHour,
   type ThemeMode,
+  themes,
 } from './theme';
 
 const STORAGE_KEY = 'themeMode/v1';
@@ -42,7 +45,7 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
           setModeState(raw);
         }
       } catch (err) {
-        console.warn('Error loading theme mode from storage', err);
+        logger.warn('Error loading theme mode from storage', err);
       }
     })();
     return () => {
@@ -53,7 +56,7 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
   const setMode = useCallback((next: ThemeMode) => {
     setModeState(next);
     AsyncStorage.setItem(STORAGE_KEY, next).catch((err) => {
-      console.warn('Error persisting theme mode', err);
+      logger.warn('Error persisting theme mode', err);
     });
   }, []);
 

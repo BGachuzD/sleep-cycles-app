@@ -1,5 +1,5 @@
-import React, { type FC } from 'react';
 import { Ionicons } from '@expo/vector-icons';
+import React, { type FC } from 'react';
 
 import { PillButton } from './ui';
 

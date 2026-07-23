@@ -1,4 +1,6 @@
 // src/screens/auth/SignUpScreen.tsx
+import { Ionicons } from '@expo/vector-icons';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import React, { FC, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -11,92 +13,34 @@ import {
   Text,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
-import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import type { RootStackParamList } from '../../../App';
-import { useAuth } from '../../context/AuthContext';
 import { AuthHero } from '../../components/AuthHero';
 import { FieldInput } from '../../components/FieldInput';
 import { PrimaryCTA } from '../../components/PrimaryCTA';
-import { usePressScale } from '../../hooks/usePressScale';
-import { useAppTheme } from '../../theme/ThemeProvider';
-import type { AppTheme } from '../../theme/theme';
+import { useAuth } from '../../context/AuthContext';
 import type { Chronotype } from '../../domain/sleepProfile';
+import { usePressScale } from '../../hooks/usePressScale';
+import type { AppTheme } from '../../theme/theme';
+import { useAppTheme } from '../../theme/ThemeProvider';
+import { SegmentedChip } from './signUp/SegmentedChip';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'SignUp'>;
 
 const { width, height } = Dimensions.get('window');
 const AMBIENT_DIAMETER = Math.max(width, height);
 
-const CHRONO_OPTIONS: Array<{
+const CHRONO_OPTIONS: {
   value: Chronotype;
   label: string;
   icon: keyof typeof Ionicons.glyphMap;
-}> = [
+}[] = [
   { value: 'morning', label: 'Matutino', icon: 'sunny-outline' },
   { value: 'intermediate', label: 'Neutro', icon: 'partly-sunny-outline' },
   { value: 'night', label: 'Nocturno', icon: 'moon-outline' },
 ];
-
-// ─────────────────────────────────────────────
-// SegmentedChip (inline para cronotipo)
-// ─────────────────────────────────────────────
-const SegmentedChip: FC<{
-  label: string;
-  icon: keyof typeof Ionicons.glyphMap;
-  active: boolean;
-  onPress: () => void;
-  theme: AppTheme;
-}> = ({ label, icon, active, onPress, theme }) => {
-  const { animatedStyle, onPressIn, onPressOut } = usePressScale(0.96);
-  return (
-    <Animated.View style={[{ flex: 1 }, animatedStyle]}>
-      <Pressable
-        onPress={onPress}
-        onPressIn={onPressIn}
-        onPressOut={onPressOut}
-        accessibilityRole="button"
-        accessibilityLabel={label}
-        style={[
-          segmentedStyles.chip,
-          active && { backgroundColor: theme.colors.accent[500] },
-        ]}
-      >
-        <Ionicons
-          name={icon}
-          size={15}
-          color={active ? theme.colors.white : theme.colors.textSecondary}
-        />
-        <Text
-          style={[
-            segmentedStyles.label,
-            {
-              color: active ? theme.colors.white : theme.colors.textSecondary,
-              fontSize: theme.type.small,
-            },
-          ]}
-        >
-          {label}
-        </Text>
-      </Pressable>
-    </Animated.View>
-  );
-};
-
-const segmentedStyles = StyleSheet.create({
-  chip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 10,
-    borderRadius: 999,
-  },
-  label: { fontWeight: '700' },
-});
 
 // ─────────────────────────────────────────────
 // SignUpScreen

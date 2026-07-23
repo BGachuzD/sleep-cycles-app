@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Text, View, type DimensionValue } from 'react-native';
+import { type DimensionValue, Text, View } from 'react-native';
 import Animated, {
   Easing,
   useAnimatedStyle,

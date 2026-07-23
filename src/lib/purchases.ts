@@ -59,7 +59,9 @@ export async function getOfferings(): Promise<PurchasesOfferings | null> {
   return null;
 }
 
-export async function purchasePackage(_packageId: string): Promise<PurchaseResult> {
+export async function purchasePackage(
+  _packageId: string,
+): Promise<PurchaseResult> {
   return { isPremium: false, error: 'not-configured' };
 }
 

@@ -1,4 +1,6 @@
 // src/screens/auth/ForgotPasswordScreen.tsx
+import { Ionicons } from '@expo/vector-icons';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import React, { FC, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -11,19 +13,17 @@ import {
   Text,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
-import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import type { RootStackParamList } from '../../../App';
-import { useAuth } from '../../context/AuthContext';
 import { AuthHero } from '../../components/AuthHero';
 import { FieldInput } from '../../components/FieldInput';
 import { PrimaryCTA } from '../../components/PrimaryCTA';
+import { useAuth } from '../../context/AuthContext';
 import { usePressScale } from '../../hooks/usePressScale';
-import { useAppTheme } from '../../theme/ThemeProvider';
 import type { AppTheme } from '../../theme/theme';
+import { useAppTheme } from '../../theme/ThemeProvider';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ForgotPassword'>;
 

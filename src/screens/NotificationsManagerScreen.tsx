@@ -1,4 +1,6 @@
 // src/screens/NotificationsManagerScreen.tsx
+import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import React, { FC, useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -9,276 +11,27 @@ import {
   Text,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
-import * as Notifications from 'expo-notifications';
-import { useFocusEffect } from '@react-navigation/native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { GradientBackground } from '../components/GradientBackground';
 import { FloatingDrawerButton } from '../components/FloatingDrawerButton';
 import { FloatingHomeButton } from '../components/FloatingHomeButton';
+import { GradientBackground } from '../components/GradientBackground';
 import { EmptyState, useToast } from '../components/ui';
 import { usePressScale } from '../hooks/usePressScale';
+import { useTabBarContentPadding } from '../navigation/tabBarLayout';
 import {
   cancelNotification,
   listScheduledNotifications,
 } from '../notifications/scheduler';
-import { formatTime } from '../utils/sleep';
-import { useAppTheme } from '../theme/ThemeProvider';
-import { useTabBarContentPadding } from '../navigation/tabBarLayout';
 import type { AppTheme } from '../theme/theme';
-
-type NotificationRequest = Notifications.NotificationRequest;
-
-function getTriggerDate(trigger: NotificationRequest['trigger']): Date | null {
-  if (!trigger || typeof trigger !== 'object') return null;
-  if (!('date' in trigger)) return null;
-
-  const rawDate = (trigger as { date?: string | number | Date }).date;
-  if (!rawDate) return null;
-  return rawDate instanceof Date ? rawDate : new Date(rawDate);
-}
-
-/**
- * Los recordatorios repetitivos (p. ej. el diario "¿Cómo dormiste?") los
- * gestiona la app automáticamente; no tiene sentido listarlos junto a las
- * alarmas puntuales que el usuario programó.
- */
-function isRecurringSystemReminder(
-  trigger: NotificationRequest['trigger'],
-): boolean {
-  if (!trigger || typeof trigger !== 'object') return false;
-  return 'repeats' in trigger && trigger.repeats === true;
-}
-
-function formatRelativeDate(date: Date): string {
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const target = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-  const diffMs = target.getTime() - today.getTime();
-  const diffDays = Math.round(diffMs / (24 * 60 * 60 * 1000));
-
-  if (diffDays === 0) return 'hoy';
-  if (diffDays === 1) return 'mañana';
-  if (diffDays === -1) return 'ayer';
-  if (diffDays > 1 && diffDays <= 6) {
-    return date.toLocaleDateString('es-MX', { weekday: 'long' });
-  }
-  return date.toLocaleDateString('es-MX', {
-    day: '2-digit',
-    month: 'short',
-  });
-}
-
-// ─────────────────────────────────────────────
-// NotificationCard
-// ─────────────────────────────────────────────
-const NotificationCard: FC<{
-  request: NotificationRequest;
-  onCancel: () => void;
-  theme: AppTheme;
-}> = ({ request, onCancel, theme }) => {
-  const trash = usePressScale(0.85);
-  const triggerDate = getTriggerDate(request.trigger);
-  const timeString = triggerDate ? formatTime(triggerDate) : 'Sin hora';
-  const relativeString = triggerDate
-    ? formatRelativeDate(triggerDate)
-    : 'sin fecha';
-  const isPast = triggerDate ? triggerDate.getTime() < Date.now() : false;
-
-  const title = request.content?.title ?? 'Recordatorio';
-  const body = request.content?.body ?? 'Sin descripción';
-
-  return (
-    <View
-      style={[
-        cardStyles.card,
-        {
-          backgroundColor: theme.colors.surface,
-          borderColor: theme.colors.border,
-          borderRadius: theme.radius.xl,
-          padding: theme.spacing.lg,
-          opacity: isPast ? 0.6 : 1,
-        },
-      ]}
-    >
-      <View style={cardStyles.row}>
-        <View
-          style={[
-            cardStyles.iconCircle,
-            { backgroundColor: `${theme.colors.accent[500]}1F` },
-          ]}
-        >
-          <Ionicons
-            name="alarm-outline"
-            size={20}
-            color={theme.colors.accent[400]}
-          />
-        </View>
-
-        <View style={cardStyles.titleCol}>
-          <Text
-            style={[
-              cardStyles.title,
-              {
-                color: theme.colors.textPrimary,
-                fontSize: theme.type.bodyLarge,
-              },
-            ]}
-            numberOfLines={2}
-          >
-            {title}
-          </Text>
-          <Text
-            style={[
-              cardStyles.body,
-              { color: theme.colors.textSecondary, fontSize: theme.type.small },
-            ]}
-            numberOfLines={2}
-          >
-            {body}
-          </Text>
-        </View>
-
-        <Animated.View style={trash.animatedStyle}>
-          <Pressable
-            onPress={onCancel}
-            onPressIn={trash.onPressIn}
-            onPressOut={trash.onPressOut}
-            hitSlop={8}
-            accessibilityRole="button"
-            accessibilityLabel="Cancelar alerta"
-            style={[
-              cardStyles.trashBtn,
-              {
-                backgroundColor: `${theme.colors.danger}14`,
-                borderColor: `${theme.colors.danger}33`,
-              },
-            ]}
-          >
-            <Ionicons
-              name="trash-outline"
-              size={16}
-              color={theme.colors.danger}
-            />
-          </Pressable>
-        </Animated.View>
-      </View>
-
-      <View
-        style={[
-          cardStyles.timeRow,
-          {
-            backgroundColor: theme.colors.surfaceElevated,
-            borderRadius: theme.radius.md,
-          },
-        ]}
-      >
-        <View style={cardStyles.timeLeft}>
-          <Text
-            style={[
-              cardStyles.timeLabel,
-              { color: theme.colors.textMuted, fontSize: theme.type.micro },
-            ]}
-          >
-            HORA
-          </Text>
-          <Text
-            style={[
-              cardStyles.timeValue,
-              { color: theme.colors.heroText, fontSize: theme.type.title3 },
-            ]}
-            numberOfLines={1}
-            adjustsFontSizeToFit
-            minimumFontScale={0.7}
-          >
-            {timeString}
-          </Text>
-        </View>
-        <View
-          style={[
-            cardStyles.dateChip,
-            {
-              backgroundColor: `${theme.colors.accent[500]}1F`,
-              borderColor: `${theme.colors.accent[500]}55`,
-              borderRadius: 999,
-            },
-          ]}
-        >
-          <Ionicons
-            name="calendar-outline"
-            size={12}
-            color={theme.colors.accent[400]}
-          />
-          <Text
-            style={[
-              cardStyles.dateChipText,
-              { color: theme.colors.accent[300], fontSize: theme.type.caption },
-            ]}
-          >
-            {relativeString}
-          </Text>
-        </View>
-      </View>
-    </View>
-  );
-};
-
-const cardStyles = StyleSheet.create({
-  card: { borderWidth: 1, gap: 12 },
-  row: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
-  iconCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-  },
-  titleCol: { flex: 1, gap: 2 },
-  title: { fontWeight: '700' },
-  body: { lineHeight: 18 },
-  trashBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 999,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-  },
-  timeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    gap: 12,
-  },
-  timeLeft: { flex: 1, gap: 2 },
-  timeLabel: {
-    fontWeight: '700',
-    letterSpacing: 1,
-  },
-  timeValue: {
-    fontWeight: '700',
-    fontVariant: ['tabular-nums'],
-    letterSpacing: -0.5,
-  },
-  dateChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderWidth: 1,
-  },
-  dateChipText: {
-    fontWeight: '700',
-    letterSpacing: 0.3,
-    textTransform: 'lowercase',
-  },
-});
+import { useAppTheme } from '../theme/ThemeProvider';
+import {
+  getTriggerDate,
+  isRecurringSystemReminder,
+  type NotificationRequest,
+} from './notificationsManager/helpers';
+import { NotificationCard } from './notificationsManager/NotificationCard';
 
 // ─────────────────────────────────────────────
 // NotificationsManagerScreen

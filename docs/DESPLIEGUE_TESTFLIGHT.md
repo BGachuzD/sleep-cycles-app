@@ -67,6 +67,7 @@ npx eas env:create --environment production --name EXPO_PUBLIC_SUPABASE_ANON_KEY
 > La anon key es pública por diseño (la seguridad real es RLS en Postgres), por eso `plaintext` está bien.
 
 Verifica:
+
 ```bash
 npx eas env:list --environment production
 ```
@@ -86,14 +87,14 @@ Sin esto, el correo de recuperación de contraseña no redirige de vuelta a la a
 
 En [appstoreconnect.apple.com](https://appstoreconnect.apple.com) → **My Apps → + → New App**:
 
-| Campo | Valor |
-|---|---|
-| Platform | iOS |
-| Name | **Mimebien** (verifica disponibilidad; máx. 30 caracteres) |
-| Primary language | Spanish (Mexico) |
-| Bundle ID | `com.bgachuzd.mimebien` ⚠️ **inmutable** — confírmalo como definitivo |
-| SKU | `mimebien-ios-001` |
-| User Access | Full Access |
+| Campo            | Valor                                                                 |
+| ---------------- | --------------------------------------------------------------------- |
+| Platform         | iOS                                                                   |
+| Name             | **Mimebien** (verifica disponibilidad; máx. 30 caracteres)            |
+| Primary language | Spanish (Mexico)                                                      |
+| Bundle ID        | `com.bgachuzd.mimebien` ⚠️ **inmutable** — confírmalo como definitivo |
+| SKU              | `mimebien-ios-001`                                                    |
+| User Access      | Full Access                                                           |
 
 > Si el Bundle ID no aparece en la lista, no pasa nada: EAS lo registra automáticamente en el paso 5 y luego regresas aquí.
 
@@ -128,6 +129,7 @@ Te pedirá autenticación con App Store Connect. **Recomendado**: elige la opci�
 5. A los testers les llega invitación por correo → instalan la app **TestFlight** del App Store → aceptan → instalan Mimebien.
 
 **Para testers externos** (hasta 10,000 — más adelante):
+
 - Requiere **Beta App Review** de Apple (1-2 días) la primera vez.
 - Requiere **Privacy Policy URL viva** (`mimebien.com/privacy` — hoy es placeholder) y descripción beta.
 - Recomendación: valida 1-2 semanas con internos primero.
@@ -149,13 +151,13 @@ El build number sube solo (`autoIncrement` + `appVersionSource: remote` ya confi
 
 ## Pendientes del lado del código (pedir a Claude Code)
 
-| Cuándo | Qué |
-|---|---|
-| Si falla el paso 1 | Fix del check de permisos HealthKit read-only |
-| Durante TestFlight | Bugs que reporten los testers |
+| Cuándo              | Qué                                                                                           |
+| ------------------- | --------------------------------------------------------------------------------------------- |
+| Si falla el paso 1  | Fix del check de permisos HealthKit read-only                                                 |
+| Durante TestFlight  | Bugs que reporten los testers                                                                 |
 | Antes del App Store | URLs reales de privacidad/términos en `SettingsScreen.tsx` (hoy placeholders de mimebien.com) |
-| Antes del App Store | Texto "Sleep Cycles Premium" → "Mimebien Premium" en Settings |
-| Recomendado | Crash reporting (Sentry) antes de abrir a testers externos |
+| Antes del App Store | Texto "Sleep Cycles Premium" → "Mimebien Premium" en Settings                                 |
+| Recomendado         | Crash reporting (Sentry) antes de abrir a testers externos                                    |
 
 ## Pendientes tuyos antes del App Store público (no bloquean TestFlight interno)
 
@@ -168,11 +170,11 @@ El build number sube solo (`autoIncrement` + `appVersionSource: remote` ya confi
 
 ## Solución de problemas rápida
 
-| Síntoma | Causa probable | Fix |
-|---|---|---|
-| La app crashea al abrir el build de TestFlight | Faltó el paso 2 (env vars) | `eas env:list --environment production` y crear las que falten; rebuild |
-| "No se pudo programar" al crear alarma | Permisos de notificación denegados | Ajustes → Notificaciones → Mimebien |
-| HealthKit "No conectado" tras aceptar permisos | Bug del check read-only | Pedir el fix a Claude Code |
-| El build falla en credenciales | Membresía Apple Developer no activa | Esperar activación (24-48 h tras pagar) |
-| `eas submit` rechaza el binario | Falta la app en App Store Connect | Completar paso 4 |
-| El mail de reset no abre la app | Faltó el paso 3 (redirect URL) | Agregar `mimebien://reset-password` en Supabase |
+| Síntoma                                        | Causa probable                      | Fix                                                                     |
+| ---------------------------------------------- | ----------------------------------- | ----------------------------------------------------------------------- |
+| La app crashea al abrir el build de TestFlight | Faltó el paso 2 (env vars)          | `eas env:list --environment production` y crear las que falten; rebuild |
+| "No se pudo programar" al crear alarma         | Permisos de notificación denegados  | Ajustes → Notificaciones → Mimebien                                     |
+| HealthKit "No conectado" tras aceptar permisos | Bug del check read-only             | Pedir el fix a Claude Code                                              |
+| El build falla en credenciales                 | Membresía Apple Developer no activa | Esperar activación (24-48 h tras pagar)                                 |
+| `eas submit` rechaza el binario                | Falta la app en App Store Connect   | Completar paso 4                                                        |
+| El mail de reset no abre la app                | Faltó el paso 3 (redirect URL)      | Agregar `mimebien://reset-password` en Supabase                         |

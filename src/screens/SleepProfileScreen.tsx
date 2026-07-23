@@ -1,30 +1,27 @@
 // src/screens/SleepProfileScreen.tsx
+import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   Platform,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
-import { useNavigation } from '@react-navigation/native';
-import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import type { RootStackParamList } from '../../App';
-import { GradientBackground } from '../components/GradientBackground';
+import { FieldInput } from '../components/FieldInput';
 import { FloatingDrawerButton } from '../components/FloatingDrawerButton';
 import { FloatingHomeButton } from '../components/FloatingHomeButton';
+import { GradientBackground } from '../components/GradientBackground';
 import { PrimaryCTA } from '../components/PrimaryCTA';
-import { FieldInput } from '../components/FieldInput';
-import { usePressScale } from '../hooks/usePressScale';
 import { useAuth } from '../context/AuthContext';
 import { useSleepProfileContext } from '../context/SleepProfileContext';
 import type { Chronotype, Gender, SleepProfile } from '../domain/sleepProfile';
@@ -34,33 +31,36 @@ import {
   categorizeBMI,
   getOptimalSleepWindow,
 } from '../domain/sleepProfile';
-import { useAppTheme } from '../theme/ThemeProvider';
-import type { AppTheme } from '../theme/theme';
 import {
   useTabBarContentPadding,
   useTabBarOverlayHeight,
 } from '../navigation/tabBarLayout';
+import type { AppTheme } from '../theme/theme';
+import { useAppTheme } from '../theme/ThemeProvider';
+import { DataRow } from './sleepProfile/DataRow';
+import { SecondaryLink } from './sleepProfile/SecondaryLink';
+import { SegmentedChips } from './sleepProfile/SegmentedChip';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'SleepProfile'>;
 
 // ─────────────────────────────────────────────
 // Opciones de segmented control
 // ─────────────────────────────────────────────
-const GENDER_OPTIONS: Array<{
+const GENDER_OPTIONS: {
   value: Gender;
   label: string;
   icon: keyof typeof Ionicons.glyphMap;
-}> = [
+}[] = [
   { value: 'male', label: 'Masculino', icon: 'man-outline' },
   { value: 'female', label: 'Femenino', icon: 'woman-outline' },
   { value: 'other', label: 'Otro', icon: 'person-outline' },
 ];
 
-const CHRONO_OPTIONS: Array<{
+const CHRONO_OPTIONS: {
   value: Chronotype;
   label: string;
   icon: keyof typeof Ionicons.glyphMap;
-}> = [
+}[] = [
   { value: 'morning', label: 'Matutino', icon: 'sunny-outline' },
   { value: 'intermediate', label: 'Neutro', icon: 'partly-sunny-outline' },
   { value: 'night', label: 'Nocturno', icon: 'moon-outline' },
@@ -72,166 +72,6 @@ const BMI_LABEL: Record<string, string> = {
   overweight: 'Sobrepeso',
   obese: 'Obesidad',
 };
-
-// ─────────────────────────────────────────────
-// SegmentedChips genérico
-// ─────────────────────────────────────────────
-function SegmentedChips<T extends string>({
-  options,
-  value,
-  onChange,
-  theme,
-}: {
-  options: Array<{
-    value: T;
-    label: string;
-    icon: keyof typeof Ionicons.glyphMap;
-  }>;
-  value: T;
-  onChange: (v: T) => void;
-  theme: AppTheme;
-}) {
-  return (
-    <View
-      style={[
-        segmentedStyles.container,
-        {
-          backgroundColor: theme.colors.surfaceElevated,
-          borderColor: theme.colors.border,
-          borderRadius: 999,
-        },
-      ]}
-    >
-      {options.map((opt) => {
-        const active = value === opt.value;
-        return (
-          <SegmentedChip
-            key={opt.value}
-            label={opt.label}
-            icon={opt.icon}
-            active={active}
-            onPress={() => onChange(opt.value)}
-            theme={theme}
-          />
-        );
-      })}
-    </View>
-  );
-}
-
-const SegmentedChip: FC<{
-  label: string;
-  icon: keyof typeof Ionicons.glyphMap;
-  active: boolean;
-  onPress: () => void;
-  theme: AppTheme;
-}> = ({ label, icon, active, onPress, theme }) => {
-  const { animatedStyle, onPressIn, onPressOut } = usePressScale(0.96);
-  return (
-    <Animated.View style={[{ flex: 1 }, animatedStyle]}>
-      <Pressable
-        onPress={onPress}
-        onPressIn={onPressIn}
-        onPressOut={onPressOut}
-        accessibilityRole="button"
-        accessibilityLabel={label}
-        style={[
-          segmentedStyles.chip,
-          active && {
-            backgroundColor: theme.colors.accent[500],
-          },
-        ]}
-      >
-        <Ionicons
-          name={icon}
-          size={15}
-          color={active ? theme.colors.white : theme.colors.textSecondary}
-        />
-        <Text
-          style={[
-            segmentedStyles.label,
-            {
-              color: active ? theme.colors.white : theme.colors.textSecondary,
-              fontSize: theme.type.small,
-            },
-          ]}
-        >
-          {label}
-        </Text>
-      </Pressable>
-    </Animated.View>
-  );
-};
-
-const segmentedStyles = StyleSheet.create({
-  container: {
-    flexDirection: 'row',
-    padding: 4,
-    borderWidth: 1,
-  },
-  chip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 10,
-    borderRadius: 999,
-  },
-  label: { fontWeight: '700' },
-});
-
-// ─────────────────────────────────────────────
-// DataRow para cards de info
-// ─────────────────────────────────────────────
-const DataRow: FC<{
-  icon: keyof typeof Ionicons.glyphMap;
-  label: string;
-  value: string;
-  theme: AppTheme;
-  last?: boolean;
-}> = ({ icon, label, value, theme, last }) => (
-  <View
-    style={[
-      dataRowStyles.row,
-      !last && {
-        borderBottomWidth: StyleSheet.hairlineWidth,
-        borderBottomColor: theme.colors.border,
-      },
-    ]}
-  >
-    <View style={dataRowStyles.left}>
-      <Ionicons name={icon} size={16} color={theme.colors.textMuted} />
-      <Text
-        style={[
-          dataRowStyles.label,
-          { color: theme.colors.textSecondary, fontSize: theme.type.body },
-        ]}
-      >
-        {label}
-      </Text>
-    </View>
-    <Text
-      style={[
-        dataRowStyles.value,
-        { color: theme.colors.textPrimary, fontSize: theme.type.body },
-      ]}
-    >
-      {value}
-    </Text>
-  </View>
-);
-
-const dataRowStyles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 12,
-  },
-  left: { flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 },
-  label: { fontWeight: '500' },
-  value: { fontWeight: '700', fontVariant: ['tabular-nums'] },
-});
 
 // ─────────────────────────────────────────────
 // SleepProfileScreen
@@ -338,7 +178,6 @@ export const SleepProfileScreen: FC<Props> = ({ navigation, route }) => {
     (rootNavigation as any).navigate('DeleteAccount');
   };
 
-  const isValid = Boolean(parsedProfile) && !validationError;
   const optimalWindow = parsedProfile?.chronotype
     ? getOptimalSleepWindow(parsedProfile.chronotype)
     : null;
@@ -658,58 +497,6 @@ export const SleepProfileScreen: FC<Props> = ({ navigation, route }) => {
     </SafeAreaView>
   );
 };
-
-// ─────────────────────────────────────────────
-// SecondaryLink (link discreto en sección de acciones)
-// ─────────────────────────────────────────────
-const SecondaryLink: FC<{
-  icon: keyof typeof Ionicons.glyphMap;
-  label: string;
-  onPress: () => void;
-  destructive?: boolean;
-  theme: AppTheme;
-}> = ({ icon, label, onPress, destructive, theme }) => {
-  const { animatedStyle, onPressIn, onPressOut } = usePressScale(0.97);
-  const color = destructive ? theme.colors.danger : theme.colors.textSecondary;
-  return (
-    <Animated.View style={animatedStyle}>
-      <Pressable
-        onPress={onPress}
-        onPressIn={onPressIn}
-        onPressOut={onPressOut}
-        accessibilityRole="button"
-        style={[
-          linkStyles.row,
-          {
-            backgroundColor: theme.colors.surface,
-            borderColor: destructive
-              ? `${theme.colors.danger}33`
-              : theme.colors.border,
-            borderRadius: theme.radius.lg,
-          },
-        ]}
-      >
-        <Ionicons name={icon} size={18} color={color} />
-        <Text style={[linkStyles.label, { color, fontSize: theme.type.body }]}>
-          {label}
-        </Text>
-        <Ionicons name="chevron-forward" size={16} color={color} />
-      </Pressable>
-    </Animated.View>
-  );
-};
-
-const linkStyles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderWidth: 1,
-  },
-  label: { fontWeight: '700', flex: 1 },
-});
 
 // ─────────────────────────────────────────────
 // Styles

@@ -1,0 +1,226 @@
+import { StyleSheet } from 'react-native';
+
+import type { AppTheme } from '../../theme/theme';
+
+export const createStyles = (theme: AppTheme) =>
+  StyleSheet.create({
+    container: { flex: 1, backgroundColor: theme.colors.background },
+    scroll: { paddingHorizontal: 24, paddingBottom: 40 },
+
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingTop: 16,
+      marginBottom: 28,
+      gap: 12,
+    },
+    backBtn: {
+      width: 36,
+      height: 36,
+      borderRadius: 999,
+      backgroundColor: theme.colors.surface,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    headerTitle: {
+      color: theme.colors.textPrimary,
+      fontSize: 20,
+      fontWeight: '700',
+    },
+
+    stepContainer: { alignItems: 'center', paddingTop: 8 },
+
+    dangerIconCircle: {
+      width: 80,
+      height: 80,
+      borderRadius: 40,
+      backgroundColor: 'rgba(248,113,113,0.12)',
+      borderWidth: 2,
+      borderColor: 'rgba(248,113,113,0.35)',
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 20,
+    },
+    lockIconCircle: {
+      width: 80,
+      height: 80,
+      borderRadius: 40,
+      backgroundColor: 'rgba(249,115,22,0.12)',
+      borderWidth: 2,
+      borderColor: 'rgba(249,115,22,0.35)',
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 20,
+    },
+
+    stepTitle: {
+      color: theme.colors.textPrimary,
+      fontSize: 22,
+      fontWeight: '700',
+      textAlign: 'center',
+      marginBottom: 10,
+    },
+    stepSubtitle: {
+      color: theme.colors.textSecondary,
+      fontSize: 14,
+      textAlign: 'center',
+      lineHeight: 22,
+      marginBottom: 24,
+      paddingHorizontal: 8,
+    },
+
+    listCard: {
+      width: '100%',
+      backgroundColor: theme.colors.surface,
+      borderRadius: 14,
+      padding: 16,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      marginBottom: 16,
+      gap: 12,
+    },
+    listRow: { flexDirection: 'row', alignItems: 'center' },
+    listRowText: { color: theme.colors.textPrimary, fontSize: 14, flex: 1 },
+
+    infoCard: {
+      width: '100%',
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      backgroundColor: 'rgba(96,165,250,0.08)',
+      borderRadius: 12,
+      padding: 14,
+      borderWidth: 1,
+      borderColor: 'rgba(96,165,250,0.25)',
+      marginBottom: 28,
+    },
+    infoText: { color: '#93c5fd', fontSize: 13, flex: 1, lineHeight: 20 },
+
+    continueBtn: {
+      width: '100%',
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: theme.colors.danger,
+      paddingVertical: 16,
+      borderRadius: 999,
+    },
+    continueBtnText: {
+      color: theme.colors.white,
+      fontWeight: '700',
+      fontSize: 16,
+    },
+
+    emailRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: theme.colors.surface,
+      borderRadius: 10,
+      paddingVertical: 10,
+      paddingHorizontal: 14,
+      marginBottom: 20,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      alignSelf: 'stretch',
+    },
+    emailText: { color: theme.colors.textSecondary, fontSize: 14 },
+
+    inputWrapper: { width: '100%', marginBottom: 16 },
+    inputLabel: {
+      color: theme.colors.textSecondary,
+      fontSize: 13,
+      fontWeight: '600',
+      marginBottom: 8,
+    },
+    input: {
+      backgroundColor: theme.colors.surface,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: theme.colors.border,
+      color: theme.colors.textPrimary,
+      fontSize: 16,
+      paddingHorizontal: 16,
+      paddingVertical: 14,
+    },
+
+    errorBox: {
+      width: '100%',
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: 'rgba(239,68,68,0.1)',
+      borderRadius: 10,
+      padding: 12,
+      borderWidth: 1,
+      borderColor: 'rgba(239,68,68,0.3)',
+      marginBottom: 16,
+    },
+    errorText: { color: '#fca5a5', fontSize: 13, flex: 1 },
+
+    deleteBtn: {
+      width: '100%',
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: theme.colors.danger,
+      paddingVertical: 16,
+      borderRadius: 999,
+      marginBottom: 12,
+    },
+    deleteBtnText: {
+      color: theme.colors.white,
+      fontWeight: '700',
+      fontSize: 16,
+    },
+
+    cancelBtn: {
+      width: '100%',
+      paddingVertical: 14,
+      alignItems: 'center',
+    },
+    cancelBtnText: {
+      color: theme.colors.textMuted,
+      fontSize: 15,
+      fontWeight: '600',
+    },
+
+    doneContainer: { flex: 1, backgroundColor: theme.colors.background },
+    doneContent: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingHorizontal: 40,
+    },
+    doneIconCircle: {
+      width: 88,
+      height: 88,
+      borderRadius: 44,
+      backgroundColor: 'rgba(52,211,153,0.12)',
+      borderWidth: 2,
+      borderColor: 'rgba(52,211,153,0.35)',
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 24,
+    },
+    doneTitle: {
+      color: theme.colors.textPrimary,
+      fontSize: 26,
+      fontWeight: '700',
+      textAlign: 'center',
+      marginBottom: 12,
+    },
+    doneText: {
+      color: theme.colors.textSecondary,
+      fontSize: 15,
+      textAlign: 'center',
+      lineHeight: 24,
+    },
+    deletingText: {
+      color: theme.colors.textPrimary,
+      fontSize: 20,
+      fontWeight: '700',
+      marginTop: 20,
+      marginBottom: 6,
+    },
+    deletingSubText: { color: theme.colors.textSecondary, fontSize: 14 },
+  });

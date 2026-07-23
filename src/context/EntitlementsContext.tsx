@@ -1,11 +1,13 @@
 import React, {
   createContext,
+  type ReactNode,
   useCallback,
   useContext,
   useEffect,
   useState,
-  type ReactNode,
 } from 'react';
+
+import { logger } from '@/lib/logger';
 
 import {
   configurePurchases,
@@ -66,7 +68,7 @@ export const EntitlementsProvider = ({ children }: { children: ReactNode }) => {
         const premium = await getIsPremium();
         if (!cancelled) setIsPremium(premium);
       } catch (err) {
-        console.warn('[purchases] init failed', err);
+        logger.warn('[purchases] init failed', err);
       } finally {
         if (!cancelled) setIsLoading(false);
       }
@@ -88,7 +90,7 @@ export const EntitlementsProvider = ({ children }: { children: ReactNode }) => {
     try {
       setIsPremium(await getIsPremium());
     } catch (err) {
-      console.warn('[purchases] refresh failed', err);
+      logger.warn('[purchases] refresh failed', err);
     }
   }, []);
 

@@ -1,3 +1,5 @@
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import React, { FC, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -10,25 +12,23 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 
 import { usePremium } from '../context/EntitlementsContext';
-import { useAppTheme } from '../theme/ThemeProvider';
-import { useToast } from './ui';
-import type { AppTheme } from '../theme/theme';
 import {
   getOfferings,
   isPurchasesConfigured,
+  type PurchasePackage,
   purchasePackage,
   restorePurchases,
-  type PurchasePackage,
 } from '../lib/purchases';
+import type { AppTheme } from '../theme/theme';
+import { useAppTheme } from '../theme/ThemeProvider';
+import { useToast } from './ui';
 
-const PREMIUM_BENEFITS: Array<{
+const PREMIUM_BENEFITS: {
   icon: keyof typeof Ionicons.glyphMap;
   text: string;
-}> = [
+}[] = [
   { icon: 'sparkles-outline', text: 'Análisis de tus sueños con IA' },
   {
     icon: 'git-compare-outline',
